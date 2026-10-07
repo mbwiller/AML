@@ -12,6 +12,7 @@ import type { z } from 'zod';
 
 // Relative on purpose: tsx and a config-less Vitest do not resolve the `@/` alias.
 import { mdxComponentNames } from '../../components/mdx/names';
+import { evaluateFormula } from '../graders/formula';
 import {
   KEBAB_RE,
   caseSchema,
@@ -869,6 +870,26 @@ export function validateContent(
         out.error(
           q.file,
           `${label}corrupt.step ${d.corrupt.step} exceeds the ${der.steps} steps of "${d.derivation}"`,
+        );
+      }
+    }
+    if (d.type === 'numeric' && d.formula) {
+      // The formula must parse and use only seeded names (src/lib/graders/formula.ts);
+      // at the first listed value of every parameter it must evaluate to a finite number.
+      const params = Object.fromEntries(
+        Object.entries(d.seeded ?? {}).map(([name, values]) => [name, values[0] ?? 0]),
+      );
+      let value: number | undefined;
+      try {
+        value = evaluateFormula(d.formula, params);
+      } catch (e) {
+        out.error(q.file, `${label}formula: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      // Without seeded parameters the formula is a constant and must agree with `answer`.
+      if (!d.seeded && value !== undefined && Math.abs(value - d.answer) > d.tolerance + 1e-9) {
+        out.warn(
+          q.file,
+          `${label}formula evaluates to ${value}, but answer is ${d.answer} (tolerance ${d.tolerance})`,
         );
       }
     }

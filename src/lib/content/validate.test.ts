@@ -563,6 +563,54 @@ describe('quizItemSchema', () => {
     expect(r.success).toBe(false);
   });
 
+  it('checks numeric formulas with the safe evaluator', () => {
+    const result = runValidation(
+      baseFixture({
+        [`src/content/quizzes/${UNIT}.yaml`]: `- id: q-u6-l3-002
+  lesson: naive-bayes
+  type: numeric
+  prompt: "p"
+  answer: 0.15
+  seeded: { n_k: [20, 40] }
+  formula: "s / n_k"
+- id: q-u6-l3-003
+  lesson: naive-bayes
+  type: numeric
+  prompt: "p"
+  answer: 0.15
+  formula: "Math.floor(1)"
+- id: q-u6-l3-004
+  lesson: naive-bayes
+  type: numeric
+  prompt: "p"
+  answer: 0.15
+  tolerance: 0.001
+  formula: "6 / 40 + 1"
+- id: q-u6-l3-005
+  lesson: naive-bayes
+  type: numeric
+  prompt: "p"
+  answer: 357
+  formula: "floor(0.01 * 35788)"
+`,
+      }),
+      { now: NOW },
+    );
+    const errors = messages(result.errors);
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('(q-u6-l3-002): formula: unknown name "s"'),
+        expect.stringContaining('(q-u6-l3-003): formula:'),
+      ]),
+    );
+    expect(errors.filter((m) => m.includes('q-u6-l3-005'))).toEqual([]);
+    expect(messages(result.warnings)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('(q-u6-l3-004): formula evaluates to 1.15, but answer is 0.15'),
+      ]),
+    );
+  });
+
   it('warns about h1 headings in a lesson body', () => {
     const result = runValidation(
       baseFixture({

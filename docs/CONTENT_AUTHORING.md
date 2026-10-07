@@ -272,6 +272,14 @@ Edge types: `requires` (default for derived edges), `generalizes`, `contrasts`, 
 
 Every Poll Everywhere question in the course map becomes an item with `source: "L<n> p.<k> poll"` and the professor's intended key. Aim for ≥10 items per lesson, at least three types.
 
+How `<Check>` reads these fields today (graders in `src/lib/graders/`):
+
+- `tolerance` is **absolute**: an answer counts when $|\text{given} - \text{answer}| \le$ `tolerance`. Learners may type a decimal, a fraction (`6/40`), or scientific notation; the prompt should say how many decimals when the tolerance is tight.
+- `formula` is evaluated by a small safe evaluator, not JavaScript: `+ - * / ^` (or `**`), parentheses, unary minus, `log`/`ln`, `exp`, `sqrt`, `abs`, `floor`, `ceil`, `round`, and the constants `pi`, `e`. Only the names in `seeded` are variables; anything else fails `pnpm validate:content`.
+- The prompt's literal numbers are the default instance and `answer` is its key. When `seeded` is present, "New numbers" resamples one value per parameter and shows them beneath the prompt as `n_k = 20, s = 3`, so use parameter names a reader can match to the prompt's symbols.
+- `which-step` reads the step TeX from the lesson that defines `derivation`; a wrong answer links to `#<derivation>-step-<n>` when the page has it.
+- `explanation` text that cites `der-6-3-6 step 7` makes "Go to the derivation" link to that step when it is on the page.
+
 ## 8. Flashcards
 
 Cards are generated at build time from every `<Definition>` (statement → formula) and every `<Derivation>` result (formula → when/why, plus one cloze on the term that carries the idea). Add hand-written cards only for things those miss:
