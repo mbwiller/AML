@@ -1,16 +1,26 @@
 ---
 /**
  * `<Derivation id title goalTex resultTex source>` → `<Chunk>` → `<Step>`
- * (docs/CONTENT_AUTHORING.md §4; VISION.md §9.1). M0 renders the label
+ * (docs/CONTENT_AUTHORING.md §4; VISION.md §9.1). Renders the label
  * ("Derivation 6.3.2", derived from `id`), the goal banner, every chunk and
- * step with its justification beside it, and the boxed result with the
- * slide chip. Steps are numbered by a CSS counter reset here, not per chunk.
- * M1 adds step reveal, the faded-example and "which step is wrong" variants,
- * and `figureState` dispatch to the preceding `<Widget>`.
+ * step with its justification beside it, and the boxed result with the slide
+ * chip. Steps are numbered by a CSS counter reset here, not per chunk, and
+ * get a matching `id="<id>-step-<n>"` server-side (`numberDerivationSteps`).
+ *
+ * M1 step engine (this file's `<script>`, a vanilla module — lesson pages ship
+ * no React runtime, STYLE_GUIDE.md §8): progressive step reveal with control
+ * bars, keyboard (`→`/Space, `←`, `a`, `r`), stable step fragments that
+ * deep-link and highlight, per-derivation persistence in localStorage, chunk
+ * "where we are" markers, and `aml:figure-state` dispatch to the preceding
+ * `<Widget>` (src/lib/figure-state.ts). Without JS every step is visible; the
+ * engine marks the section `data-enhanced` and owns `hidden` from then on.
+ * The logic is pure and tested in src/lib/derivation-state.ts.
  */
 import { labelFromId } from '@/lib/markdown/numbering';
+import { numberDerivationSteps } from '@/lib/markdown/derivation-steps';
 import { renderDisplayTex, renderInlineTex } from '@/lib/markdown/render-tex';
 
+import DerivationControls from './DerivationControls.astro';
 import Label from './Label.astro';
 import SourceChip from './SourceChip.astro';
 
@@ -23,9 +33,20 @@ interface Props {
 }
 const { id, title, goalTex, resultTex, source } = Astro.props;
 const label = labelFromId(id, 'Derivation');
+const body = numberDerivationSteps(await Astro.slots.render('default'), id);
 ---
 
-<section id={id} class="derivation" data-derivation={id} aria-labelledby={`${id}-title`}>
+<section
+  id={id}
+  class="derivation"
+  data-derivation={id}
+  data-step-count={body.total}
+  aria-labelledby={`${id}-title`}
+  tabindex="-1"
+>
+  <script is:inline>
+    document.currentScript.parentElement.setAttribute('data-enhanced', '');
+  </script>
   <header class="derivation-head">
     <h3 id={`${id}-title`} class="derivation-title">
       <span class="derivation-label">{label}</span>
@@ -38,9 +59,11 @@ const label = labelFromId(id, 'Derivation');
     <div class="goal-math" set:html={renderDisplayTex(goalTex)} />
   </div>
 
-  <div class="derivation-body">
-    <slot />
-  </div>
+  <DerivationControls position="top" label={label} total={body.total} />
+
+  <div class="derivation-body" set:html={body.html} />
+
+  <DerivationControls position="bottom" label={label} total={body.total} />
 
   <div class="result" data-derivation-result data-flashcard-source>
     <div class="result-head">
@@ -56,6 +79,7 @@ const label = labelFromId(id, 'Derivation');
     counter-reset: step;
     margin-block: 2em;
     scroll-margin-top: 4rem;
+    outline: none;
   }
   .derivation-title {
     display: flex;
@@ -102,4 +126,358 @@ const label = labelFromId(id, 'Derivation');
   .derivation-body {
     margin-block: 1.25em;
   }
+
+  /* --- Progressive enhancement -------------------------------------------
+     Without JS: no controls, every step visible. With JS: the inline guard
+     above sets data-enhanced at parse time so only the first step shows
+     before the module runs; the module then sets data-ready and owns
+     `hidden` / data-revealed on each step. */
+  .derivation:not([data-enhanced]) :global(.derivation-controls) {
+    display: none;
+  }
+  .derivation[data-enhanced]:not([data-ready]) :global(li[data-step]) {
+    display: none;
+  }
+  .derivation[data-enhanced]:not([data-ready])
+    :global(.derivation-body > [data-chunk]:first-child > ol > li[data-step]:first-child) {
+    display: grid;
+  }
+  .derivation :global(li[data-step][hidden]) {
+    display: none;
+  }
+
+  /* --- Per-step link affordance (injected by numberDerivationSteps) -------- */
+  .derivation :global(a.step-link) {
+    position: absolute;
+    inset-inline-start: 0;
+    top: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--radius-full);
+    color: var(--muted);
+    opacity: 0;
+    transition:
+      opacity var(--duration-micro) var(--ease-standard),
+      color var(--duration-micro) var(--ease-standard);
+  }
+  .derivation :global(a.step-link svg) {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+  .derivation :global(li[data-step]:hover a.step-link),
+  .derivation :global(li[data-step]:focus-within a.step-link),
+  .derivation :global(a.step-link[data-copied]) {
+    opacity: 1;
+  }
+  @media (hover: none) {
+    .derivation :global(a.step-link) {
+      opacity: 0.6;
+    }
+  }
+  .derivation :global(a.step-link:hover) {
+    color: var(--fg);
+  }
+  .derivation :global(a.step-link[data-copied])::after {
+    content: 'Copied';
+    position: absolute;
+    inset-inline-start: calc(100% + 0.375rem);
+    padding: 0.1rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    color: var(--fg);
+  }
 </style>
+
+<script>
+  import {
+    KEY_ACTIONS,
+    chunkStates,
+    countLabel,
+    initialState,
+    nextState,
+    parseStepHash,
+    parseStored,
+    storageKey,
+    type DerivationAction,
+    type DerivationState,
+  } from '@/lib/derivation-state';
+  import { dispatchFigureState, findWidgetHost, parseFigureState } from '@/lib/figure-state';
+
+  const FLASH_MS = 1600;
+  const COPIED_MS = 1400;
+
+  interface Engine {
+    readonly section: HTMLElement;
+    dispatch(action: DerivationAction, options?: { focus?: boolean }): void;
+    goTo(step: number, options?: { focus?: boolean; flash?: boolean }): void;
+  }
+
+  const reducedMotion = (): boolean =>
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const readStored = (key: string): number | null => {
+    try {
+      return parseStored(localStorage.getItem(key));
+    } catch {
+      return null;
+    }
+  };
+  const writeStored = (key: string, revealed: number | null): void => {
+    try {
+      if (revealed === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, String(revealed));
+    } catch {
+      /* private mode or storage disabled: the state lasts for this page only */
+    }
+  };
+
+  const isTypingTarget = (target: EventTarget | null): boolean => {
+    if (!(target instanceof Element)) return false;
+    return (
+      target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]') !==
+      null
+    );
+  };
+
+  function setup(section: HTMLElement): Engine | null {
+    const id = section.dataset.derivation;
+    if (!id) return null;
+    const steps = Array.from(section.querySelectorAll<HTMLLIElement>('li[data-step]'));
+    const chunks = Array.from(section.querySelectorAll<HTMLElement>('[data-chunk]'));
+    const chunkSizes = chunks.map((c) => c.querySelectorAll('li[data-step]').length);
+    const counts = Array.from(section.querySelectorAll<HTMLElement>('[data-count]'));
+    const buttons = Array.from(section.querySelectorAll<HTMLButtonElement>('button[data-action]'));
+    const key = storageKey(id);
+    const total = steps.length;
+
+    let state: DerivationState = initialState(total, {
+      stored: readStored(key),
+      hashStep: parseStepHash(location.hash, id),
+    });
+    let flashTimer: number | undefined;
+
+    const stepNumber = (li: HTMLLIElement): number => Number(li.dataset.n ?? 0);
+
+    const emitFigureState = (li: HTMLLIElement): void => {
+      const figureState = parseFigureState(li.dataset.figureState);
+      if (!figureState) return;
+      dispatchFigureState(
+        { derivation: id, step: stepNumber(li), state: figureState },
+        { section, host: findWidgetHost(section) },
+      );
+    };
+
+    const enter = (li: HTMLLIElement): void => {
+      if (reducedMotion()) return;
+      li.classList.add('is-entering');
+      const done = (): void => {
+        li.classList.remove('is-entering');
+      };
+      li.addEventListener('animationend', done, { once: true });
+      window.setTimeout(done, 600);
+    };
+
+    const render = (prev: DerivationState, options: { animate: boolean; focus: boolean }): void => {
+      let newest: HTMLLIElement | null = null;
+      const newlyRevealed: HTMLLIElement[] = [];
+      for (const li of steps) {
+        const n = stepNumber(li);
+        const revealed = n <= state.revealed;
+        li.hidden = !revealed;
+        if (revealed) {
+          li.setAttribute('data-revealed', '');
+          li.tabIndex = -1;
+          if (n > prev.revealed) {
+            newlyRevealed.push(li);
+            newest = li;
+            if (options.animate) enter(li);
+          }
+        } else {
+          li.removeAttribute('data-revealed');
+          li.removeAttribute('tabindex');
+          li.classList.remove('is-entering', 'is-target');
+        }
+      }
+
+      // Explorable state: every newly revealed step in order; when steps are
+      // hidden again, the latest still-visible step's state so the widget rolls back.
+      for (const li of newlyRevealed) emitFigureState(li);
+      if (state.revealed < prev.revealed) {
+        const last = [...steps]
+          .reverse()
+          .find((li) => stepNumber(li) <= state.revealed && li.dataset.figureState);
+        if (last) emitFigureState(last);
+      }
+
+      const label = countLabel(state);
+      for (const el of counts) el.textContent = label;
+      const atEnd = state.revealed >= total;
+      for (const button of buttons) {
+        const action = button.dataset.action;
+        if (action === 'next' || action === 'all') {
+          button.setAttribute('aria-disabled', atEnd ? 'true' : 'false');
+        } else if (action === 'to') {
+          const n = Number(button.dataset.stepTarget);
+          const shown = n <= state.revealed;
+          button.dataset.state = shown ? 'revealed' : 'upcoming';
+          button.setAttribute(
+            'aria-label',
+            shown ? `Go to step ${n} (shown)` : `Reveal through step ${n}`,
+          );
+          if (n === state.revealed) button.setAttribute('aria-current', 'step');
+          else button.removeAttribute('aria-current');
+        }
+      }
+      section.dataset.revealed = String(state.revealed);
+
+      chunkStates(chunkSizes, state.revealed).forEach((chunkState, i) => {
+        const chunk = chunks[i];
+        if (!chunk) return;
+        chunk.dataset.state = chunkState;
+        if (chunkState === 'current') chunk.setAttribute('aria-current', 'step');
+        else chunk.removeAttribute('aria-current');
+        const text = chunk.querySelector<HTMLElement>('[data-chunk-state-text]');
+        if (text) text.textContent = chunkState === 'current' ? '' : `(${chunkState})`;
+      });
+
+      if (options.focus && newest) newest.focus({ preventScroll: false });
+    };
+
+    const flash = (li: HTMLLIElement): void => {
+      if (flashTimer !== undefined) window.clearTimeout(flashTimer);
+      for (const other of steps) other.classList.remove('is-target');
+      li.classList.add('is-target');
+      flashTimer = window.setTimeout(() => {
+        li.classList.remove('is-target');
+      }, FLASH_MS);
+    };
+
+    const engine: Engine = {
+      section,
+      dispatch(action, options = {}) {
+        const prev = state;
+        state = nextState(state, action);
+        render(prev, { animate: true, focus: options.focus ?? false });
+        writeStored(key, action.type === 'reset' ? null : state.revealed);
+      },
+      goTo(step, options = {}) {
+        const prev = state;
+        const li = steps[step - 1];
+        if (!li) return;
+        if (state.revealed < step) {
+          state = nextState(state, { type: 'to', step });
+          render(prev, { animate: true, focus: false });
+        }
+        li.scrollIntoView({
+          block: 'center',
+          behavior: reducedMotion() ? 'auto' : 'smooth',
+        });
+        if (options.flash ?? true) flash(li);
+        if (options.focus ?? false) li.focus({ preventScroll: true });
+      },
+    };
+
+    // Controls
+    for (const button of buttons) {
+      button.addEventListener('click', () => {
+        const action = button.dataset.action;
+        if (button.getAttribute('aria-disabled') === 'true') return;
+        if (action === 'next' || action === 'all' || action === 'reset') {
+          engine.dispatch({ type: action });
+        } else if (action === 'to') {
+          const n = Number(button.dataset.stepTarget);
+          if (n <= state.revealed) engine.goTo(n, { focus: true });
+          else engine.dispatch({ type: 'to', step: n });
+        }
+      });
+    }
+
+    // Per-step "copy link"
+    for (const link of section.querySelectorAll<HTMLAnchorElement>('a[data-step-link]')) {
+      link.addEventListener('click', (event) => {
+        const url = link.href;
+        const hash = new URL(url).hash;
+        if (!navigator.clipboard?.writeText) return; // plain anchor navigation
+        event.preventDefault();
+        navigator.clipboard.writeText(url).then(
+          () => {
+            history.replaceState(null, '', hash);
+            const title = link.getAttribute('title') ?? '';
+            link.setAttribute('data-copied', '');
+            link.setAttribute('aria-label', 'Link copied');
+            window.setTimeout(() => {
+              link.removeAttribute('data-copied');
+              link.setAttribute('aria-label', title);
+            }, COPIED_MS);
+          },
+          () => {
+            location.hash = hash;
+          },
+        );
+      });
+    }
+
+    // Initial paint: no animation; honour a step fragment.
+    render({ total, revealed: 0 }, { animate: false, focus: false });
+    section.setAttribute('data-ready', '');
+    const hashStep = parseStepHash(location.hash, id);
+    if (hashStep !== null) {
+      requestAnimationFrame(() => {
+        engine.goTo(hashStep, { focus: true });
+      });
+    }
+    return engine;
+  }
+
+  const engines = new Map<HTMLElement, Engine>();
+  for (const section of document.querySelectorAll<HTMLElement>('section[data-derivation]')) {
+    const engine = setup(section);
+    if (engine) engines.set(section, engine);
+  }
+
+  if (engines.size > 0) {
+    // Keyboard: the derivation under the pointer or holding focus.
+    let hovered: HTMLElement | null = null;
+    for (const section of engines.keys()) {
+      section.addEventListener('pointerenter', () => {
+        hovered = section;
+      });
+      section.addEventListener('pointerleave', () => {
+        if (hovered === section) hovered = null;
+      });
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.defaultPrevented || event.isComposing) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (isTypingTarget(event.target)) return;
+      const action = KEY_ACTIONS[event.key];
+      if (!action) return;
+      const focused = document.activeElement?.closest<HTMLElement>('section[data-derivation]');
+      const section = focused ?? hovered;
+      const engine = section ? engines.get(section) : undefined;
+      if (!engine) return;
+      // Space on a button is the button's own activation.
+      if (event.key === ' ' && event.target instanceof HTMLButtonElement) return;
+      event.preventDefault();
+      engine.dispatch(action, { focus: true });
+    });
+
+    // In-page deep links (hints, the outline) after load.
+    window.addEventListener('hashchange', () => {
+      for (const engine of engines.values()) {
+        const id = engine.section.dataset.derivation ?? '';
+        const step = parseStepHash(location.hash, id);
+        if (step !== null) engine.goTo(step, { focus: true });
+      }
+    });
+  }
+</script>

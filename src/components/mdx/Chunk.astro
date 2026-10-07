@@ -4,6 +4,10 @@
  * steps inside a `<Derivation>` (STYLE_GUIDE.md §2.3). The title names the
  * move, not the math. Renders an `h4` (outline uses h2/h3 only) and an
  * `<ol class="steps">`; numbering continues across chunks.
+ *
+ * "Where we are": the derivation engine sets `data-state` (done / current /
+ * upcoming) and `aria-current="step"` on the current chunk; the marker before
+ * the title and the visually hidden state text carry it without color.
  */
 import { renderInlineTex } from '@/lib/markdown/render-tex';
 
@@ -14,7 +18,11 @@ const { title } = Astro.props;
 ---
 
 <div class="chunk" data-chunk>
-  <h4 class="chunk-title" set:html={renderInlineTex(title)} />
+  <h4 class="chunk-title">
+    <span class="chunk-marker" aria-hidden="true"></span>
+    <span class="chunk-name" set:html={renderInlineTex(title)} />
+    <span class="sr-only" data-chunk-state-text></span>
+  </h4>
   <ol class="steps">
     <slot />
   </ol>
@@ -27,6 +35,9 @@ const { title } = Astro.props;
   /* Chunk titles are sentence-case moves, so they do not take the global
      uppercase h4 treatment. */
   .chunk-title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
     margin-block: 0 0.5em;
     font-family: var(--font-sans);
     font-size: 0.9375rem;
@@ -34,6 +45,32 @@ const { title } = Astro.props;
     letter-spacing: 0;
     text-transform: none;
     color: var(--fg);
+    transition: color var(--duration-reveal) var(--ease-standard);
+  }
+  .chunk-marker {
+    display: none;
+    flex: none;
+    width: 1.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--muted);
+  }
+  .chunk[data-state] .chunk-marker {
+    display: inline-block;
+  }
+  .chunk[data-state='done'] .chunk-marker::before {
+    content: '✓';
+  }
+  .chunk[data-state='current'] .chunk-marker::before {
+    content: '▸';
+    color: var(--accent);
+  }
+  .chunk[data-state='upcoming'] .chunk-marker::before {
+    content: '○';
+  }
+  .chunk[data-state='upcoming'] .chunk-title {
+    color: var(--muted);
   }
   .steps {
     margin: 0;
