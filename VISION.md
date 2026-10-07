@@ -240,14 +240,14 @@ Catalog with priorities (the full per-lecture idea lists, with the slide figures
 ### 9.4 The concept graph (Atlas)
 
 - **Data:** `src/content/graph/nodes.yaml` and `edges.yaml`, plus nodes/edges auto-derived from lesson frontmatter (`concepts`, `prerequisites`) and glossary frontmatter. A build step merges and validates (no dangling edges, no cycles in `requires`).
-- **Node schema:** `id, label, type (concept|method|metric|prereq|dataset), field, unit, lesson, summary, derivationId?`. **Edge schema:** `from, to, type (requires|generalizes|contrasts|uses)`.
+- **Node schema:** `id, label, type (concept|method|metric|prereq|dataset), field, unit, lesson, summary, derivation?` (the field is `derivation`, matching `docs/CONTENT_AUTHORING.md` §6 and `nodes.yaml`). **Edge schema:** `from, to, type (requires|generalizes|contrasts|uses)`.
 - **Rendering:** force-directed 2-D canvas (react-force-graph-2d over d3-force), draggable nodes, zoom/pan, hover tooltips, click → side panel. Mastery glow is the minimum FSRS retrievability over the node's cards. Edges of type `requires` animate as a path when "show prerequisites of X" is selected.
 - **Starting edge list:** each `docs/course-map/` file has a "Concept-graph edges" section per lecture (~200 edges already written). Those are the seed.
 
 ### 9.5 Flashcards and quizzes
 
 - **Scheduler:** FSRS via `ts-fsrs`, desired retention 0.9, four-button rating. Card state is stored per user in the browser (§9.11). The scheduler module is pure and unit-tested.
-- **Card shapes per result:** cloze on the term that carries the idea; statement → formula with a "say it in words" back; formula → when/why it holds. Cards link to `conceptId` and, where relevant, `derivationId#step`.
+- **Card shapes per result:** cloze on the term that carries the idea; statement → formula with a "say it in words" back; formula → when/why it holds. Cards link to `concept` and, where relevant, `derivationStep: "der-6-3-3#2"`.
 - **Quiz item types** (each with a grader in `src/lib/graders/`): multiple choice with misconception-tagged distractors; numeric with tolerance and seeded parameters; "which step is wrong" (generated from derivation data); match term ↔ formula; order the steps; predict-then-observe (bound to a widget); parameter-estimation mini-table; code trace. Every Poll Everywhere question from the slides becomes an item with the professor's intent as the key (transcribed with suggested answers in `docs/course-map/`).
 - **Practice sampling** interleaves by concept-graph neighborhood and deliberately pairs confusables (`discriminates: [ridge, lasso]`).
 - **Boss quiz per unit:** 10–12 interleaved items including two from earlier units; ≥80% passes; fresh seeds on retake; passing lights the unit's crest and marks its node gold.

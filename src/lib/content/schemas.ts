@@ -207,7 +207,7 @@ const quizCommon = {
 export const mcOptionSchema = z.object({
   text: z.string().min(1),
   correct: z.boolean().default(false),
-  /** Misconception id; required on every distractor. */
+  /** Misconception id tagging a distractor (optional: true/false items have none). */
   misconception: kebabId.optional(),
   explanation: z.string().optional(),
 });
@@ -229,15 +229,6 @@ export const mcItemSchema = z
         message: `an mc item needs exactly one correct option (found ${correct})`,
       });
     }
-    item.options.forEach((o, i) => {
-      if (!o.correct && !o.misconception) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["options", i, "misconception"],
-          message: "every distractor needs a misconception id",
-        });
-      }
-    });
   });
 
 export const numericItemSchema = z

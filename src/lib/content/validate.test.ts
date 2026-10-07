@@ -430,9 +430,6 @@ The answer is 42.
         expect.stringContaining(
           "item 1 (q-u6-l3-001): options: an mc item needs exactly one correct option (found 2)",
         ),
-        expect.stringContaining(
-          "options.2.misconception: every distractor needs a misconception id",
-        ),
       ]),
     );
   });
@@ -448,9 +445,11 @@ The answer is 42.
       }),
       { now: NOW },
     );
+    expect(messages(result.warnings)).toEqual(
+      expect.arrayContaining([expect.stringContaining('no case page yet for "ghost"')]),
+    );
     expect(messages(result.errors)).toEqual(
       expect.arrayContaining([
-        'cases: no case with id "ghost"',
         expect.stringContaining(
           '"nowhere" is neither a graph node nor a glossary term',
         ),

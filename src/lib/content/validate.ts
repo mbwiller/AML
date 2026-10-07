@@ -914,9 +914,11 @@ export function validateContent(
     for (const h of d.homework)
       if (!homeworkIds.has(h))
         out.error(l.file, `homework: no homework with id "${h}"`, 1);
+    // Case pages ship later than the lessons that use them (WORKSTREAMS §5 M3),
+    // so a missing case is a warning until the page exists.
     for (const c of d.cases)
       if (!caseIds.has(c))
-        out.error(l.file, `cases: no case with id "${c}"`, 1);
+        out.warn(l.file, `cases: no case page yet for "${c}" (src/content/cases/${c}.mdx)`, 1);
   }
 
   for (const q of content.quizzes) {
