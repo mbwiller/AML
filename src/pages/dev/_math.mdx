@@ -1,0 +1,26 @@
+
+# Math pipeline spike
+
+Inline macros: $\D = \{(\ex{i}, \ey{i})\}_{i=1}^{n}$, $\theta \in \R^d$, $\E[\norm{X\theta - y}^2]$, $\KL{p}{q}$, $\ind{y = 1}$, $\Normal(\mu, \sigma^2)$, $\Var(X)$, $\tr(A)$, $A\T$.
+
+Aligned with a tag and an id:
+
+$$
+\begin{aligned}
+\nabla_\theta \hat R(\theta) &= \frac{2}{n} X\T (X\theta - y) \\
+&= 0 \quad\Longrightarrow\quad \hat\theta = (X\T X)^{-1} X\T y
+\end{aligned}
+\tag{1.3.2} \htmlId{eq-1-3-2}{}
+$$
+
+Semantic coloring: $\htmlClass{sym-theta}{\theta}^{(t+1)} = \htmlClass{sym-theta}{\theta}^{(t)} - \eta\, \nabla_\theta \hat R(\htmlClass{sym-theta}{\theta}^{(t)})$ and $\hat{\htmlClass{sym-y}{y}} = f_\theta(\htmlClass{sym-x}{x})$.
+
+Argmin with limits:
+
+$$
+\hat\theta = \argmin_{\theta \in \R^d} \frac{1}{n} \sum_{i=1}^{n} \bigl(\theta\T \ex{i} - \ey{i}\bigr)^2
+$$
+
+A sticky: the [[covariance]] matrix, and again [[covariance|the covariance]].
+
+A literal dollar: \$5.

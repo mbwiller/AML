@@ -1,0 +1,19 @@
+---
+/**
+ * Plain sticky note (M0): a tooltip via the native `title` attribute.
+ * M1 replaces this with a Base UI popover that renders the glossary entry.
+ * Produced by the remark-sticky plugin from `[[term]]`; never written by hand.
+ */
+interface Props {
+  id: string;
+  first?: boolean;
+}
+const { id, first = false } = Astro.props;
+---
+
+<span
+  class:list={['sticky', { 'sticky-first': first }]}
+  data-sticky={id}
+  tabindex="0"
+  role="term"
+  title={`Glossary: ${id}`}><slot /></span>

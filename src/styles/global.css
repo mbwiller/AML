@@ -1,0 +1,4 @@
+@import 'tailwindcss';
+@import './tokens.css';
+@import './prose.css';
+@import 'katex/dist/katex.min.css';
