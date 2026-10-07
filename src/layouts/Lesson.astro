@@ -8,14 +8,18 @@
 import Base from '@/layouts/Base.astro';
 import NextLessonCard from '@/components/shell/NextLessonCard.astro';
 import OutlineRail from '@/components/shell/OutlineRail.astro';
+import StickyCard from '@/components/mdx/StickyCard.astro';
 import { formatMinutes, lectureProvenance, type OutlineItem } from '@/lib/lessons';
 import type { Lesson } from '@/lib/content/schemas';
 
 export interface PrereqChip {
   id: string;
   label: string;
+  /** Destination without JS: /glossary#id for terms, /atlas?node=id for concepts. */
   href: string;
   field?: string | undefined;
+  /** Glossary term: the chip opens the sticky card in place (Base.astro's controller). */
+  sticky?: boolean | undefined;
 }
 
 export interface LessonNeighbor {
@@ -122,11 +126,15 @@ const provenance = lectureProvenance(lesson.lectures);
                   <a
                     href={p.href}
                     data-field={p.field}
+                    data-sticky={p.sticky ? p.id : undefined}
+                    aria-haspopup={p.sticky ? 'dialog' : undefined}
+                    aria-expanded={p.sticky ? 'false' : undefined}
                     class="prereq-chip inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-ui-sm text-fg no-underline hover:bg-surface-2"
                   >
-                    <span class="prereq-dot size-2 rounded-full bg-muted" aria-hidden="true" />
+                    <span class="prereq-dot size-2 rounded-full" aria-hidden="true" />
                     {p.label}
                   </a>
+                  {p.sticky && <StickyCard id={p.id} />}
                 </li>
               ))}
             </ul>
@@ -201,26 +209,12 @@ const provenance = lectureProvenance(lesson.lectures);
       max-width: none;
     }
   }
-  .prereq-chip[data-field='probability'] .prereq-dot {
-    background: var(--field-probability);
+  .prereq-dot {
+    /* --field-color comes from [data-field] on the chip (src/styles/fields.css). */
+    background: var(--field-color, var(--muted));
   }
-  .prereq-chip[data-field='statistics'] .prereq-dot {
-    background: var(--field-statistics);
-  }
-  .prereq-chip[data-field='linear-algebra'] .prereq-dot {
-    background: var(--field-linear-algebra);
-  }
-  .prereq-chip[data-field='calculus'] .prereq-dot {
-    background: var(--field-calculus);
-  }
-  .prereq-chip[data-field='information-theory'] .prereq-dot {
-    background: var(--field-information);
-  }
-  .prereq-chip[data-field='ml'] .prereq-dot {
-    background: var(--field-ml);
-  }
-  .prereq-chip[data-field='evaluation'] .prereq-dot {
-    background: var(--field-evaluation);
+  .prereq-chip[aria-expanded='true'] {
+    background: var(--surface-2);
   }
 </style>
 

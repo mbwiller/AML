@@ -3,6 +3,7 @@ import '@/styles/global.css';
 
 import Footer from '@/components/shell/Footer.astro';
 import Header from '@/components/shell/Header.astro';
+import StickyController from '@/components/shell/StickyController.astro';
 
 interface Props {
   title: string;
@@ -50,5 +51,6 @@ const { title, description = 'AML Atlas', chrome = true } = Astro.props;
       <slot />
     </div>
     {chrome && <Footer />}
+    <StickyController />
   </body>
 </html>

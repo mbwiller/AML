@@ -29,7 +29,21 @@ export function toNeighbor(
   };
 }
 
-/** Prerequisite chips: glossary terms link to the glossary, concept nodes to the Atlas. */
+/**
+ * One glossary entry by id, or undefined. Avoids `getEntry`, which logs a
+ * build warning for unknown ids; those are expected while content runs ahead
+ * of the glossary (the sticky then shows a "no entry yet" card).
+ */
+export async function glossaryEntry(id: string) {
+  const glossary = await getCollection('glossary');
+  return glossary.find((g) => g.data.id === id);
+}
+
+/**
+ * Prerequisite chips. Glossary terms open the sticky card in place
+ * (`sticky: true`; the link to /glossary#id is the no-JS fallback);
+ * concept nodes link to the Atlas.
+ */
 export async function prereqChips(ids: string[]): Promise<PrereqChip[]> {
   const [glossary, nodes] = await Promise.all([
     getCollection('glossary'),
@@ -39,7 +53,9 @@ export async function prereqChips(ids: string[]): Promise<PrereqChip[]> {
   const concepts = new Map(nodes.map((n) => [n.data.id, n.data]));
   return ids.map((id) => {
     const term = terms.get(id);
-    if (term) return { id, label: term.term, href: `/glossary#${id}`, field: term.field };
+    if (term) {
+      return { id, label: term.term, href: `/glossary#${id}`, field: term.field, sticky: true };
+    }
     const node = concepts.get(id);
     return {
       id,

@@ -7,11 +7,13 @@
 @import '@fontsource-variable/source-serif-4';
 @import '@fontsource-variable/jetbrains-mono';
 
-/* Tokens, then KaTeX base + our overrides, then prose rhythm */
+/* Tokens, then KaTeX base + our overrides, then prose rhythm, field colors, sticky notes */
 @import './tokens.css';
 @import 'katex/dist/katex.min.css';
 @import './katex.css';
 @import './prose.css';
+@import './fields.css';
+@import './sticky.css';
 
 @layer base {
   html {
