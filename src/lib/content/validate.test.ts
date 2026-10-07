@@ -562,4 +562,18 @@ describe('quizItemSchema', () => {
     });
     expect(r.success).toBe(false);
   });
+
+  it('warns about h1 headings in a lesson body', () => {
+    const result = runValidation(
+      baseFixture({
+        [`src/content/units/${UNIT}/03-naive-bayes.mdx`]: lessonText(
+          `# The model\n\n${LESSON_BODY}`,
+        ),
+      }),
+      { now: NOW },
+    );
+    expect(messages(result.warnings)).toEqual(
+      expect.arrayContaining([expect.stringContaining('h1 heading "The model"')]),
+    );
+  });
 });

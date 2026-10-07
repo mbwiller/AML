@@ -806,6 +806,16 @@ export function validateContent(
       if (!conceptIds.has(c))
         out.error(l.file, `concepts: "${c}" is neither a graph node nor a glossary term`, 1);
     }
+    // The layout supplies the lesson's h1; body sections are h2 so the outline and a11y tree are right.
+    for (const hd of findHeadings(l.body)) {
+      if (hd.level === 1) {
+        out.warn(
+          l.file,
+          `h1 heading "${hd.text}" in the lesson body; use ## for sections (the layout renders the title)`,
+          lineOf(l, hd.line),
+        );
+      }
+    }
     for (const p of d.prerequisites) {
       if (!conceptIds.has(p))
         out.error(l.file, `prerequisites: "${p}" is neither a graph node nor a glossary term`, 1);
