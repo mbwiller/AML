@@ -1,0 +1,12 @@
+---
+id: sigmoid
+term: Sigmoid
+aliases: [logistic function]
+field: ml
+firstUsedIn: u3-logistic-regression-and-mle
+related: [softmax, bernoulli, log-rules]
+---
+
+**What it is.** $\sigma(z) = \dfrac{1}{1 + e^{-z}}$ maps any real $z$ into $(0, 1)$, with $\sigma(0) = \tfrac12$, $\sigma(-z) = 1 - \sigma(z)$, and $\sigma'(z) = \sigma(z)\,(1 - \sigma(z))$. Its inverse is the logit, or log-odds: if $p = \sigma(z)$, then $z = \log\dfrac{p}{1 - p}$. So $\sigma(z) > \tfrac12$ exactly when $z > 0$.
+
+**How ML uses it.** Logistic regression models $P(y = 1 \mid x) = \sigma(\theta^\top x)$. Any two-class model whose log-odds are affine in $x$ has a sigmoid posterior: Bernoulli Naive Bayes and GDA with a shared covariance both do, which is why their decision boundaries are hyperplanes. With $K$ classes the sigmoid becomes the softmax.

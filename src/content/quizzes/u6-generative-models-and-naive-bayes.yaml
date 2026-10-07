@@ -285,3 +285,398 @@
   explanation: |
     The log-likelihood splits into $\sum_i \log p_\phi(y^{(i)})$, which contains no class-conditional parameters, plus a class-conditional term (der-6-1-3, step 9).
   discriminates: [generative-mle-factorization, joint-model]
+
+# ---------- Lesson 6.3: naive-bayes ----------
+# Poll items (L9 pp.27, 39, 40) use the course map's suggested keys. Toy numbers appear only
+# in original items and are labeled as such; no item uses HW3-specific data or parameters.
+
+- id: q-u6-l3-001
+  lesson: naive-bayes
+  concepts: [naive-bayes-assumption, parameter-explosion]
+  type: mc
+  difficulty: 1
+  source: "L9 p.27 poll"
+  prompt: |
+    True or false: Naive Bayes is an assumption imposed to reduce the number of parameters needed to learn $P(X \mid Y)$.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    Without it, a categorical $P(x \mid y = k)$ over $d$ binary features needs $2^d - 1$ free parameters per class; with it, $d$ (der-6-3-1).
+  discriminates: [naive-bayes-assumption, full-categorical-class-conditional]
+
+- id: q-u6-l3-002
+  lesson: naive-bayes
+  concepts: [naive-bayes-assumption]
+  type: mc
+  difficulty: 1
+  source: "L9 p.27 poll"
+  prompt: |
+    True or false: Naive Bayes assumes that words are uncorrelated when conditioned on the label class, and this assumption often holds in practice.
+  options:
+    - { text: "False", correct: true }
+    - { text: "True", misconception: nb-assumption-holds }
+  explanation: |
+    The first half describes the assumption (conditional independence, der-6-3-2 step 4). The second half is false: within a class, words co-occur far more than chance. NB works anyway because classification only needs the argmax.
+
+- id: q-u6-l3-003
+  lesson: naive-bayes
+  concepts: [nb-prediction, log-space-prediction]
+  type: mc
+  difficulty: 2
+  source: "L9 p.27 poll"
+  prompt: |
+    True or false: the probabilities estimated by Naive Bayes can be over- or under-confident.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False", misconception: nb-calibrated }
+  explanation: |
+    Correlated words are counted as independent evidence, which pushes the posterior toward 0 or 1 (overconfidence). When the class shows only in how words co-occur, the product of marginals misses that evidence and the posterior stays too close to the prior (underconfidence; see q-u6-l3-016).
+
+- id: q-u6-l3-004
+  lesson: naive-bayes
+  concepts: [naive-bayes-assumption]
+  type: mc
+  difficulty: 1
+  source: "L9 p.27 poll"
+  prompt: |
+    True or false: Naive Bayes often has good performance in practice despite its strong assumptions.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False", misconception: nb-assumption-holds }
+  explanation: |
+    The decision is $\argmax_k s_k(x)$. Errors in the probabilities often leave the ranking of the classes intact, so the predicted label can be right even when the posterior is badly calibrated.
+
+- id: q-u6-l3-005
+  lesson: naive-bayes
+  concepts: [bernoulli-naive-bayes]
+  type: mc
+  difficulty: 1
+  source: "L9 p.39 poll"
+  prompt: |
+    True or false: Bernoulli Naive Bayes is a discriminative model.
+  options:
+    - { text: "False", correct: true }
+    - { text: "True", misconception: nb-is-discriminative }
+  explanation: |
+    It models $p(x \mid y)$ and $p(y)$, hence the joint $p(x, y)$ (def-6-3-3). Its posterior has the logistic form (der-6-3-8), but it is fit by maximizing the joint likelihood.
+  discriminates: [bernoulli-naive-bayes, generative-model]
+
+- id: q-u6-l3-006
+  lesson: naive-bayes
+  concepts: [bernoulli-naive-bayes]
+  type: mc
+  difficulty: 1
+  source: "L9 p.39 poll"
+  prompt: |
+    True or false: Bernoulli Naive Bayes models $P(x \mid y)$ as a product of independent Bernoulli distributions.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    $p(x \mid y = k) = \prod_j \psi_{jk}^{x_j}(1 - \psi_{jk})^{1 - x_j}$ (der-6-3-2 step 7). The independence is conditional on the class.
+
+- id: q-u6-l3-007
+  lesson: naive-bayes
+  concepts: [categorical-prior-mle]
+  type: mc
+  difficulty: 2
+  source: "L9 p.39 poll"
+  prompt: |
+    True or false: if we model $P(Y)$ with a multinomial (categorical) distribution, the MLE of its parameters is always the empirical class frequency, regardless of whether the model is Naive Bayes.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The joint log-likelihood splits into a prior term and a class-conditional term (der-6-1-3), and der-6-3-5 maximizes the prior term alone: $\hat\phi_k = n_k / n$. The class-conditional model never enters.
+
+- id: q-u6-l3-008
+  lesson: naive-bayes
+  concepts: [nb-log-likelihood-decomposition]
+  type: mc
+  difficulty: 1
+  source: "L9 p.40 poll"
+  prompt: |
+    True or false: optimizing Bernoulli Naive Bayes means finding the parameters that fit the data best, which we achieve by maximizing the log-likelihood.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    Maximum likelihood: maximize $\sum_i \log p_\theta(x^{(i)}, y^{(i)})$ (der-6-3-3).
+
+- id: q-u6-l3-009
+  lesson: naive-bayes
+  concepts: [bernoulli-nb-mle]
+  type: mc
+  difficulty: 1
+  source: "L9 p.40 poll"
+  prompt: |
+    True or false: Bernoulli Naive Bayes cannot be solved in closed form, so we need gradient descent.
+  options:
+    - { text: "False", correct: true }
+    - { text: "True", misconception: nb-needs-gradient-descent }
+  explanation: |
+    The log-likelihood splits into one coin-flip problem per word and class plus a simplex problem for the prior; each has a closed-form maximizer, $\hat\psi_{jk} = s_{jk}/n_k$ and $\hat\phi_k = n_k/n$ (der-6-3-4, der-6-3-5).
+
+- id: q-u6-l3-010
+  lesson: naive-bayes
+  concepts: [bernoulli-naive-bayes]
+  type: mc
+  difficulty: 1
+  source: "L9 p.40 poll"
+  prompt: |
+    True or false: Naive Bayes was state of the art for a long time, scales well, and is always a good baseline for text classification.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The professor's intended key is True. Training is one counting pass over the data, prediction is a dot product (der-6-3-8), and accuracy is often competitive. "Always" is strong; it is a baseline, not a guarantee.
+
+- id: q-u6-l3-011
+  lesson: naive-bayes
+  concepts: [bernoulli-naive-bayes, parameter-explosion]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Toy setting: a Bernoulli Naive Bayes model with $K = 3$ classes over a vocabulary of $d = 200$ words. How many free parameters does it have, counting the prior?
+  answer: 602
+  tolerance: 0
+  seeded: { K: [2, 3, 4, 5], d: [50, 200, 1000, 2000] }
+  formula: "K * d + K - 1"
+  explanation: |
+    $Kd$ Bernoulli parameters plus $K - 1$ free prior probabilities (der-6-3-1 step 11). The slide's $K(d+1)$ counts the prior's $K$ numbers without the sum-to-one constraint, which is one too many.
+
+- id: q-u6-l3-012
+  lesson: naive-bayes
+  concepts: [full-categorical-class-conditional, parameter-explosion]
+  type: mc
+  difficulty: 2
+  source: "L9 p.23 (slide error)"
+  prompt: |
+    A categorical class-conditional $P(x \mid y = k)$ over all binary vectors $x \in \{0,1\}^d$ has how many free parameters per class?
+  options:
+    - { text: '$2^d - 1$', correct: true }
+    - { text: '$2^{d-1}$', misconception: categorical-param-count }
+    - { text: '$2^d$', misconception: simplex-free-params }
+    - { text: '$d$', misconception: categorical-param-count }
+  explanation: |
+    There are $2^d$ vectors and their probabilities sum to 1, so one is determined by the rest (der-6-3-1 steps 1–5). L9 p.23 writes $2^{d-1}$, which agrees only at $d = 1$. $d$ is the Naive Bayes count, not the full model's.
+  discriminates: [full-categorical-class-conditional, bernoulli-naive-bayes]
+
+- id: q-u6-l3-013
+  lesson: naive-bayes
+  concepts: [laplace-smoothing]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Toy numbers: in a training set of NOTES reports, $n_k = 40$ reports are non-serious and the word "syncope" appears in $s = 0$ of them. What is the add-one (Laplace) estimate of $\psi_{\text{syncope}, k}$? Give four decimals.
+  answer: 0.0238
+  tolerance: 0.0005
+  seeded: { n_k: [20, 40, 50, 80], s: [0, 1, 3, 6] }
+  formula: "(s + 1) / (n_k + 2)"
+  explanation: |
+    $\hat\psi = (s + 1)/(n_k + 2) = 1/42 \approx 0.0238$ (der-6-3-6 step 7). The MLE would be 0, making the class impossible for any report containing the word.
+
+- id: q-u6-l3-014
+  lesson: naive-bayes
+  concepts: [log-space-prediction]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Toy scores: a two-class Naive Bayes model gives log-space scores $s_1 = -800$ and $s_0 = -805$ for a document. In float64, $e^{-800}$ may underflow to 0. Compute $p(y = 1 \mid x)$ to four decimals using the log-sum-exp shift.
+  answer: 0.9933
+  tolerance: 0.0005
+  seeded: { s1: [-800, -900, -1210], s0: [-805, -904, -1211] }
+  formula: "1 / (1 + exp(s0 - s1))"
+  explanation: |
+    Subtract $m = \max(s_0, s_1) = -800$: $p(y = 1 \mid x) = e^{0} / (e^{0} + e^{-5}) = 1/(1 + e^{-5}) \approx 0.9933$ (der-6-3-7 step 6).
+
+- id: q-u6-l3-015
+  lesson: naive-bayes
+  concepts: [nb-linear-classifier]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Toy parameters: in a two-class Bernoulli NB model, word $j$ has $\psi_{j1} = 0.5$ and $\psi_{j0} = 0.2$. What is its weight $w_j$ in the linear form $w^\top x + b$? Use the natural log; three decimals.
+  answer: 1.386
+  tolerance: 0.002
+  seeded: { p1: [0.5, 0.4, 0.3], p0: [0.2, 0.1, 0.05] }
+  formula: "log(p1 * (1 - p0) / (p0 * (1 - p1)))"
+  explanation: |
+    $w_j = \log\frac{0.5 \times 0.8}{0.2 \times 0.5} = \log 4 \approx 1.386$ (der-6-3-8 step 4). Note it is not $\log(0.5/0.2) \approx 0.916$: the absent-word term also depends on $x_j$.
+
+- id: q-u6-l3-016
+  lesson: naive-bayes
+  concepts: [naive-bayes-assumption, nb-prediction]
+  type: numeric
+  difficulty: 3
+  source: "original"
+  prompt: |
+    Toy distribution, equal priors. In class 1, two words A and B always appear together or not at all, each pattern with probability 1/2. In class 0, A and B are independent, each present with probability 1/2. A document contains both A and B. Naive Bayes, fit to these exact marginals, gives $p(y = 1 \mid x) = 0.5$. What is the true $p(y = 1 \mid x)$? Three decimals.
+  answer: 0.667
+  tolerance: 0.002
+  explanation: |
+    True: $p(A, B \mid y = 1) = 1/2$ and $p(A, B \mid y = 0) = 1/4$, so the posterior is $\frac{1/2}{1/2 + 1/4} = 2/3$. Naive Bayes sees marginals of 1/2 for both words in both classes, so every word's vote is 0 and the posterior stays at the prior, 0.5. NB is underconfident here; duplicated words make it overconfident instead (L9 p.27 poll c).
+
+- id: q-u6-l3-017
+  lesson: naive-bayes
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-6-3-4
+  corrupt: { step: 6, replaceTex: '\hat\psi_{jk} = \frac{n_k}{s}', explanation: "Dividing $s = n_k\\psi$ by $n_k$ gives $\\psi = s/n_k$. The inverted fraction is at least 1 and is undefined when $s = 0$; a probability must lie in [0, 1]." }
+
+- id: q-u6-l3-018
+  lesson: naive-bayes
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-6-3-5
+  corrupt: { step: 8, replaceTex: '\lambda = K', explanation: "Step 7 gives $\\lambda = \\sum_k n_k$, and the class counts add up to the number of examples $n$, not the number of classes $K$. With $\\lambda = K$ the estimates $n_k / K$ would not sum to 1." }
+
+- id: q-u6-l3-019
+  lesson: naive-bayes
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-6-3-6
+  corrupt: { step: 7, replaceTex: '\hat\psi_{jk} = \frac{s + 1}{n_k + 1}', explanation: "With $a = b = 2$, step 6 gives denominator $n_k + a + b - 2 = n_k + 2$: one pseudo-count for each of the two outcomes. With $n_k + 1$, a word present in every class-$k$ document gets $\\hat\\psi = 1$ and $\\log(1 - \\hat\\psi) = -\\infty$ again." }
+
+- id: q-u6-l3-020
+  lesson: naive-bayes
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-6-3-8
+  corrupt: { step: 4, replaceTex: 'w_j = \log\frac{\psi_{j1}}{\psi_{j0}}', explanation: "The bracket in step 3 has two parts. The weight must also subtract $\\log\\frac{1 - \\psi_{j1}}{1 - \\psi_{j0}}$, because in Bernoulli NB an absent word votes too, and that vote changes when $x_j$ flips from 0 to 1." }
+
+- id: q-u6-l3-021
+  lesson: naive-bayes
+  concepts: [zero-count-problem, laplace-smoothing]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The spam exercise solution finds 34 zero entries in `psis` and fixes the resulting `-inf` with `psis = psis.clip(1e-14, 1-1e-14)`. What is the main problem with this fix?
+  options:
+    - { text: 'The penalty for an unseen word, $\log 10^{-14} \approx -32.2$, is set by an arbitrary constant, is the same for any class size, and acts as a near-veto', correct: true }
+    - { text: "None: it is Laplace smoothing with a very small pseudo-count", misconception: clip-is-a-fix }
+    - { text: "None: only 34 entries change, so predictions cannot be affected", misconception: clip-is-a-fix }
+    - { text: "It makes the scores positive, so the argmax flips", misconception: clip-is-a-fix }
+  explanation: |
+    Add-$\alpha$ smoothing changes every estimate to $(s + \alpha)/(n_k + 2\alpha)$, with a penalty for unseen words that depends on $n_k$. The clip changes only the zero (and one) entries to a fixed value that no likelihood or prior produces. Any email containing one of those words is pushed hard away from that class.
+  discriminates: [laplace-smoothing, zero-count-problem]
+
+- id: q-u6-l3-022
+  lesson: naive-bayes
+  concepts: [zero-count-problem]
+  type: mc
+  difficulty: 2
+  source: "NaiveBayes_Spam_exercise_sol task 21"
+  prompt: |
+    Task 21 of the spam exercise runs `np.sum(psis[0]==0)` and `np.sum(psis[1]==0)` and both print 0. What can you conclude about words that appear in only one class?
+  options:
+    - { text: "Nothing: psis was already clipped in task 18, so no entry can be 0 (before clipping, 34 were)", correct: true }
+    - { text: "Every vocabulary word appears in both spam and non-spam training emails", misconception: clip-before-check }
+    - { text: "The zero-count problem only affects the test set", misconception: clip-before-check }
+  explanation: |
+    After `psis.clip(1e-14, 1-1e-14)`, the minimum entry is $10^{-14}$. Diagnostics must run on the raw estimates.
+
+- id: q-u6-l3-023
+  lesson: naive-bayes
+  concepts: [bernoulli-nb-mle]
+  type: mc
+  difficulty: 2
+  source: "NaiveBayes_Spam_exercise_sol task 13"
+  prompt: |
+    Task 13 of the spam exercise computes `np.mean(X_train[y_train==1, 0])` $= 0.0811$. Where is this value stored in the solution's `psis` array, and what is it in our notation?
+  options:
+    - { text: '`psis[1, 0]`, the estimate of $\psi_{jk}$ for the first vocabulary word and the spam class', correct: true }
+    - { text: '`psis[0, 1]`, because the math writes the word index first', misconception: psis-transposed }
+    - { text: '`phis[1]`, the spam prior', misconception: psis-transposed }
+  explanation: |
+    `psis` has shape `(K, d)`, so `psis[k, j]` $= \psi_{jk}$. Row 1 is the spam class; column 0 is vocabulary word 0. The value is the fraction of spam training emails containing that word (der-6-3-4 step 10).
+
+- id: q-u6-l3-024
+  lesson: naive-bayes
+  concepts: [multinomial-naive-bayes, bernoulli-naive-bayes]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A report does not contain the word "arrhythmia". How does that absence affect its class scores?
+  options:
+    - { text: 'Bernoulli NB adds $\log(1 - \psi_{jk})$ to each class score; multinomial NB adds nothing', correct: true }
+    - { text: "Neither model is affected by words that are absent", misconception: bernoulli-vs-multinomial-absent }
+    - { text: "Both models add the log-probability of the word not occurring", misconception: bernoulli-vs-multinomial-absent }
+    - { text: 'Multinomial NB adds $\log(1 - \theta_{vk})$; Bernoulli NB adds nothing', misconception: bernoulli-vs-multinomial-absent }
+  explanation: |
+    Bernoulli NB multiplies over the whole vocabulary, with factor $1 - \psi_{jk}$ for each absent word (der-6-3-7 step 4). The multinomial likelihood is $\prod_v \theta_{vk}^{c_v}$, and $\theta^0 = 1$.
+  discriminates: [multinomial-naive-bayes, bernoulli-naive-bayes]
+
+- id: q-u6-l3-025
+  lesson: naive-bayes
+  concepts: [naive-bayes-assumption]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Across all NOTES reports, "arrhythmia" and "hospitalized" are strongly correlated. Does that contradict the Naive Bayes assumption?
+  options:
+    - { text: "No: NB assumes independence within each class, and both words can be more common in serious reports", correct: true }
+    - { text: "Yes: NB assumes the words are independent", misconception: marginal-vs-conditional-independence }
+    - { text: "Yes: NB requires the words to be uncorrelated across the corpus before training", misconception: marginal-vs-conditional-independence }
+  explanation: |
+    The assumption is $p(x \mid y) = \prod_j p(x_j \mid y)$. Two words that both depend on the class are correlated marginally even if they are independent given the class. Whether they are independent within serious reports is a separate question (in real report text, usually no; the bigram version of NOTES builds that dependence in).
+  discriminates: [naive-bayes-assumption, iid]
+
+- id: q-u6-l3-026
+  lesson: naive-bayes
+  concepts: [categorical-prior-mle]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of the derivation of $\hat\phi_k = n_k / n$ in order.
+  items:
+    - 'Group the log-prior terms by class: $\sum_k n_k \log\phi_k$.'
+    - 'Form the Lagrangian with the constraint $\sum_k \phi_k = 1$.'
+    - 'Set $\partial\mathcal{L}/\partial\phi_k = 0$ to get $\phi_k = n_k/\lambda$.'
+    - 'Substitute into the constraint and use $\sum_k n_k = n$ to get $\lambda = n$.'
+    - 'Conclude $\hat\phi_k = n_k/n$.'
+  explanation: |
+    der-6-3-5: rewrite the objective with counts, add the multiplier, solve the first-order condition in terms of $\lambda$, then let the constraint fix $\lambda$.
+
+- id: q-u6-l3-027
+  lesson: naive-bayes
+  concepts: [bernoulli-naive-bayes]
+  type: mc
+  difficulty: 1
+  source: "L9 p.28 (slide notation)"
+  prompt: |
+    L9 p.28 writes $P_\theta(y = k) = \phi_K$. How should you read it?
+  options:
+    - { text: 'As $\phi_k$, the prior probability of class $k$', correct: true }
+    - { text: 'As the prior of the last class $K$, shared by every class', misconception: phi-capital-k }
+    - { text: 'As $\phi_k$ raised to the power $K$', misconception: phi-capital-k }
+  explanation: |
+    The capital subscript is a typo, repeated in the L10 recap. Each class has its own prior $\phi_k$, with $\sum_k \phi_k = 1$.
+
+- id: q-u6-l3-028
+  lesson: naive-bayes
+  concepts: [naive-bayes-assumption]
+  type: mc
+  difficulty: 1
+  source: "L9 p.24 (slide notation)"
+  prompt: |
+    L9 p.24 writes $p(\mathbf{x} \mid y) = \prod_{i=1}^{d} p(x_i \mid y)$. What does $i$ index here?
+  options:
+    - { text: "The $d$ features (words) of a single document", correct: true }
+    - { text: "The $n$ training examples", misconception: feature-index-clash }
+    - { text: "The $K$ classes", misconception: feature-index-clash }
+  explanation: |
+    The product runs to $d$, the number of features. In our notation it is $\prod_{j=1}^{d} p(x_j \mid y)$; $i$ is reserved for examples, $x^{(i)}$.

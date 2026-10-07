@@ -39,3 +39,16 @@
 - { from: beta-prior, to: laplace-smoothing, type: uses }
 - { from: log-sum-exp, to: log-space-prediction, type: uses }
 - { from: text-preprocessing, to: count-vectorizer, type: uses }
+
+# Within lesson 6.3 (course map L9 seed edges among concepts taught in the same lesson,
+# plus the nodes added for the class-prior MLE and the zero-count problem)
+- { from: nb-log-likelihood-decomposition, to: categorical-prior-mle, type: requires }
+- { from: categorical-prior-mle, to: bernoulli-nb-mle, type: uses }
+- { from: bernoulli-nb-mle, to: zero-count-problem, type: requires }
+- { from: zero-count-problem, to: laplace-smoothing, type: requires }
+- { from: bernoulli-naive-bayes, to: nb-prediction, type: requires }
+- { from: nb-prediction, to: nb-linear-classifier, type: requires }
+- { from: parameter-explosion, to: naive-bayes-assumption, type: uses }
+- { from: lagrange-multipliers, to: categorical-prior-mle, type: uses }
+- { from: categorical-prior-mle, to: multinomial-naive-bayes, type: uses }
+- { from: sigmoid, to: nb-linear-classifier, type: uses }

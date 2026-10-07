@@ -1,0 +1,907 @@
+---
+title: "Naive Bayes"
+unit: u6-generative-models-and-naive-bayes
+order: 3
+slug: naive-bayes
+summary: "From the 2^d − 1 parameter explosion to a closed-form MLE, Laplace smoothing as a MAP estimate, log-space posteriors, and the proof that Naive Bayes is a linear classifier."
+lectures:
+  - { lecture: 9, pages: "20-40" }
+  - { lecture: 10, pages: "3-5" }
+concepts:
+  - full-categorical-class-conditional
+  - parameter-explosion
+  - naive-bayes-assumption
+  - bernoulli-naive-bayes
+  - nb-log-likelihood-decomposition
+  - bernoulli-nb-mle
+  - categorical-prior-mle
+  - zero-count-problem
+  - laplace-smoothing
+  - nb-prediction
+  - log-space-prediction
+  - nb-linear-classifier
+  - multinomial-naive-bayes
+prerequisites:
+  - bayes-classifier
+  - class-prior
+  - generative-mle-factorization
+  - bag-of-words
+  - chain-rule-probability
+  - conditional-independence
+  - bernoulli
+  - categorical
+  - multinomial
+  - log-likelihood
+  - log-rules
+  - argmax
+  - bayes-rule
+  - first-order-condition
+  - second-order-condition
+  - lagrange-multipliers
+  - prior-likelihood-posterior
+  - beta-prior
+  - conjugate-prior
+  - log-sum-exp
+  - sigmoid
+homework: [hw3]
+cases: [notes]
+companions:
+  - { notebook: "Code Companions/Lecture 8 Code Companion.ipynb", cells: "all" } # TODO: narrow to the NB cells once cell numbers are recorded in the course map
+  - { notebook: "Lectures/NaiveBayes_Spam_exercise_sol.ipynb", cells: "all" }
+estimatedMinutes: 85
+status: review
+authors: [jide]
+---
+
+<Frame
+  data="binary bag-of-words vectors $x^{(i)} \in \{0,1\}^d$ with labels $y^{(i)} \in \{1, \dots, K\}$"
+  model="$p_\theta(x, y = k) = \phi_k \prod_{j=1}^{d} \psi_{jk}^{x_j}(1 - \psi_{jk})^{1 - x_j}$"
+  objective="maximize $\sum_i \log p_\theta(x^{(i)}, y^{(i)})$; add a Beta prior for smoothing"
+  optimizer="closed form: counting"
+/>
+
+<Objectives>
+
+- Count the free parameters of a full categorical class-conditional ($K(2^d - 1)$) and of Bernoulli Naive Bayes ($Kd + K - 1$), and explain why the first is hopeless.
+- Derive the Naive Bayes factorization $p(x \mid y) = \prod_j p(x_j \mid y)$ from the chain rule plus one conditional-independence assumption.
+- Derive the maximum-likelihood estimates $\hat\psi_{jk} = s_{jk}/n_k$ (a coin flip per word and class) and $\hat\phi_k = n_k/n$ (a Lagrange multiplier on the simplex).
+- Derive Laplace smoothing as the MAP estimate under a Beta(2, 2) prior, and explain why clipping probabilities to $10^{-14}$ is not a substitute.
+- Predict in log space, and recover calibrated-looking posteriors with log-sum-exp.
+- Prove that Bernoulli Naive Bayes is a linear classifier whose posterior is a sigmoid of $w^\top x + b$.
+
+</Objectives>
+
+<Hook>
+
+A pharmacovigilance team triages free-text adverse-event reports in the NOTES case: serious or non-serious. Lesson 6.2 turns each report into a 0/1 vector over a 2,000-word vocabulary. A generative classifier now needs $p(x \mid \text{serious})$ for every possible vector, and there are $2^{2000}$ of them.
+
+Suppose an assumption tames that number. A second problem waits. The word "syncope" might never appear in a single non-serious training report. Should that one unseen word make "non-serious" impossible, no matter what the rest of the report says?
+
+{/* hook-figure: the bow-nb-scorer widget below, with smoothing off, is the hook's explorable */}
+
+</Hook>
+
+## The model
+
+Lesson 6.1 left us with the rule $\hat y = \argmax_k p(x \mid y = k)\,p(y = k)$ and a recipe for fitting it: estimate the prior from the labels and each class-conditional from its own class. For text, $x$ is a [[bernoulli|binary]] bag-of-words vector of length $d$ <SlideRef lecture={9} pages="20" />. The open question is the slide's: how do we choose $p_\theta(x \mid y = k)$?
+
+<Definition id="def-6-3-1" title="Full categorical class-conditional" source="L9 p.22">
+
+Treat each binary vector $x \in \{0,1\}^d$ as one outcome of a [[categorical]] distribution, separately for each class:
+
+$$P(x \mid y = k) = \theta_{xk}, \qquad \sum_{x \in \{0,1\}^d} \theta_{xk} = 1.$$
+
+Here $\theta_{xk}$ is the probability of the whole vector $x$ under class $k$; the slide's example assigns one particular vector $\theta_{xk} = 0.0012$. The model makes no assumption at all about how words relate. <SlideRef lecture={9} pages="22" />
+
+Also written as: $P_k(x)$ (the slides), a "full joint table" (many textbooks).
+
+</Definition>
+
+<Definition id="def-6-3-2" title="Naive Bayes assumption" source="L9 p.24">
+
+Given the label, the features are [[conditional-independence|conditionally independent]]:
+
+$$p(x \mid y) = \prod_{j=1}^{d} p(x_j \mid y).$$
+
+It says nothing about the features' marginal distribution: words can be correlated across the whole corpus and still be independent within each class (and the reverse). <SlideRef lecture={9} pages="24-25" />
+
+Also written as: $p(\mathbf{x} \mid y) = \prod_{i=1}^{d} p(x_i \mid y)$ (the slides, with $i$ indexing features), $x_j \perp x_{j'} \mid y$.
+
+</Definition>
+
+<Definition id="def-6-3-3" title="Bernoulli Naive Bayes" source="L9 p.29">
+
+A generative classifier for $x \in \{0,1\}^d$ with parameters $\theta = (\phi, \psi)$:
+
+$$P_\theta(y = k) = \phi_k, \qquad P_\theta(x_j = 1 \mid y = k) = \psi_{jk}, \qquad P_\theta(x \mid y = k) = \prod_{j=1}^{d} P_\theta(x_j \mid y = k).$$
+
+$\phi = (\phi_1, \dots, \phi_K)$ is a categorical prior on the simplex, and $\psi_{jk} \in [0, 1]$ is the probability that a class-$k$ document contains word $j$. <SlideRef lecture={9} pages="26-29" />
+
+Also written as: $\phi_K$ for $\phi_k$ (L9 p.28, L10 pp.3–5); `psis[k, j]` for $\psi_{jk}$ and `phis[k]` for $\phi_k$ in the notebooks, with classes numbered from 0.
+
+</Definition>
+
+<Callout type="slide">
+
+Three notational repairs. L9 p.24 writes the product as $\prod_{i=1}^{d} p(x_i \mid y)$; everywhere else $i$ indexes training examples, so we write $j$ for words. L9 p.28 and L10 pp.3–5 write $P_\theta(y = k) = \phi_K$; the capital subscript is a typo for $\phi_k$ ($\phi_K$ is the prior of the last class only). And the code stores $\psi_{jk}$ transposed: `psis` has shape `(K, d)`, so `psis[k, j]` $= \psi_{jk}$.
+
+</Callout>
+
+<Check ids={["q-u6-l3-001", "q-u6-l3-006", "q-u6-l3-005", "q-u6-l3-027"]} />
+
+<Intuition>
+
+Take one word, "syncope", and two classes. Bernoulli Naive Bayes gives the word one coin per class: in serious reports it comes up "present" with probability $\psi_{\text{syncope},1}$, in non-serious reports with probability $\psi_{\text{syncope},0}$. Fitting the coin is counting: what fraction of serious training reports contain the word?
+
+Predicting is a vote. A new report that contains the word moves the log-odds toward "serious" by $\log(\psi_{\text{syncope},1}/\psi_{\text{syncope},0})$; a report that lacks it moves them by $\log\big((1 - \psi_{\text{syncope},1})/(1 - \psi_{\text{syncope},0})\big)$. Each word votes on its own, and the votes add. That addition is why the classifier turns out to be linear (der-6-3-8).
+
+It is also where things break. If no non-serious training report ever contained "syncope", the fitted $\psi_{\text{syncope},0}$ is 0, and the word's vote is $\log(\psi/0) = +\infty$: one word decides the case. Smoothing (der-6-3-6) caps every vote at a finite size set by the class's document count.
+
+</Intuition>
+
+## Why the full model is hopeless: counting parameters
+
+How many numbers must we learn before the model is fully specified? Count **free** parameters: numbers you can change one at a time without breaking a constraint. A distribution over $m$ outcomes has $m$ probabilities but only $m - 1$ free ones, because they must sum to 1.
+
+<Derivation
+  id="der-6-3-1"
+  title="Free parameters: full categorical model vs Bernoulli Naive Bayes"
+  goalTex="\text{free parameters of } P_\theta(x, y), \quad x \in \{0,1\}^d,\ y \in \{1, \dots, K\}"
+  resultTex="\underbrace{K(2^d - 1) + (K - 1)}_{\text{full categorical}} = K\,2^d - 1 \qquad \text{vs.} \qquad \underbrace{Kd + (K - 1)}_{\text{Bernoulli NB}}"
+  source="L9 pp.22–23, 26, 29 (the slides write 2^{d-1} on p.23 and K(d+1) on p.29; both counts are corrected here)"
+>
+
+<Chunk title="Count the outcomes of one class-conditional">
+
+<Step justification="each of the $d$ coordinates is 0 or 1, chosen independently of the others (multiplication principle)">
+$$\big|\{0,1\}^d\big| = \underbrace{2 \times 2 \times \cdots \times 2}_{d \text{ factors}} = 2^d$$
+</Step>
+
+<Step justification="the full model is a categorical distribution with one probability per possible vector (L9 p.22)" sticky="categorical">
+$$P(x \mid y = k) = \theta_{xk} \quad \text{for each of the } 2^d \text{ vectors } x$$
+</Step>
+
+<Step justification="a probability distribution sums to 1 over its outcomes">
+$$\sum_{x \in \{0,1\}^d} \theta_{xk} = 1$$
+</Step>
+
+<Step justification="solve step 3 for the probability of one outcome, say the all-ones vector $\mathbf{1}$; it is determined by the others">
+$$\theta_{\mathbf{1}k} = 1 - \sum_{x \ne \mathbf{1}} \theta_{xk}$$
+</Step>
+
+<Step justification="the remaining $2^d - 1$ probabilities can each be changed (keeping them nonnegative and their sum at most 1) without violating anything" fadeable>
+$$\#\text{free parameters of } P(x \mid y = k) = 2^d - 1$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Add up the classes and the prior">
+
+<Step justification="the $K$ class-conditionals share no parameters, so their counts add">
+$$\#\text{free parameters of all class-conditionals} = K(2^d - 1)$$
+</Step>
+
+<Step justification="the prior is a categorical over $K$ classes; the same argument as steps 3–5 leaves $K - 1$ free numbers (here $K$ really is the last class)" sticky="categorical">
+$$\phi_K = 1 - \sum_{k=1}^{K-1} \phi_k \;\Longrightarrow\; K - 1 \text{ free prior parameters}$$
+</Step>
+
+<Step justification="add and simplify; consistency check: this is exactly the count for one categorical over all $K\,2^d$ pairs $(x, y)$, as it must be, since the full model assumes nothing" fadeable>
+$$K(2^d - 1) + (K - 1) = K\,2^d - 1$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Count Bernoulli Naive Bayes and compare">
+
+<Step justification="under the NB assumption each factor is a Bernoulli; $\psi_{jk}$ fixes both outcomes of word $j$, and the $d$ values $\psi_{1k}, \dots, \psi_{dk}$ are not constrained jointly" sticky="bernoulli">
+$$P(x_j = 0 \mid y = k) = 1 - \psi_{jk}, \quad j = 1, \dots, d \;\Longrightarrow\; d \text{ free parameters per class}$$
+</Step>
+
+<Step justification="$K$ classes with separate parameters">
+$$\#\text{free parameters of all class-conditionals} = Kd$$
+</Step>
+
+<Step justification="add the $K - 1$ free prior parameters of step 7" fadeable>
+$$Kd + (K - 1) = K(d + 1) - 1$$
+</Step>
+
+<Step justification="write the power of 2 as a power of 10, $a = 10^{\log_{10} a}$, at the slide's $d = 10{,}000$ (L9 p.23); $10{,}000 \log_{10} 2 \approx 3010.3$" sticky="log-rules">
+$$2^{10000} = 10^{10000\,\log_{10} 2} \approx 10^{3010}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+At $d = 10{,}000$ the full model needs more than $10^{3010}$ numbers per class; L9 p.23 compares this with the roughly $10^{82}$ atoms in the universe. Bernoulli Naive Bayes needs $10{,}000$ per class. The price is an assumption, and the next section shows exactly where it enters.
+
+<Check ids={["q-u6-l3-012", "q-u6-l3-028"]} />
+
+## From the chain rule to the Naive Bayes product
+
+The [[chain-rule-probability|chain rule of probability]] factors any joint distribution exactly. Naive Bayes keeps the factorization and drops part of every factor.
+
+<Derivation
+  id="der-6-3-2"
+  title="The Naive Bayes factorization from the chain rule"
+  goalTex="p(x \mid y = k) \text{ in terms of one-word distributions}"
+  resultTex="p(x \mid y = k) = \prod_{j=1}^{d} \psi_{jk}^{x_j}(1 - \psi_{jk})^{1 - x_j}, \qquad p(x, y = k) = \phi_k \prod_{j=1}^{d} \psi_{jk}^{x_j}(1 - \psi_{jk})^{1 - x_j}"
+  source="L9 p.24 (chain rule and assumption shown; the Bernoulli product form is assembled on pp.26 and 29)"
+>
+
+<Chunk title="Factor exactly with the chain rule">
+
+<Step justification="a vector is the joint outcome of its coordinates">
+$$p(x \mid y) = p(x_1, x_2, \dots, x_d \mid y)$$
+</Step>
+
+<Step justification="product rule, with everything conditioned on $y$" sticky="chain-rule-probability">
+$$p(x \mid y) = p(x_1 \mid y)\, p(x_2, \dots, x_d \mid x_1, y)$$
+</Step>
+
+<Step justification="apply the product rule again to the remaining block, $d - 2$ more times; no assumption has been made yet" sticky="chain-rule-probability">
+$$p(x \mid y) = \prod_{j=1}^{d} p(x_j \mid x_1, \dots, x_{j-1}, y)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Impose conditional independence, then give each factor a Bernoulli model">
+
+<Step justification="the Naive Bayes assumption: once the label is known, the earlier words carry no information about word $j$" sticky="conditional-independence">
+$$p(x_j \mid x_1, \dots, x_{j-1}, y) = p(x_j \mid y) \quad \text{for every } j$$
+</Step>
+
+<Step justification="substitute step 4 into every factor of step 3" fadeable>
+$$p(x \mid y) = \prod_{j=1}^{d} p(x_j \mid y)$$
+</Step>
+
+<Step justification="Bernoulli pmf: since $x_j \in \{0, 1\}$, the expression picks $\psi_{jk}$ when $x_j = 1$ and $1 - \psi_{jk}$ when $x_j = 0$" sticky="bernoulli">
+$$p(x_j \mid y = k) = \psi_{jk}^{x_j}(1 - \psi_{jk})^{1 - x_j}$$
+</Step>
+
+<Step justification="substitute step 6 into step 5 with $y = k$" fadeable>
+$$p(x \mid y = k) = \prod_{j=1}^{d} \psi_{jk}^{x_j}(1 - \psi_{jk})^{1 - x_j}$$
+</Step>
+
+<Step justification="product rule with the prior $p(y = k) = \phi_k$" sticky="chain-rule-probability">
+$$p(x, y = k) = \phi_k \prod_{j=1}^{d} \psi_{jk}^{x_j}(1 - \psi_{jk})^{1 - x_j}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Steps 1–3 hold for every distribution. Step 4 is the only assumption, and it is strong: in real report text, "hospitalized" and "discharged" co-occur within serious reports more than chance. The assumption rarely holds for text (L9 p.27 poll). It is still useful, because the classifier only needs the argmax to be right, not the probabilities.
+
+<Check ids={["q-u6-l3-002", "q-u6-l3-025"]} />
+
+## Fitting Bernoulli Naive Bayes by maximum likelihood
+
+Lesson 6.1 split the joint [[log-likelihood]] into a prior term and a class-conditional term (der-6-1-3). Naive Bayes splits the class-conditional term much further, into one small problem per word and class <SlideRef lecture={9} pages="30-31" />. We use two counts throughout:
+
+$$n_k = \#\{i : y^{(i)} = k\}, \qquad s_{jk} = \sum_{i:\, y^{(i)} = k} x^{(i)}_j = \#\{i : y^{(i)} = k,\ x^{(i)}_j = 1\}.$$
+
+$n_k$ is the number of class-$k$ documents and $s_{jk}$ the number of them that contain word $j$.
+
+<Derivation
+  id="der-6-3-3"
+  title="The Bernoulli NB log-likelihood splits into one coin per word and class"
+  goalTex="\ell(\phi, \psi) = \sum_{i=1}^{n} \log p_\theta(x^{(i)}, y^{(i)})"
+  resultTex="\ell(\phi, \psi) = \ell_{\mathrm{prior}}(\phi) + \sum_{k=1}^{K}\sum_{j=1}^{d} \ell_{jk}(\psi_{jk}), \qquad \ell_{jk}(\psi) = s_{jk}\log\psi + (n_k - s_{jk})\log(1 - \psi)"
+  source="L9 pp.30–31, L10 p.4 (the decomposition is shown; the per-coin form of each term is not)"
+>
+
+<Chunk title="Start from the generative split and apply the NB product">
+
+<Step justification="der-6-1-3, step 9: the joint log-likelihood is a prior term plus a class-conditional term" sticky="log-likelihood">
+$$\ell(\phi, \psi) = \underbrace{\sum_{i=1}^{n} \log p_\phi(y^{(i)})}_{\ell_{\mathrm{prior}}(\phi)} + \sum_{i=1}^{n} \log p_\psi(x^{(i)} \mid y^{(i)})$$
+</Step>
+
+<Step justification="the Naive Bayes product, der-6-3-2 step 5" sticky="conditional-independence">
+$$\log p_\psi(x^{(i)} \mid y^{(i)}) = \log \prod_{j=1}^{d} p(x^{(i)}_j \mid y^{(i)})$$
+</Step>
+
+<Step justification="the log of a product is the sum of the logs" sticky="log-rules" fadeable>
+$$\log p_\psi(x^{(i)} \mid y^{(i)}) = \sum_{j=1}^{d} \log p(x^{(i)}_j \mid y^{(i)})$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Regroup the double sum by class and read off the separation">
+
+<Step justification="every example has exactly one label, so sorting the examples into $K$ groups and swapping the finite sums over $i$ and $j$ changes nothing (the L9 p.30 line)">
+$$\sum_{i=1}^{n}\sum_{j=1}^{d} \log p(x^{(i)}_j \mid y^{(i)}) = \sum_{k=1}^{K}\sum_{j=1}^{d}\sum_{i:\, y^{(i)} = k} \log p(x^{(i)}_j \mid y = k;\ \psi_{jk})$$
+</Step>
+
+<Step justification="take the log of the Bernoulli pmf of der-6-3-2 step 6; the log of a power is the exponent times the log" sticky="log-rules" fadeable>
+$$\log p(x^{(i)}_j \mid y = k;\ \psi_{jk}) = x^{(i)}_j \log\psi_{jk} + (1 - x^{(i)}_j)\log(1 - \psi_{jk})$$
+</Step>
+
+<Step justification="sum step 5 over the class-$k$ examples: the $x^{(i)}_j$ add up to $s_{jk}$ and the $1 - x^{(i)}_j$ to $n_k - s_{jk}$" fadeable>
+$$\sum_{i:\, y^{(i)} = k} \log p(x^{(i)}_j \mid y = k;\ \psi_{jk}) = s_{jk}\log\psi_{jk} + (n_k - s_{jk})\log(1 - \psi_{jk})$$
+</Step>
+
+<Step justification="substitute steps 3, 4, and 6 into step 1, and call the class-$k$, word-$j$ term $\ell_{jk}$">
+$$\ell(\phi, \psi) = \ell_{\mathrm{prior}}(\phi) + \sum_{k=1}^{K}\sum_{j=1}^{d} \ell_{jk}(\psi_{jk})$$
+</Step>
+
+<Step justification="$\psi_{jk}$ appears in exactly one term and is not constrained jointly with any other parameter, so the maximum over it can be taken term by term (L9 p.31)">
+$$\max_{\psi_{jk}}\; \ell(\phi, \psi) \;\text{ is attained where }\; \ell_{jk}(\psi_{jk}) \text{ is maximal}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+So learning Bernoulli Naive Bayes is $Kd$ independent coin-flip problems plus one prior problem. L9 p.32 says "recall from the MLE lecture" and states the answer. Here is the calculation, for one fixed $(j, k)$; write $s = s_{jk}$ and $\psi = \psi_{jk}$.
+
+<Derivation
+  id="der-6-3-4"
+  title="The MLE of ψ_jk is a coin-flip frequency"
+  goalTex="\hat\psi_{jk} = \argmax_{\psi \in [0, 1]}\; s\log\psi + (n_k - s)\log(1 - \psi)"
+  resultTex="\hat\psi_{jk} = \frac{s_{jk}}{n_k} = \frac{\#\{i : y^{(i)} = k,\ x^{(i)}_j = 1\}}{\#\{i : y^{(i)} = k\}}"
+  source="L9 p.32 and L10 p.5 (stated: 'the MLE of a Bernoulli is the empirical count'; no calculus shown)"
+>
+
+<Chunk title="Set the derivative to zero (interior case)">
+
+<Step justification="der-6-3-3 step 6, on the open interval where both logs are finite; assume $0 < s < n_k$ here (steps 8–9 treat the boundary cases)">
+$$\ell_{jk}(\psi) = s\log\psi + (n_k - s)\log(1 - \psi), \qquad 0 < \psi < 1$$
+</Step>
+
+<Step justification="$\frac{d}{d\psi}\log\psi = \frac{1}{\psi}$; the chain rule gives $\frac{d}{d\psi}\log(1 - \psi) = -\frac{1}{1 - \psi}$">
+$$\frac{d\ell_{jk}}{d\psi} = \frac{s}{\psi} - \frac{n_k - s}{1 - \psi}$$
+</Step>
+
+<Step justification="first-order condition: an interior maximum has zero derivative" sticky="first-order-condition">
+$$\frac{s}{\psi} = \frac{n_k - s}{1 - \psi}$$
+</Step>
+
+<Step justification="multiply both sides by $\psi(1 - \psi) > 0$" fadeable>
+$$s(1 - \psi) = (n_k - s)\,\psi$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Solve and confirm a maximum">
+
+<Step justification="expand both sides; $-s\psi$ appears on each side and cancels">
+$$s = n_k\,\psi$$
+</Step>
+
+<Step justification="divide by $n_k > 0$" fadeable>
+$$\hat\psi_{jk} = \frac{s}{n_k}$$
+</Step>
+
+<Step justification="second-order condition: both terms are negative on $(0, 1)$, so $\ell_{jk}$ is strictly concave and the stationary point is its unique global maximum" sticky="second-order-condition">
+$$\frac{d^2\ell_{jk}}{d\psi^2} = -\frac{s}{\psi^2} - \frac{n_k - s}{(1 - \psi)^2} < 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="The boundary cases, and the code">
+
+<Step justification="if $s = 0$, then, with the convention $0 \log 0 = 0$, $\ell_{jk}(\psi) = n_k\log(1 - \psi)$, which strictly decreases on $[0, 1)$, so the maximum is at the left end">
+$$s = 0 \;\Longrightarrow\; \hat\psi_{jk} = 0 = \frac{s}{n_k}$$
+</Step>
+
+<Step justification="if $s = n_k$, then, with the convention $0 \log 0 = 0$, $\ell_{jk}(\psi) = n_k\log\psi$, which strictly increases on $(0, 1]$, so the maximum is at the right end">
+$$s = n_k \;\Longrightarrow\; \hat\psi_{jk} = 1 = \frac{s}{n_k}$$
+</Step>
+
+<Step justification="the mean of a 0/1 column is the fraction of ones; this is the notebooks' `psis[k] = X_k.mean(axis=0)` over the class-$k$ rows">
+$$\hat\psi_{jk} = \frac{1}{n_k}\sum_{i:\, y^{(i)} = k} x^{(i)}_j$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Steps 8 and 9 matter more than they look. The formula $s/n_k$ holds even when $s = 0$, and then the estimate is exactly 0. A word that never appeared in class $k$ during training is declared impossible in class $k$. We return to this below.
+
+<Check ids={["q-u6-l3-008", "q-u6-l3-009", "q-u6-l3-017", "q-u6-l3-023"]} />
+
+The prior is a [[categorical]] distribution, so its parameters must lie on the simplex: $\phi_k \ge 0$ and $\sum_k \phi_k = 1$. L9 p.33 states the answer as $\phi_k / \sum_l \phi_l = n_k/n$, which leaves the constraint implicit. A [[lagrange-multipliers|Lagrange multiplier]] handles it directly.
+
+<Derivation
+  id="der-6-3-5"
+  title="The MLE of the class prior is the class proportion"
+  goalTex="\max_{\phi}\; \ell_{\mathrm{prior}}(\phi) \quad \text{subject to } \sum_{k=1}^{K}\phi_k = 1"
+  resultTex="\hat\phi_k = \frac{n_k}{n}"
+  source="L9 p.33, L10 p.5 (stated as φ_k / Σ_l φ_l = n_k / n; the constrained maximization is not shown)"
+>
+
+<Chunk title="Write the prior term as a function of the counts">
+
+<Step justification="categorical pmf: $P(y = k) = \phi_k$, so each example contributes the log-prior of its own label" sticky="categorical">
+$$\ell_{\mathrm{prior}}(\phi) = \sum_{i=1}^{n} \log\phi_{y^{(i)}}$$
+</Step>
+
+<Step justification="group the $n$ terms by label: $\log\phi_k$ appears once for each of the $n_k$ class-$k$ examples">
+$$\ell_{\mathrm{prior}}(\phi) = \sum_{k=1}^{K} n_k\log\phi_k$$
+</Step>
+
+<Step justification="the prior is a probability distribution over the $K$ classes">
+$$\sum_{k=1}^{K}\phi_k = 1$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Form the Lagrangian and differentiate">
+
+<Step justification="Lagrangian: objective minus a multiplier times the constraint written as $g(\phi) = 0$" sticky="lagrange-multipliers">
+$$\mathcal{L}(\phi, \lambda) = \sum_{k=1}^{K} n_k\log\phi_k - \lambda\Big(\sum_{k=1}^{K}\phi_k - 1\Big)$$
+</Step>
+
+<Step justification="first-order condition in $\phi_k$; only the $k$-th terms of each sum depend on $\phi_k$" sticky="first-order-condition">
+$$\frac{\partial\mathcal{L}}{\partial\phi_k} = \frac{n_k}{\phi_k} - \lambda = 0$$
+</Step>
+
+<Step justification="solve for $\phi_k$" fadeable>
+$$\phi_k = \frac{n_k}{\lambda}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Use the constraint to find the multiplier">
+
+<Step justification="substitute step 6 into the constraint, step 3">
+$$\sum_{k=1}^{K}\frac{n_k}{\lambda} = 1$$
+</Step>
+
+<Step justification="every example has exactly one label, so $\sum_k n_k = n$" fadeable>
+$$\lambda = n$$
+</Step>
+
+<Step justification="substitute step 8 into step 6" fadeable>
+$$\hat\phi_k = \frac{n_k}{n}$$
+</Step>
+
+<Step justification="second-order check: each term $n_k\log\phi_k$ is concave (second derivative $-n_k/\phi_k^2 \le 0$) and the constraint is linear, so a stationary point of the Lagrangian on the simplex is the global maximum" sticky="second-order-condition">
+$$\frac{\partial^2\ell_{\mathrm{prior}}}{\partial\phi_k^2} = -\frac{n_k}{\phi_k^2} \le 0, \qquad \frac{\partial^2\ell_{\mathrm{prior}}}{\partial\phi_k\,\partial\phi_l} = 0 \ (k \ne l)$$
+</Step>
+
+<Step justification="the estimates sum to 1, so the slide's ratio form holds; the ratio alone, without the constraint, would be satisfied by any positive multiple of φ">
+$$\frac{\hat\phi_k}{\sum_l \hat\phi_l} = \frac{n_k}{n}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+If some class has $n_k = 0$, its term is absent from step 2, and putting any prior mass on it only lowers the others; the estimate is $\hat\phi_k = 0 = n_k/n$, so the formula still holds. Note also what the derivation never used: the class-conditional model. Any generative classifier with a categorical prior gets $\hat\phi_k = n_k/n$, which is the key to the L9 p.39 poll (c).
+
+<Check ids={["q-u6-l3-007", "q-u6-l3-018", "q-u6-l3-026"]} />
+
+## Zero counts and Laplace smoothing
+
+Step 8 of der-6-3-4 is a real problem. In the spam exercise solution (task 18), `np.sum(psis==0)` returns **34**: 34 of the $2 \times 1000$ entries of $\hat\psi$ are exactly 0, and `np.log(psis)` produces `-inf` with a divide-by-zero warning. At prediction time, the score of a class is a sum of logs (der-6-3-7 below), so one $-\infty$ term sends the whole class score to $-\infty$, whatever the other 999 words say. We call this the **zero-count problem**.
+
+<Callout type="beyond">
+
+The slides never smooth. Both notebooks instead clip the estimates, `psis.clip(1e-14, 1-1e-14)` (L9 p.37; spam task 18). Below we derive the standard fix, Laplace smoothing, as the maximum a posteriori (MAP) estimate under a [[beta-prior|Beta prior]], and then say exactly what is wrong with the clip.
+
+</Callout>
+
+The idea: instead of maximizing the likelihood of $\psi$, maximize its [[prior-likelihood-posterior|posterior]], using a prior that says "no word is impossible in any class". The Beta family is the natural choice, because it is [[conjugate-prior|conjugate]] to the Bernoulli. We write the Beta parameters as $a, b$ (the sticky note calls them $\alpha, \beta$), keeping $\alpha$ for the add-$\alpha$ constant.
+
+<Derivation
+  id="der-6-3-6"
+  title="Laplace smoothing is the MAP estimate under a Beta(2, 2) prior"
+  goalTex="\hat\psi^{\mathrm{MAP}}_{jk} = \argmax_{\psi}\; p(\psi \mid \text{class-}k \text{ data}), \qquad \psi \sim \mathrm{Beta}(a, b)"
+  resultTex="\hat\psi_{jk} = \frac{s_{jk} + 1}{n_k + 2} \ \ (a = b = 2), \qquad \hat\psi_{jk} = \frac{s_{jk} + \alpha}{n_k + 2\alpha} \ \ (a = b = 1 + \alpha)"
+  source="beyond the slides; motivated by the zero entries in psis (L9 p.37; spam exercise task 18)"
+>
+
+<Chunk title="Write the posterior of one coin">
+
+<Step justification="Bayes' rule for a parameter: the evidence $p(\mathcal{D}_k)$ does not depend on $\psi$, so the posterior is proportional to likelihood times prior" sticky="prior-likelihood-posterior">
+$$p(\psi \mid \mathcal{D}_k) \propto p(\mathcal{D}_k \mid \psi)\, p(\psi)$$
+</Step>
+
+<Step justification="exponentiate der-6-3-3 step 6: the class-$k$ documents are i.i.d. coin flips for word $j$, $s$ of them showing the word" sticky="bernoulli">
+$$p(\mathcal{D}_k \mid \psi) = \psi^{s}(1 - \psi)^{n_k - s}$$
+</Step>
+
+<Step justification="Beta prior density, up to its normalizing constant" sticky="beta-prior">
+$$p(\psi) \propto \psi^{a - 1}(1 - \psi)^{b - 1}$$
+</Step>
+
+<Step justification="multiply steps 2 and 3, adding exponents of equal bases; the posterior is again a Beta, which is what conjugate means" sticky="conjugate-prior" fadeable>
+$$p(\psi \mid \mathcal{D}_k) \propto \psi^{s + a - 1}(1 - \psi)^{n_k - s + b - 1}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Maximize it with the coin-flip algebra, and choose the prior">
+
+<Step justification="log is strictly increasing, so it keeps the maximizer; the log of a power is the exponent times the log" sticky="log-rules">
+$$\log p(\psi \mid \mathcal{D}_k) = (s + a - 1)\log\psi + (n_k - s + b - 1)\log(1 - \psi) + \text{const}$$
+</Step>
+
+<Step justification="step 5 is der-6-3-4 step 1 with $s \to s + a - 1$ and $n_k \to n_k + a + b - 2$; for $a, b > 1$ both coefficients are positive for every $s$ from 0 to $n_k$, so steps 2–7 of der-6-3-4 apply unchanged" fadeable>
+$$\hat\psi^{\mathrm{MAP}} = \frac{s + a - 1}{n_k + a + b - 2}$$
+</Step>
+
+<Step justification="set $a = b = 2$: one imaginary document with the word and one without" fadeable>
+$$\hat\psi_{jk} = \frac{s + 1}{n_k + 2}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Read the smoothed estimate">
+
+<Step justification="$s$ ranges from 0 to $n_k$; evaluate step 7 at the two extremes">
+$$0 < \frac{1}{n_k + 2} \le \hat\psi_{jk} \le \frac{n_k + 1}{n_k + 2} < 1$$
+</Step>
+
+<Step justification="set $a = b = 1 + \alpha$ with $\alpha > 0$ in step 6: add $\alpha$ imaginary documents of each kind (add-$\alpha$ smoothing)">
+$$\hat\psi_{jk} = \frac{s + \alpha}{n_k + 2\alpha}$$
+</Step>
+
+<Step justification="subtract the MLE $s/n_k$ over the common denominator $n_k(n_k + 2\alpha)$">
+$$\frac{s + \alpha}{n_k + 2\alpha} - \frac{s}{n_k} = \frac{\alpha(n_k - 2s)}{n_k(n_k + 2\alpha)}$$
+</Step>
+
+<Step justification="$|n_k - 2s| \le n_k$ because $0 \le s \le n_k$; the prior's pull vanishes as the class grows">
+$$\Big|\frac{s + \alpha}{n_k + 2\alpha} - \frac{s}{n_k}\Big| \le \frac{\alpha}{n_k + 2\alpha} \xrightarrow[n_k \to \infty]{} 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 8 is the point: every smoothed estimate lies strictly inside $(0, 1)$, so every log in the classifier is finite. Steps 10 and 11 are the reassurance: with plenty of data, smoothing barely moves the estimates that were already well determined. It changes the estimates that rested on a handful of documents, which are exactly the ones that should not be trusted.
+
+### Why clipping to 1e-14 is a hack
+
+The notebooks replace each 0 in $\hat\psi$ by $10^{-14}$ (and each 1 by $1 - 10^{-14}$). The spam solution prints the effect: the `-inf` entry becomes $\log 10^{-14} \approx -32.236$. That removes the error message. It does not give a sensible model, for three reasons.
+
+1. **The penalty is set by an arbitrary constant, not by the data.** An unseen word costs $\log\varepsilon$ in that class's score. With $\varepsilon = 10^{-14}$ that is $-32.2$; with $\varepsilon = 10^{-10}$ it would be $-23.0$. Nothing in the training set chose between them, yet the predictions can depend on the choice.
+2. **It is still a near-veto.** A shift of $-32.2$ in a class score multiplies that class's odds by $10^{-14}$. Under add-one smoothing, an unseen word costs about $-6.2$ in the 20 Newsgroups example below, and a present word with a moderate frequency ratio moves the score by a few units, so it takes many ordinary words to outvote one clipped word.
+3. **It is not a probability model.** The clipped vector is not the maximizer of any likelihood or posterior, and it treats "never seen in 3 documents" the same as "never seen in 3,000". Laplace's $1/(n_k + 2)$ shrinks as the evidence for absence grows, which is the behavior we want.
+
+There is one more way the clip misleads, and the spam solution shows it. Task 21 checks whether any word appears in only one class with `np.sum(psis[0]==0)` and `np.sum(psis[1]==0)`, and both print 0. But `psis` had already been clipped in task 18, so no entry can be 0; before the clip there were 34. Check for zeros before you clip, or better, smooth instead of clipping. (The upper clip has a reason too: a word present in every training email of a class would get MLE 1, and $\log(1 - 1) = -\infty$; the upper clip exists for that case.)
+
+<Check ids={["q-u6-l3-013", "q-u6-l3-019", "q-u6-l3-021", "q-u6-l3-022"]} />
+
+## Predicting in log space
+
+The Bayes classifier multiplies $d$ probabilities per class. With thousands of words or long documents the product can fall below the smallest positive float64 (about $5 \times 10^{-324} \approx e^{-744}$), and even when it does not, products of many small numbers lose precision. Taking logs before multiplying avoids both <SlideRef lecture={9} pages="34-37" />. The notebooks stop at the argmax; we also recover the posterior, which needs [[log-sum-exp]].
+
+<Derivation
+  id="der-6-3-7"
+  title="Log-space scores, and posteriors through log-sum-exp"
+  goalTex="\hat y \text{ and } p(y = k \mid x) \text{ without multiplying } d \text{ probabilities}"
+  resultTex="s_k(x) = \log\phi_k + \sum_{j=1}^{d}\Big[x_j\log\psi_{jk} + (1 - x_j)\log(1 - \psi_{jk})\Big], \quad \hat y = \argmax_k s_k(x), \quad \log p(y = k \mid x) = s_k(x) - \mathrm{LSE}\big(s_1(x), \dots, s_K(x)\big)"
+  source="L9 pp.34–37 (argmax in log space implemented in code; the posterior via log-sum-exp is not shown)"
+>
+
+<Chunk title="Score each class in log space">
+
+<Step justification="der-6-1-1 step 3, with the prior written $\phi_k$" sticky="bayes-rule">
+$$\hat y = \argmax_{k}\; p(x \mid y = k)\,\phi_k$$
+</Step>
+
+<Step justification="$\log$ is strictly increasing, so it does not change which class is largest" sticky="argmax">
+$$\hat y = \argmax_{k}\; \log\big[p(x \mid y = k)\,\phi_k\big]$$
+</Step>
+
+<Step justification="the log of a product is the sum of the logs, using the NB product of der-6-3-2 step 5; call the result the score $s_k(x)$" sticky="log-rules" fadeable>
+$$s_k(x) = \log\phi_k + \sum_{j=1}^{d}\log p(x_j \mid y = k)$$
+</Step>
+
+<Step justification="substitute the log-Bernoulli of der-6-3-3 step 5; this is the notebooks' `logpxy = x*log(psis) + (1-x)*log(1-psis)` plus `log(phis)`" sticky="bernoulli" fadeable>
+$$s_k(x) = \log\phi_k + \sum_{j=1}^{d}\Big[x_j\log\psi_{jk} + (1 - x_j)\log(1 - \psi_{jk})\Big]$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Turn scores into posteriors without underflow">
+
+<Step justification="der-6-1-1 step 6, with $p(x \mid y = k)\,\phi_k = e^{s_k}$" sticky="bayes-rule">
+$$p(y = k \mid x) = \frac{e^{s_k}}{\sum_{l=1}^{K} e^{s_l}}$$
+</Step>
+
+<Step justification="multiply numerator and denominator by $e^{-m}$ with $m = \max_l s_l$; now every exponent is at most 0 and one equals 0" fadeable>
+$$p(y = k \mid x) = \frac{e^{s_k - m}}{\sum_{l=1}^{K} e^{s_l - m}}$$
+</Step>
+
+<Step justification="take logs; the log of a quotient is the difference of the logs" sticky="log-rules">
+$$\log p(y = k \mid x) = s_k - m - \log\sum_{l=1}^{K} e^{s_l - m}$$
+</Step>
+
+<Step justification="$m + \log\sum_l e^{s_l - m}$ is the stable form of log-sum-exp" sticky="log-sum-exp">
+$$\log p(y = k \mid x) = s_k - \mathrm{LSE}(s_1, \dots, s_K)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 6 is the whole trick. Computing $e^{s_k}$ directly underflows to 0 for every class, giving $0/0$; after subtracting the maximum, the largest term is $e^0 = 1$ and the denominator is between 1 and $K$. In numpy, `scipy.special.logsumexp(scores, axis=...)` does steps 6–8. These posteriors are what the model believes; whether they match reality is a separate question (the L9 p.27 poll, statement c, and the pitfall below).
+
+<Check ids={["q-u6-l3-014", "q-u6-l3-003"]} />
+
+## Naive Bayes is a linear classifier
+
+The log-space score is a sum over words, and each word enters through $x_j$ either as $x_j$ or as $1 - x_j$. Both are affine in $x_j$. For two classes, numbered 0 and 1 as in the spam data, that makes the log-odds affine in $x$.
+
+<Derivation
+  id="der-6-3-8"
+  title="The Bernoulli NB log-odds are affine in x"
+  goalTex="\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} \text{ as a function of } x"
+  resultTex="\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = w^\top x + b, \quad w_j = \log\frac{\psi_{j1}(1 - \psi_{j0})}{\psi_{j0}(1 - \psi_{j1})}, \quad b = \sum_{j=1}^{d}\log\frac{1 - \psi_{j1}}{1 - \psi_{j0}} + \log\frac{\phi_1}{\phi_0}, \quad p(y = 1 \mid x) = \sigma(w^\top x + b)"
+  source="beyond the slides (course map L9 derivation gap 6); assumes every ψ_jk lies strictly between 0 and 1, which smoothing guarantees"
+>
+
+<Chunk title="Subtract the two scores">
+
+<Step justification="by der-6-3-7 step 5 the two posteriors share the denominator $\sum_l e^{s_l}$, which cancels in the ratio; the log of $e^{s_1}/e^{s_0}$ is $s_1 - s_0$" sticky="log-rules">
+$$\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = s_1(x) - s_0(x)$$
+</Step>
+
+<Step justification="substitute der-6-3-7 step 4 for each class and pair the terms with the same $x_j$; a difference of logs is the log of a quotient" sticky="log-rules">
+$$s_1(x) - s_0(x) = \log\frac{\phi_1}{\phi_0} + \sum_{j=1}^{d}\Big[x_j\log\frac{\psi_{j1}}{\psi_{j0}} + (1 - x_j)\log\frac{1 - \psi_{j1}}{1 - \psi_{j0}}\Big]$$
+</Step>
+
+<Step justification="expand $(1 - x_j)$ and collect the terms with and without $x_j$">
+$$s_1(x) - s_0(x) = \log\frac{\phi_1}{\phi_0} + \sum_{j=1}^{d}\log\frac{1 - \psi_{j1}}{1 - \psi_{j0}} + \sum_{j=1}^{d} x_j\Big[\log\frac{\psi_{j1}}{\psi_{j0}} - \log\frac{1 - \psi_{j1}}{1 - \psi_{j0}}\Big]$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Name the weights and the bias">
+
+<Step justification="the bracket of step 3 is a difference of logs, so it is the log of a quotient; call it $w_j$" sticky="log-rules" fadeable>
+$$w_j = \log\frac{\psi_{j1}(1 - \psi_{j0})}{\psi_{j0}(1 - \psi_{j1})}$$
+</Step>
+
+<Step justification="the terms of step 3 without any $x_j$ are a constant; call it $b$" fadeable>
+$$b = \sum_{j=1}^{d}\log\frac{1 - \psi_{j1}}{1 - \psi_{j0}} + \log\frac{\phi_1}{\phi_0}$$
+</Step>
+
+<Step justification="substitute steps 4 and 5 into step 3, writing $\sum_j w_j x_j = w^\top x$">
+$$\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = w^\top x + b$$
+</Step>
+
+</Chunk>
+
+<Chunk title="From log-odds to a sigmoid and a hyperplane">
+
+<Step justification="exponentiate; with two classes $p(y = 0 \mid x) = 1 - p(y = 1 \mid x)$">
+$$\frac{p(y = 1 \mid x)}{1 - p(y = 1 \mid x)} = e^{w^\top x + b}$$
+</Step>
+
+<Step justification="solve for $p(y = 1 \mid x)$: multiply out, collect $p$, and divide by $1 + e^{w^\top x + b}$; the result is the sigmoid of the log-odds" sticky="sigmoid" fadeable>
+$$p(y = 1 \mid x) = \frac{1}{1 + e^{-(w^\top x + b)}} = \sigma(w^\top x + b)$$
+</Step>
+
+<Step justification="$\sigma(z) > \tfrac12$ exactly when $z > 0$, so the decision boundary is the hyperplane $w^\top x + b = 0$">
+$$\hat y = 1 \iff w^\top x + b > 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Read the weights. With the [[sigmoid|logit]] $\mathrm{logit}(p) = \log\frac{p}{1 - p}$, the inverse of the sigmoid, $w_j = \mathrm{logit}(\psi_{j1}) - \mathrm{logit}(\psi_{j0})$, the difference in the word's log-odds of appearing in each class: positive if the word is more common in class 1. The bias collects the prior and the "absent word" votes of every word. With $K$ classes, each score $s_k(x)$ is itself affine in $x$, and $\argmax_k s_k(x)$ has exactly the form of a [[softmax]] regression classifier.
+
+So Naive Bayes and logistic regression draw the same kind of boundary. They choose it differently. Logistic regression picks $w, b$ to maximize the conditional likelihood of the labels. Naive Bayes computes $w, b$ from class-wise word frequencies, which is cheaper and needs less data, but the weights inherit the independence assumption: two words that always co-occur are each given their full weight, so their evidence is counted twice. This is the generative-discriminative trade-off of lesson 6.1 made concrete, and Unit 7 repeats it for Gaussian features.
+
+<Check ids={["q-u6-l3-015", "q-u6-l3-020"]} />
+
+## Beyond the slides: multinomial Naive Bayes
+
+<Callout type="beyond">
+
+L9 p.16 notes that $\phi(x)_j$ "may instead be the count of word $j$", but the slides model only presence. Multinomial Naive Bayes models counts. Each class has one [[categorical]] distribution over the vocabulary, and a document is a bag of independent draws from it.
+
+</Callout>
+
+<Definition id="def-6-3-4" title="Multinomial Naive Bayes" source="beyond the slides (L9 p.16 mentions counts)">
+
+Represent document $i$ by its count vector $c^{(i)} \in \{0, 1, 2, \dots\}^{|V|}$, where $c^{(i)}_v$ is how many times word $v$ occurs. For each class, $\theta_{vk} = P(\text{a token is word } v \mid y = k)$ with $\sum_{v} \theta_{vk} = 1$. Given the length $L = \sum_v c_v$, the class-conditional is a [[multinomial]]:
+
+$$p(c \mid y = k) = \frac{L!}{\prod_v c_v!}\prod_{v \in V}\theta_{vk}^{c_v}.$$
+
+Also written as: $\psi_{wk}$ for $\theta_{vk}$ (some references, including our curriculum notes); we use $\theta$ to keep it apart from the Bernoulli $\psi_{jk}$.
+
+</Definition>
+
+<Derivation
+  id="der-6-3-9"
+  title="Multinomial NB: the MLE is a token share, and add-one adds |V|"
+  goalTex="\max_{\theta_{\cdot k}}\; \sum_{i:\, y^{(i)} = k}\log p(c^{(i)} \mid y = k) \quad \text{subject to } \sum_{v}\theta_{vk} = 1"
+  resultTex="\hat\theta_{vk} = \frac{T_{vk}}{\sum_{v'} T_{v'k}}, \qquad \hat\theta^{\,\text{add-one}}_{vk} = \frac{T_{vk} + 1}{\sum_{v'} T_{v'k} + |V|}, \qquad T_{vk} = \sum_{i:\, y^{(i)} = k} c^{(i)}_v"
+  source="beyond the slides; same Lagrange algebra as der-6-3-5"
+>
+
+<Chunk title="Reduce to a weighted log objective">
+
+<Step justification="log of the multinomial pmf; the coefficient $L!/\prod_v c_v!$ does not involve $\theta$, so it is a constant" sticky="multinomial">
+$$\ell_k(\theta) = \sum_{i:\, y^{(i)} = k}\sum_{v \in V} c^{(i)}_v\log\theta_{vk} + \text{const}$$
+</Step>
+
+<Step justification="swap the two finite sums and write $T_{vk}$ for the total count of word $v$ in class $k$">
+$$\ell_k(\theta) = \sum_{v \in V} T_{vk}\log\theta_{vk} + \text{const}$$
+</Step>
+
+<Step justification="Lagrangian for the simplex constraint, exactly as in der-6-3-5 step 4" sticky="lagrange-multipliers">
+$$\mathcal{L} = \sum_{v} T_{vk}\log\theta_{vk} - \lambda\Big(\sum_{v}\theta_{vk} - 1\Big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Solve, then smooth">
+
+<Step justification="first-order condition in $\theta_{vk}$, assuming $T_{vk} > 0$; if $T_{vk} = 0$, the term is absent and the boundary argument after der-6-3-5 gives $\hat\theta_{vk} = 0$, which the final formula also gives" sticky="first-order-condition">
+$$\frac{\partial\mathcal{L}}{\partial\theta_{vk}} = \frac{T_{vk}}{\theta_{vk}} - \lambda = 0$$
+</Step>
+
+<Step justification="solve step 4 for $\theta_{vk}$" fadeable>
+$$\theta_{vk} = \frac{T_{vk}}{\lambda}$$
+</Step>
+
+<Step justification="substitute step 5 into the constraint and solve for $\lambda$: the total number of tokens in class $k$">
+$$\lambda = \sum_{v'} T_{v'k}$$
+</Step>
+
+<Step justification="substitute step 6 into step 5; concavity follows as in der-6-3-5 step 10" fadeable>
+$$\hat\theta_{vk} = \frac{T_{vk}}{\sum_{v'} T_{v'k}}$$
+</Step>
+
+<Step justification="put a Dirichlet prior on $\theta_{\cdot k}$ (the Dirichlet, the Beta's $|V|$-outcome generalization, a density on the probability simplex); with every parameter equal to 2 it has density proportional to $\prod_v\theta_{vk}^{1}$; adding its log to step 2 adds 1 to every count" sticky="conjugate-prior">
+$$\log p(\theta \mid \mathcal{D}_k) = \sum_{v \in V}(T_{vk} + 1)\log\theta_{vk} + \text{const}$$
+</Step>
+
+<Step justification="repeat steps 3–7 with $T_{vk} + 1$ in place of $T_{vk}$; the denominator gains one pseudo-count per vocabulary word" fadeable>
+$$\hat\theta_{vk} = \frac{T_{vk} + 1}{\sum_{v'} T_{v'k} + |V|}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The two event models differ in what they score. In Bernoulli NB, every vocabulary word contributes to every document's score: present words through $\log\psi_{jk}$ and absent words through $\log(1 - \psi_{jk})$. In multinomial NB, a word with $c_v = 0$ contributes $\theta_{vk}^0 = 1$, so absent words are ignored, and a word that occurs three times counts three times. The multinomial log-odds, $\sum_v c_v\log(\theta_{v1}/\theta_{v0}) + \log(\phi_1/\phi_0)$, are linear in the counts with no absent-word term in the bias. Long documents with repeated words usually favor the multinomial model; short documents where absence is informative can favor Bernoulli.
+
+<Check ids={["q-u6-l3-024"]} />
+
+## Explore
+
+<Widget
+  name="bow-nb-scorer"
+  dataset="notes"
+  smoothing={false}
+  challenge="Type a report that contains one word the non-serious training reports never used. With smoothing off, what happens to the non-serious score? Turn smoothing on: how large is that word's vote now?"
+/>
+
+{/* example-case: NOTES pending src/data/notes.json; the Lecture 8 companion's 20 Newsgroups numbers are used meanwhile */}
+
+<Example title="20 Newsgroups, by the numbers">
+
+All numbers below are printed by the Lecture 8 code companion (which implements the L9 slides) on the four-category 20 Newsgroups training set: $n = 2257$ posts, `max_features=1000` so $d = 1000$, and $K = 4$ classes in alphabetical order (0 alt.atheism, 1 comp.graphics, 2 sci.med, 3 soc.religion.christian). <SlideRef lecture={9} pages="35-38" />
+
+**Priors back to counts.** The notebook prints `phis = [0.21267169 0.25875055 0.26318121 0.26539654]`. By der-6-3-5, $\hat\phi_k = n_k/n$, so $n_k = n\hat\phi_k$:
+
+$$n_0 = 2257 \times 0.21267169 \approx 480, \quad n_1 \approx 584, \quad n_2 \approx 594, \quad n_3 \approx 599,$$
+
+and $480 + 584 + 594 + 599 = 2257$, as step 8 of der-6-3-5 requires.
+
+**Parameter counts.** By der-6-3-1, the fitted model has $Kd + (K - 1) = 4 \times 1000 + 3 = 4003$ free parameters (L9 p.29's $K(d+1)$ would say 4004). A full categorical model of the same 1,000 binary features would need $4 \times 2^{1000} - 1 \approx 4.3 \times 10^{301}$.
+
+**What smoothing would do.** A word that never occurs in the 480 alt.atheism posts gets, by der-6-3-6 step 7, $\hat\psi = 1/482 \approx 0.00207$, contributing $\log(1/482) \approx -6.18$ to that class's score when present. For the 599 soc.religion.christian posts the same situation gives $\log(1/601) \approx -6.40$: a slightly stronger penalty, because absence from more documents is stronger evidence. The notebook's clip gives $\log 10^{-14} \approx -32.24$ in every class, regardless of $n_k$.
+
+**What was actually measured.** With clipping and no smoothing, the notebook's training accuracy is **0.8693**, and it classifies 'OpenGL on the GPU is fast' as comp.graphics. That accuracy is measured on the training set itself, so it says how well the model fits, not how well it generalizes; lesson 6.4 discusses the spam exercise, which does use a held-out test set (train 0.9268, test 0.9217, against 0.977 test accuracy for logistic regression).
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u6-l3-004", "q-u6-l3-010", "q-u6-l3-011", "q-u6-l3-016"]} />
+
+## Pitfalls
+
+<Pitfall title="Spot the error: L9 p.23's 2^(d−1)" misconception="categorical-param-count">
+
+L9 p.23 says a categorical distribution over $d$-dimensional binary vectors needs "$2^{d-1}$ parameters". The count is $2^d - 1$: there are $2^d$ vectors (der-6-3-1 step 1), and the sum-to-one constraint removes one free number (step 4). The two agree only at $d = 1$; at $d = 2$ the slide gives 2, but four outcomes need 3 free probabilities. The slide's point, that the count explodes, survives the correction.
+
+</Pitfall>
+
+<Pitfall title="K(d+1) counts one prior parameter too many" misconception="simplex-free-params">
+
+L9 p.29 counts $K(d + 1)$ parameters for Bernoulli Naive Bayes: $Kd$ for $\psi$ and $K$ for $\phi$. The $K$ prior probabilities sum to 1, so only $K - 1$ are free, giving $Kd + K - 1$ (der-6-3-1 step 11). Count numbers stored, and you get $K(d+1)$; count numbers you can choose, and you get one fewer. The same distinction gives $2^d - 1$, not $2^d$, per class in the full model.
+
+</Pitfall>
+
+<Pitfall title="φ_K on the slides means φ_k" misconception="phi-capital-k">
+
+L9 p.28 and the L10 recap (pp.3–5) write $P_\theta(y = k) = \phi_K$ and "the optimal $\phi_K$ is the proportion of class $k$". Read every $\phi_K$ as $\phi_k$, the prior of class $k$. Taken literally, $\phi_K$ is the prior of the last class, and the statement would give every class the same prior.
+
+</Pitfall>
+
+<Pitfall title="On L9 p.24, i indexes features, not examples" misconception="feature-index-clash">
+
+L9 p.24 writes $p(\mathbf{x} \mid y) = \prod_{i=1}^{d} p(x_i \mid y)$. The product runs over the $d$ features of one document. Everywhere else $i$ indexes training examples ($x^{(i)}$) and $j$ indexes features ($x_j$). Reading the slide's $i$ as an example index turns the Naive Bayes assumption into the i.i.d. assumption, which is a different statement (der-6-3-2 step 4 versus der-6-1-3 step 2).
+
+</Pitfall>
+
+<Pitfall title="Zero counts are not zero probabilities, and clipping is not a fix" misconception="clip-is-a-fix">
+
+The belief: once `psis.clip(1e-14, 1-1e-14)` removes the `-inf`, the zero-count problem is solved. The fix: the clip replaces $-\infty$ by $\log 10^{-14} \approx -32.2$, a penalty chosen by an arbitrary constant, the same for a class of 3 documents and of 3,000, and large enough to act as a near-veto. Laplace smoothing (der-6-3-6) gives a penalty of $\log\frac{1}{n_k + 2}$ that comes from a stated prior and grows, slowly, with the evidence for absence.
+
+</Pitfall>
+
+<Pitfall title="Check for zeros before you clip" misconception="clip-before-check">
+
+Spam exercise task 21 asks whether any word appears in only one class and runs `np.sum(psis[0]==0)` and `np.sum(psis[1]==0)`. Both print 0, which seems to say "no". But `psis` was clipped in task 18, so no entry can equal 0. Before the clip, `np.sum(psis==0)` was 34. Run diagnostics on the raw estimates; a related teaching moment in task 18 is that `psis.clip(...)` without assignment changes nothing.
+
+</Pitfall>
+
+<Pitfall title="psis[k, j] is ψ_jk: the code transposes the indices" misconception="psis-transposed">
+
+The math writes $\psi_{jk}$ (word first, class second); the notebooks store `psis` with shape `(K, d)`, so `psis[k, j]` $= \psi_{jk}$. Spam task 13 computes `np.mean(X_train[y_train==1, 0])` $= 0.0811$: the spam-class frequency of vocabulary word 0, which lives at `psis[1, 0]`, not `psis[0, 1]`. Code classes and words are numbered from 0.
+
+</Pitfall>
+
+<Pitfall title="Naive Bayes probabilities are not calibrated" misconception="nb-calibrated">
+
+The belief: NB's posterior $p(y = k \mid x)$ is a trustworthy probability. The fix: correlated words are counted as independent evidence. If a word were duplicated as two features, its weight $w_j$ would enter the log-odds twice (der-6-3-8 step 6), pushing the posterior toward 0 or 1: overconfidence. When the class depends on how words co-occur rather than on each word alone, the product of marginals can miss the evidence and the posterior is too close to the prior: underconfidence (q-u6-l3-016 works a case). Both directions occur, which is the L9 p.27 poll (c). Use NB's argmax, and calibrate before reporting its probabilities.
+
+</Pitfall>
+
+<Pitfall title="The assumption is false for text, and NB works anyway" misconception="nb-assumption-holds">
+
+The belief: Naive Bayes works because words really are independent given the class. The fix: they are not (in real report text, "intensive" and "care" co-occur in serious reports far more than chance). Classification needs only the argmax to be right, and the errors in the probabilities often leave the ranking of the classes intact. That is why NB has a long record as a strong text baseline (L9 p.27 poll, (b) and (d); p.40 poll (c)).
+
+</Pitfall>
+
+<Pitfall title="Conditional independence is not independence" misconception="marginal-vs-conditional-independence">
+
+The belief: NB assumes words are independent. The fix: it assumes they are independent within each class, $p(x \mid y) = \prod_j p(x_j \mid y)$. Marginally, words can be strongly correlated, because both depend on the class: "arrhythmia" and "hospitalized" are correlated across all reports partly because both are more common in serious ones. Neither form of independence implies the other.
+
+</Pitfall>
+
+<Pitfall title="Bernoulli Naive Bayes is generative" misconception="nb-is-discriminative">
+
+The belief: since NB is used for classification and its boundary is linear, it is a discriminative model. The fix: it models $p(x \mid y)$ and $p(y)$, a full joint over documents and labels (def-6-3-3), and could sample new documents. Its posterior has the logistic form (der-6-3-8), but its parameters come from fitting the joint, not the conditional (L9 p.39 poll (a)).
+
+</Pitfall>
+
+<Pitfall title="No gradient descent needed" misconception="nb-needs-gradient-descent">
+
+The belief: like logistic regression, Bernoulli NB has no closed form and must be fit by gradient descent. The fix: the log-likelihood splits into one concave coin-flip problem per $(j, k)$ and one simplex problem for $\phi$ (der-6-3-3), and each has a closed-form maximizer (der-6-3-4, der-6-3-5). Training is one pass of counting (L9 p.40 poll (b)).
+
+</Pitfall>
+
+<Pitfall title="Bernoulli NB scores absent words; multinomial NB does not" misconception="bernoulli-vs-multinomial-absent">
+
+The belief: the two event models differ only in using counts instead of 0/1 values. The fix: Bernoulli NB multiplies in $1 - \psi_{jk}$ for every vocabulary word the document lacks, so absence is evidence and the bias $b$ in der-6-3-8 collects those votes. Multinomial NB multiplies only over the tokens present, so absent words contribute nothing, and add-one smoothing divides by $|V|$ more tokens rather than by 2 more documents.
+
+</Pitfall>
+
+<Connections>
+
+- Companion: <Notebook path="Code Companions/Lecture 8 Code Companion.ipynb" cells="all" /> implements the L9 slides: `psis`, `phis`, and `nb_predictions` on 20 Newsgroups (the worked example's numbers).
+- Exercise: <Notebook path="Lectures/NaiveBayes_Spam_exercise_sol.ipynb" cells="all" /> tasks 13–21 build the same model on the spam data, including the 34 zeros and the clip; lesson 6.4 walks through all 24 tasks.
+- Before: 6.1 Generative vs discriminative (der-6-1-1 for the decision rule, der-6-1-3 for the split this lesson refines); 6.2 Text as features (the bag-of-words vectors $x$).
+- Next: 6.4 The spam exercise, walked through.
+- Unit 7: Gaussian discriminant analysis replaces each Bernoulli with a Gaussian; with a shared covariance its log-odds are also $w^\top x + b$, and with a diagonal covariance it is Gaussian Naive Bayes.
+- Graph neighbors: [[conditional-independence]], [[beta-prior]], [[log-sum-exp]], [[sigmoid]].
+
+</Connections>
+
+<HomeworkBridge hw="hw3" skills={["naive-bayes-assumption", "nb-log-likelihood-decomposition", "bernoulli-nb-mle", "categorical-prior-mle", "laplace-smoothing", "log-space-prediction", "nb-linear-classifier"]} />
+
+<Summary>
+
+- **Full categorical model:** $K(2^d - 1)$ free class-conditional parameters ($K\,2^d - 1$ with the prior). Hopeless at $d$ in the thousands.
+- **Naive Bayes assumption:** $p(x \mid y) = \prod_j p(x_j \mid y)$; the chain rule is exact, and the assumption drops the conditioning on earlier words.
+- **Bernoulli NB:** $p(x, y = k) = \phi_k\prod_j \psi_{jk}^{x_j}(1 - \psi_{jk})^{1 - x_j}$, with $Kd + K - 1$ free parameters.
+- **MLE:** the log-likelihood splits into one coin per $(j, k)$, so $\hat\psi_{jk} = s_{jk}/n_k$; a Lagrange multiplier gives $\hat\phi_k = n_k/n$. Closed form, no gradient descent.
+- **Laplace smoothing:** MAP under Beta(2, 2), $\hat\psi_{jk} = (s_{jk} + 1)/(n_k + 2)$; add-$\alpha$: $(s_{jk} + \alpha)/(n_k + 2\alpha)$. Clipping to $10^{-14}$ is an arbitrary near-veto, not a model.
+- **Prediction:** $s_k(x) = \log\phi_k + \sum_j[x_j\log\psi_{jk} + (1 - x_j)\log(1 - \psi_{jk})]$, $\hat y = \argmax_k s_k$, $\log p(y = k \mid x) = s_k - \mathrm{LSE}(s)$.
+- **Linear classifier:** $\log\frac{p(y=1\mid x)}{p(y=0\mid x)} = w^\top x + b$ with $w_j = \log\frac{\psi_{j1}(1 - \psi_{j0})}{\psi_{j0}(1 - \psi_{j1})}$, so $p(y = 1 \mid x) = \sigma(w^\top x + b)$.
+- **Multinomial NB (beyond the slides):** $\hat\theta_{vk}$ = token share; add-one gives $(T_{vk} + 1)/(\sum_{v'} T_{v'k} + |V|)$; absent words contribute nothing.
+
+</Summary>

@@ -118,6 +118,7 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: naive-bayes
   summary: "A full model of d binary features has K(2^d - 1) free parameters; at d = 10,000 that exceeds the atoms in the universe."
+  derivation: der-6-3-1
 
 - id: naive-bayes-assumption
   label: "Naive Bayes assumption"
@@ -126,6 +127,7 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: naive-bayes
   summary: "Features are conditionally independent given the label: p(x|y) = prod_j p(x_j|y)."
+  derivation: der-6-3-2
 
 - id: bernoulli-naive-bayes
   label: "Bernoulli Naive Bayes"
@@ -142,6 +144,7 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: naive-bayes
   summary: "The Bernoulli NB log-likelihood is a sum of separate terms for phi and for each psi_jk, so each is optimized alone."
+  derivation: der-6-3-3
 
 - id: bernoulli-nb-mle
   label: "Bernoulli NB MLE"
@@ -150,6 +153,7 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: naive-bayes
   summary: "psi_jk is the fraction of class-k documents containing word j; phi_k is the class proportion n_k / n."
+  derivation: der-6-3-4
 
 - id: nb-prediction
   label: "NB prediction"
@@ -166,6 +170,7 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: naive-bayes
   summary: "Sum log-probabilities instead of multiplying probabilities to avoid underflow; recover posteriors with log-sum-exp."
+  derivation: der-6-3-7
 
 - id: laplace-smoothing
   label: "Laplace smoothing"
@@ -174,6 +179,7 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: naive-bayes
   summary: "Add pseudo-counts so no word gets probability 0 in a class; the MAP estimate under a Beta prior. Not on the slides."
+  derivation: der-6-3-6
 
 - id: nb-linear-classifier
   label: "NB is a linear classifier"
@@ -182,6 +188,7 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: naive-bayes
   summary: "For Bernoulli features the NB log-odds are an affine function of x, the generative counterpart of logistic regression."
+  derivation: der-6-3-8
 
 - id: multinomial-naive-bayes
   label: "Multinomial Naive Bayes"
@@ -190,6 +197,24 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: naive-bayes
   summary: "NB on word counts with one categorical distribution over the vocabulary per class. Beyond the slides."
+  derivation: der-6-3-9
+
+- id: categorical-prior-mle
+  label: "Class-prior MLE"
+  type: method
+  field: statistics
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "phi_k = n_k / n: maximize sum_k n_k log phi_k on the simplex with a Lagrange multiplier; holds for any class-conditional model."
+  derivation: der-6-3-5
+
+- id: zero-count-problem
+  label: "Zero-count problem"
+  type: concept
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "A word never seen in class k gets MLE psi_jk = 0, so log psi_jk = -inf and one word vetoes the class; the spam solution's psis had 34 such zeros."
 
 - id: gaussian-mixture
   label: "Gaussian mixture"
