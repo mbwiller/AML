@@ -49,7 +49,7 @@ prerequisites:                            # node ids it REQUIRES (concepts or gl
   - log-likelihood
   - lagrange-multipliers
 homework: [hw3]                           # ids from src/content/homework/
-cases: [notes]                            # ids from src/content/cases/
+cases: [notes]                            # ids from src/content/cases/ (a lesson may cite a case before its page exists; the validator warns until it does)
 companions:                               # notebook cells this lesson uses
   - { notebook: "Code Companions/Lecture 8 Code Companion.ipynb", cells: "9-14" }
   - { notebook: "Lectures/NaiveBayes_Spam_exercise_sol.ipynb", cells: "all" }
@@ -59,7 +59,7 @@ authors: [jide]
 ---
 ```
 
-Rules: `status: draft` lessons build but are hidden from navigation and the Atlas. `review` means ready for `math-reviewer` and `content-reviewer`. `published` requires both reports attached to the PR with zero unresolved findings.
+Rules: `status: draft` lessons build but are hidden from navigation and the Atlas in production builds (they are visible under `pnpm dev`). `review` means ready for `math-reviewer` and `content-reviewer`. `published` requires both reports attached to the PR with zero unresolved findings.
 
 ## 3. Lesson anatomy checklist
 
@@ -245,7 +245,7 @@ Edge types: `requires` (default for derived edges), `generalizes`, `contrasts`, 
     Naive Bayes assumes that, given the label, the features are
   options:
     - { text: "independent", correct: true }
-    - { text: "identically distributed", misconception: nb-iid-confusion }
+    - { text: "identically distributed", misconception: nb-iid-confusion }   # misconception ids are optional (true/false items have none) but tag distractors wherever a Pitfall exists
     - { text: "uncorrelated across documents", misconception: nb-marginal-vs-conditional }
     - { text: "Gaussian", misconception: nb-requires-gaussian }
   explanation: |
@@ -290,7 +290,7 @@ Cards are generated at build time from every `<Definition>` (statement → formu
 
 `src/content/cases/notes.mdx`: frontmatter `id, title, tagline, variables (list), generativeModel (TeX + parameters), seed, usedIn (lesson ids)`; body tells the story in ≤300 words and shows a sample of the data. Specifications for all eight cases are in `docs/reference/pedagogy-and-curriculum.md` Part C.
 
-`src/content/homework/hw3.mdx`: frontmatter `id, title, due (ISO date), live (bool), units (ids)`; body is the readiness gate (one row per skill: skill → lesson section → check id) and, once `live: false`, the problem-by-problem walkthrough. HW1 and HW2 maps are already written in `docs/course-map/05-homeworks.md`.
+`src/content/homework/hw3.mdx`: frontmatter `id, title, due (ISO date, quoted or bare), live (bool), units (ids)`; body is the readiness gate (one row per skill: skill → lesson section → check id) and, once `live: false`, the problem-by-problem walkthrough. HW1 and HW2 maps are already written in `docs/course-map/05-homeworks.md`.
 
 ## 10. Definition of done for a lesson
 

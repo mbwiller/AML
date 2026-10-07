@@ -83,10 +83,16 @@ Trade-offs accepted: islands cannot share React context across islands (use nano
 2. **CVE-2026-103923 / GHSA-238p-pmpm-9mq7** (low severity, prototype-pollution read gadget) is patched in 0.18.2 ([advisory](https://github.com/advisories/GHSA-238p-pmpm-9mq7)). You want >= 0.18.2.
 3. **`rehype-katex` 7.0.1 (last published 2024-08-19) depends on `katex` `^0.16.0`**, and **Mafs 0.21.0 also depends on `katex` `^0.16`** (npm registry metadata). Left alone, pnpm would install KaTeX 0.16.47 for those packages while you load the 0.19 stylesheet, and every equation would render unstyled because of the class-prefix change.
 
-**Fix:** pin one KaTeX everywhere with a pnpm override in `package.json`:
+**Fix:** pin one KaTeX everywhere with a pnpm override. pnpm 12 no longer reads the `pnpm` field in `package.json` (it warns and ignores it), so the override lives in `pnpm-workspace.yaml`, together with the build-script allowlist:
 
-```json
-"pnpm": { "overrides": { "katex": "0.19.0" } }
+```yaml
+# pnpm-workspace.yaml
+packages: ['.']
+overrides:
+  katex: 0.19.0
+allowBuilds:
+  esbuild: true
+  lefthook: true
 ```
 
 `rehype-katex` only calls `katex.renderToString`, whose signature is unchanged, so the override is safe (several projects did exactly this after 0.18, e.g. [hamidfzm/glyph#866](https://github.com/hamidfzm/glyph/pull/866)). Import the stylesheet from the same package (`import 'katex/dist/katex.min.css'`) so CSS and renderer can never drift. If you would rather avoid the override, the alternative is a 25-line in-repo rehype plugin (`src/lib/markdown/rehype-katex-local.ts`) that visits `.math-inline`/`.math-display` nodes and calls `katex.renderToString` directly — Claude writes that reliably.

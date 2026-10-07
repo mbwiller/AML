@@ -19,7 +19,7 @@ pre-commit:
 
     - name: eslint
       glob: '*.{ts,tsx,astro,js,mjs}'
-      run: pnpm exec eslint {staged_files}
+      run: pnpm exec eslint --no-warn-ignored {staged_files}
 
 # commit-msg: conventional commits via commitlint. @commitlint/cli is not installed
 # yet; add it (plus @commitlint/config-conventional and commitlint.config.js) and
