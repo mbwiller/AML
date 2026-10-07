@@ -1,0 +1,12 @@
+---
+id: zero-one-loss
+term: 0/1 loss
+aliases: [zero-one loss, 0-1 loss, misclassification loss]
+field: evaluation
+firstUsedIn: u3-logistic-regression-and-mle
+related: [expectation, argmax, bayes-rule]
+---
+
+**What it is.** The loss that charges 1 for a wrong label and 0 for a right one, $\ell(\hat y, y) = \ind{\hat y \ne y}$. Its average over a dataset is the error rate (one minus accuracy), and its expectation under the data distribution is the probability of a mistake, $P(h(X) \ne Y)$.
+
+**How ML uses it.** It is the loss we usually care about in classification but cannot train with directly: it is flat almost everywhere and jumps at the boundary, so its gradient carries no information. We fit surrogate losses (cross-entropy, which is the negative log-likelihood, or the hinge loss) instead. Its true-risk minimizer is known exactly: the Bayes classifier $h^\star(x) = \argmax_y p(y \mid x)$.

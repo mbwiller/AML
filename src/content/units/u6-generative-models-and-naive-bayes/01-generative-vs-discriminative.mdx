@@ -1,0 +1,502 @@
+---
+title: "Generative vs discriminative models"
+unit: u6-generative-models-and-naive-bayes
+order: 1
+slug: generative-vs-discriminative
+summary: "Model p(y|x) or model p(x|y) and p(y)? Derive the Bayes classifier, prove it is optimal for 0/1 loss, and show that the MLE of a joint model splits into a prior problem and a class-conditional problem."
+lectures:
+  - { lecture: 8, pages: "19-43" }
+  - { lecture: 9, pages: "2-5" }
+concepts:
+  - generative-model
+  - discriminative-model
+  - class-conditional-distribution
+  - class-prior
+  - joint-model
+  - bayes-classifier
+  - bayes-classifier-optimality
+  - generative-mle-factorization
+prerequisites:
+  - conditional-probability
+  - bayes-rule
+  - prior-likelihood-posterior
+  - chain-rule-probability
+  - argmax
+  - softmax
+  - categorical
+  - zero-one-loss
+  - expectation
+  - iid
+  - log-likelihood
+  - log-rules
+homework: [hw3]
+cases: [adverse]
+companions:
+  - { notebook: "Lectures/NaiveBayes_Spam_exercise_sol.ipynb", cells: "35" }
+estimatedMinutes: 45
+status: review
+authors: [jide]
+---
+
+<Frame
+  data="labeled pairs $(x^{(i)}, y^{(i)})$, $i = 1, \dots, n$, with $y \in \{1, \dots, K\}$"
+  model="a joint $p_\theta(x, y) = p_\psi(x \mid y)\,p_\phi(y)$, with $\theta = (\phi, \psi)$"
+  objective="maximize $\frac{1}{n}\sum_i \log p_\theta(x^{(i)}, y^{(i)})$"
+  optimizer="closed form in this unit (Naive Bayes, GDA)"
+/>
+
+<Objectives>
+
+- Distinguish a discriminative model $p_\theta(y \mid x)$ from a generative model $p_\theta(x \mid y)\,p_\theta(y)$, and say what each one learns.
+- Derive the Bayes classifier $\hat y = \argmax_k p(x \mid y = k)\,p(y = k)$, explain why $p(x)$ drops out, and recover the normalized posterior when you need it.
+- Prove that the Bayes classifier has the smallest possible 0/1 risk.
+- Derive the maximum-likelihood objective for a joint model from the i.i.d. assumption, and show that it splits into a prior problem and a class-conditional problem.
+- Use the prior correctly: explain why a larger class-conditional likelihood does not by itself decide the label.
+
+</Objectives>
+
+<Hook>
+
+A patient in the ADVERSE post-marketing cohort starts the VASCO drug. You know their age, kidney function (eGFR), potassium, NSAID use, dose, and diabetes status. Will they have a hyperkalemia event within 90 days?
+
+There are two ways to build a predictor. One draws a boundary through patient space and reads off a risk. The other learns what a typical patient with an event looks like, what a typical patient without one looks like, and how common events are, then asks which story explains this patient better. Events in this cohort are rare. Which approach notices that, and where does it enter the arithmetic?
+
+{/* hook-figure: the generative-vs-discriminative-toggle widget below serves as the hook's explorable */}
+
+</Hook>
+
+## What the two kinds of model learn
+
+Every classifier in this course so far answered one question: given $x$, how probable is each label? We now ask a different question first: given a label, how probable is this $x$? The answer to the second question, combined with how common each label is, also answers the first.
+
+<Definition id="def-6-1-1" title="Generative model" source="L8 p.25">
+
+A model of the probability distribution of the data $x$, for example a multinomial (counts from repeated [[categorical]] draws) or a Gaussian. Computationally, it is a box that takes random seeds and outputs samples that look like $x$. <SlideRef lecture={8} pages="25" />
+
+Also written as: $P_\theta(x)$ (the slides), $p(\mathbf{x})$ with bold $\mathbf{x}$ (many textbooks).
+
+</Definition>
+
+<Definition id="def-6-1-2" title="Discriminative model" source="L8 p.30">
+
+A model of the [[conditional-probability|conditional distribution]] of the label given the input,
+
+$$p_\theta(y \mid x) : \mathcal{X} \to (\mathcal{Y} \to [0, 1]).$$
+
+For each $x$ it returns a distribution over labels. [[softmax|Softmax regression]] is the standard example: it scores each class with a linear function and normalizes. A discriminative model learns the decision boundary and defines no distribution over $x$. <SlideRef lecture={8} pages="30" />
+
+Also written as: $P_\theta(y \mid x)$ (the slides), $p(y \mid \mathbf{x}; \theta)$ (many textbooks).
+
+</Definition>
+
+<Definition id="def-6-1-3" title="Class-conditional distribution" source="L8 p.31">
+
+For each label $y = k$, a distribution over inputs, $p_\theta(x \mid y = k)$. It scores how typical $x$ looks for class $k$: in the spam example, $p_\theta(x \mid y = 1)$ scores how spam-like an email is and $p_\theta(x \mid y = 0)$ how non-spam-like. As a map,
+
+$$p_\theta(x \mid y) : \mathcal{Y} \to (\mathcal{X} \to [0, 1]).$$
+
+There are $K$ of them, one per class, and each sums (or integrates) to 1 over $x$. <SlideRef lecture={8} pages="31" />
+
+Also written as: $P_\theta(\mathbf{x} \mid y = k)$ (the slides, bold $\mathbf{x}$), $p(x \mid y)$ when $\theta$ is left implicit.
+
+</Definition>
+
+<Definition id="def-6-1-4" title="Class prior" source="L8 p.38">
+
+The probability of each class before seeing $x$, $p_\theta(y = k)$, a [[categorical]] distribution over $\mathcal{Y}$:
+
+$$p_\theta(y) : \mathcal{Y} \to [0, 1].$$
+
+In the spam example it is the fraction of emails that are spam. <SlideRef lecture={8} pages="38" />
+
+Also written as: $\phi_k$ (this course, from 6.3 on), $\pi_k$ (many textbooks).
+
+</Definition>
+
+<Definition id="def-6-1-5" title="Generative model for classification (joint model)" source="L8 p.41">
+
+A pair $p_\theta(x \mid y)$ and $p_\theta(y)$. Together they define the joint distribution over input-label pairs,
+
+$$p_\theta(x, y) = p_\theta(x \mid y)\,p_\theta(y), \qquad p_\theta(x, y) : \mathcal{X} \times \mathcal{Y} \to [0, 1].$$
+
+The product is the [[chain-rule-probability|product rule]]. A generative model assigns higher probability to $(x, y)$ pairs that are more compatible. <SlideRef lecture={8} pages="41" />
+
+Also written as: $P_\theta(x, y)$ (the slides), $p(\mathbf{x}, y; \theta)$ (many textbooks).
+
+</Definition>
+
+<Callout type="slide">
+
+The slides write the maps with codomain $[0, 1]$ (L8 pp.31, 38, 41). That is exact when $x$ is discrete, as with bag-of-words vectors. When $x$ is continuous (eGFR, potassium), $p_\theta(x \mid y)$ is a density: it integrates to 1, and its values can exceed 1. Everything in this lesson holds for both cases with sums replaced by integrals. The slides also write $\mathbf{x}$ in bold and the dataset as $(x^1, y^1), \dots$; we write $x$ and $(x^{(i)}, y^{(i)})$.
+
+</Callout>
+
+The comparison on L8 p.33, restated:
+
+| | Discriminative | Generative |
+|---|---|---|
+| Models | $p_\theta(y \mid x)$ directly | $p_\theta(x \mid y)$ and $p_\theta(y)$, then deduces $p(y \mid x)$ |
+| Learns | the decision boundary | the distribution of each class |
+| Examples | logistic and softmax regression | Naive Bayes, Gaussian discriminant analysis |
+
+Because a generative model describes $x$ itself, it can also fill in missing features, flag inputs that are unlikely under every class (anomaly detection), and draw new samples <SlideRef lecture={8} pages="34" />. A discriminative model can do none of these.
+
+<Check ids={["q-u6-l1-001", "q-u6-l1-003", "q-u6-l1-008", "q-u6-l1-009"]} />
+
+<Intuition>
+
+Take one feature, eGFR, and two classes. A generative model draws two curves over the eGFR axis: $p(x \mid y = 0)$ for patients without an event and $p(x \mid y = 1)$ for patients with one. On their own, the curves answer "how typical is this eGFR for each class?" They do not answer "which class is this patient in?", because they ignore how common each class is.
+
+Multiply each curve by its prior. When events are rare, the event curve is scaled down by a small $p(y = 1)$, so it has to be much taller than the no-event curve before it wins. The predicted label at each eGFR is whichever scaled curve is higher, and the decision boundary sits where the two scaled curves cross. Raise the prior and the boundary slides toward the no-event side; lower it and the boundary slides away. A discriminative model draws only the boundary, so nothing in it corresponds to the prior's separate dial.
+
+In the widget below, the right panel shows the two scaled curves and their crossing point; the left panel shows the logistic-regression boundary on the same data.
+
+</Intuition>
+
+## Deriving the Bayes classifier
+
+We want a label, so we ask which label is most probable given $x$ <SlideRef lecture={8} pages="28" />. A generative model does not store $p(y \mid x)$; it stores $p(x \mid y)$ and $p(y)$. [[bayes-rule|Bayes' rule]] converts one into the other; in its vocabulary, $p(y)$ is the prior, $p(x \mid y)$ the likelihood, and $p(y \mid x)$ the [[prior-likelihood-posterior|posterior]].
+
+<Derivation
+  id="der-6-1-1"
+  title="The Bayes classifier, and the posterior it comes from"
+  goalTex="\hat y = \argmax_{k}\; p(y = k \mid x) \;\text{ computed from } p(x \mid y) \text{ and } p(y)"
+  resultTex="\hat y = \argmax_{k}\; p(x \mid y = k)\,p(y = k), \qquad p(y = k \mid x) = \frac{p(x \mid y = k)\,p(y = k)}{\sum_{k'=1}^{K} p(x \mid y = k')\,p(y = k')}"
+  source="L8 p.39 (the drop-the-denominator step is shown; the normalized posterior is not)"
+>
+
+<Chunk title="Start from the most probable label and apply Bayes' rule">
+
+<Step justification="the prediction is the most probable label given $x$ (L8 p.28)">
+$$\hat y = \argmax_{k}\; p(y = k \mid x)$$
+</Step>
+
+<Step justification="Bayes' rule, valid whenever $p(x) > 0$" sticky="bayes-rule">
+$$\hat y = \argmax_{k}\; \frac{p(x \mid y = k)\,p(y = k)}{p(x)}$$
+</Step>
+
+<Step justification="$p(x)$ does not depend on $k$; dividing every candidate by the same positive number does not change which one is largest" sticky="argmax" fadeable>
+$$\hat y = \argmax_{k}\; p(x \mid y = k)\,p(y = k)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Recover p(x) by marginalization when you need the posterior itself">
+
+<Step justification="marginalization: summing the joint over all labels gives the marginal of $x$" sticky="conditional-probability">
+$$p(x) = \sum_{k'=1}^{K} p(x, y = k')$$
+</Step>
+
+<Step justification="product rule on each term of the sum" sticky="chain-rule-probability" fadeable>
+$$p(x) = \sum_{k'=1}^{K} p(x \mid y = k')\,p(y = k')$$
+</Step>
+
+<Step justification="Bayes' rule, $p(y=k\mid x) = p(x\mid y=k)\,p(y=k)/p(x)$, with $p(x)$ replaced by step 5" sticky="bayes-rule">
+$$p(y = k \mid x) = \frac{p(x \mid y = k)\,p(y = k)}{\sum_{k'=1}^{K} p(x \mid y = k')\,p(y = k')}$$
+</Step>
+
+<Step justification="sum step 6 over $k$: the numerators add up to the denominator, so the posterior is a distribution over labels">
+$$\sum_{k=1}^{K} p(y = k \mid x) = \frac{\sum_{k=1}^{K} p(x \mid y = k)\,p(y = k)}{\sum_{k'=1}^{K} p(x \mid y = k')\,p(y = k')} = 1$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Read the result as the three-step algorithm on L8 p.40: score the new $x$ with each class-conditional, multiply each score by that class's prior, and output the class with the highest product. The products $p(x \mid y = k)\,p(y = k)$ are the joint $p(x, y = k)$; they rank the classes correctly but are not probabilities until you divide by their sum. You need that division whenever the number itself matters, for example to compare an ADVERSE patient's event risk against a clinical action threshold.
+
+<Check ids={["q-u6-l1-005", "q-u6-l1-007", "q-u6-l1-013", "q-u6-l1-018"]} />
+
+## The Bayes classifier is the best possible classifier
+
+<Callout type="beyond">
+
+The slides state the rule $\hat y = \argmax_y p(y \mid x)$ (L8 p.28) without saying why it is the right rule. Here is the reason: under the [[zero-one-loss|0/1 loss]], no classifier has a lower true risk.
+
+</Callout>
+
+<Theorem id="thm-6-1-1" title="Optimality of the Bayes classifier" source="beyond the slides; rule stated on L8 p.28">
+
+Let $(X, Y)$ have joint distribution $p$. For every classifier $h : \mathcal{X} \to \{1, \dots, K\}$, the 0/1 risk satisfies $R(h) \ge R(h^\star)$, where $h^\star(x) = \argmax_k p(y = k \mid x)$. The minimum value is the Bayes error, an [[expectation]] over inputs: $R(h^\star) = 1 - \E_X[\max_k p(y = k \mid X)]$.
+
+</Theorem>
+
+The idea: the risk is an expectation over inputs, so if one classifier makes the smallest possible error at every single $x$, it also has the smallest average.
+
+<Derivation
+  id="der-6-1-2"
+  title="The Bayes classifier minimizes 0/1 risk"
+  goalTex="\min_{h}\; R(h) = \min_{h}\; \E_{(X, Y)}\big[\ind{h(X) \ne Y}\big]"
+  resultTex="h^\star(x) = \argmax_{k}\; p(x \mid y = k)\,p(y = k), \qquad R(h^\star) = 1 - \E_X\Big[\max_{k}\; p(y = k \mid X)\Big] \le R(h) \text{ for every } h"
+  source="beyond the slides (pointwise argument); the rule is stated on L8 p.28 and derived from Bayes' rule on L8 p.39"
+>
+
+<Chunk title="Write the risk of an arbitrary classifier as an average over inputs">
+
+<Step justification="true risk under the 0/1 loss, for an arbitrary classifier $h$" sticky="zero-one-loss">
+$$R(h) = \E_{(X, Y)}\big[\ind{h(X) \ne Y}\big]$$
+</Step>
+
+<Step justification="the expectation of an indicator is the probability of its event" sticky="expectation">
+$$R(h) = P\big(h(X) \ne Y\big)$$
+</Step>
+
+<Step justification="law of total expectation: condition on $X$, then average over $X$" sticky="expectation">
+$$R(h) = \E_X\Big[P\big(Y \ne h(X) \mid X\big)\Big]$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Bound the error one input at a time">
+
+<Step justification="complement rule: for fixed $x$, $p(\cdot \mid x)$ sums to 1 over the labels" sticky="conditional-probability" fadeable>
+$$P\big(Y \ne h(x) \mid X = x\big) = 1 - p\big(y = h(x) \mid x\big)$$
+</Step>
+
+<Step justification="the probability of any one label is at most the largest label probability" fadeable>
+$$1 - p\big(y = h(x) \mid x\big) \ge 1 - \max_{k}\; p(y = k \mid x)$$
+</Step>
+
+<Step justification="substitute step 4 into step 3">
+$$R(h) = \E_X\Big[1 - p\big(y = h(X) \mid X\big)\Big]$$
+</Step>
+
+<Step justification="step 5 holds at every $x$, and expectation preserves a pointwise inequality" sticky="expectation">
+$$R(h) \ge \E_X\Big[1 - \max_{k}\; p(y = k \mid X)\Big]$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Find the classifier that attains the bound">
+
+<Step justification="step 5 is an equality exactly when $h(x)$ is a most probable label; choosing that label at every $x$ makes step 7 an equality, so this $h^\star$ attains the lower bound" sticky="argmax">
+$$h^\star(x) = \argmax_{k}\; p(y = k \mid x)$$
+</Step>
+
+<Step justification="substitute $h^\star$ into step 6 and use linearity of expectation; this minimum value is the Bayes error" sticky="expectation" fadeable>
+$$R(h^\star) = 1 - \E_X\Big[\max_{k}\; p(y = k \mid X)\Big]$$
+</Step>
+
+<Step justification="step 3 of der-6-1-1, for $x$ with $p(x) > 0$: dropping $p(x)$ does not change the argmax">
+$$h^\star(x) = \argmax_{k}\; p(x \mid y = k)\,p(y = k)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Two consequences. First, ties do not matter: any most-probable label attains the bound. Second, the theorem is about the true distribution $p$. A generative classifier plugs in fitted $p_\theta(x \mid y)$ and $p_\theta(y)$; it inherits optimality only to the extent that the fit is right. The Bayes error is usually above zero, because classes overlap: two patients with identical features can have different outcomes.
+
+<Check ids={["q-u6-l1-015", "q-u6-l1-016", "q-u6-l1-019"]} />
+
+## Fitting a generative model by maximum likelihood
+
+We have a rule that uses $p(x \mid y)$ and $p(y)$. Which parameters should we plug in? The slides answer with the maximum-likelihood principle <SlideRef lecture={8} pages="43" />: choose $\theta$ so that $p_\theta$ assigns high probability to the training pairs. Three tools carry the derivation: the [[iid|i.i.d.]] assumption factors the probability of the dataset, the [[log-rules]] turn the product into a sum, and the [[argmax]] is unchanged by increasing transformations, which gives the [[log-likelihood]]. Write the parameters as $\theta = (\phi, \psi)$, where $\phi$ parametrizes the prior $p_\phi(y)$ and $\psi = (\psi_1, \dots, \psi_K)$ the class-conditionals $p_{\psi_k}(x \mid y = k)$, with no parameter shared between the prior and the class-conditionals. Naive Bayes in 6.3 has exactly this form.
+
+<Derivation
+  id="der-6-1-3"
+  title="From the probability of the dataset to two separate MLE problems"
+  goalTex="\max_{\theta}\; \frac{1}{n}\sum_{i=1}^{n} \log p_\theta(x^{(i)}, y^{(i)}), \qquad \theta = (\phi, \psi)"
+  resultTex="\hat\phi = \argmax_{\phi} \sum_{i=1}^{n} \log p_\phi(y^{(i)}), \qquad \hat\psi_k = \argmax_{\psi_k} \sum_{i:\, y^{(i)} = k} \log p_{\psi_k}(x^{(i)} \mid y = k)"
+  source="L8 p.43 and L9 p.5 (objective stated; the step from the probability of D to the average log, and the split, are not shown)"
+>
+
+<Chunk title="Turn the probability of the dataset into an average log-likelihood">
+
+<Step justification="the dataset is one joint outcome of $n$ draws">
+$$P_\theta(\D) = P_\theta\big((x^{(1)}, y^{(1)}), \dots, (x^{(n)}, y^{(n)})\big)$$
+</Step>
+
+<Step justification="i.i.d.: independent draws multiply, and every draw has the same distribution $p_\theta$" sticky="iid">
+$$P_\theta(\D) = \prod_{i=1}^{n} p_\theta(x^{(i)}, y^{(i)})$$
+</Step>
+
+<Step justification="$\log$ is strictly increasing, so it does not change the maximizer, for any $\theta$ with $P_\theta(\D) > 0$" sticky="argmax">
+$$\argmax_{\theta}\; P_\theta(\D) = \argmax_{\theta}\; \log P_\theta(\D)$$
+</Step>
+
+<Step justification="the log of a product is the sum of the logs" sticky="log-rules" fadeable>
+$$\log P_\theta(\D) = \sum_{i=1}^{n} \log p_\theta(x^{(i)}, y^{(i)})$$
+</Step>
+
+<Step justification="multiplying by the positive constant $1/n$ does not move the argmax" sticky="argmax">
+$$\argmax_{\theta}\; \log P_\theta(\D) = \argmax_{\theta}\; \tfrac{1}{n} \log P_\theta(\D)$$
+</Step>
+
+<Step justification="substitute step 4; this is the objective on L8 p.43">
+$$\argmax_{\theta}\; \tfrac{1}{n} \log P_\theta(\D) = \argmax_{\theta}\; \tfrac{1}{n}\sum_{i=1}^{n} \log p_\theta(x^{(i)}, y^{(i)})$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Factor the joint and split the sum">
+
+<Step justification="product rule; the class-conditional depends only on $\psi$ and the prior only on $\phi$" sticky="chain-rule-probability">
+$$\log p_\theta(x^{(i)}, y^{(i)}) = \log\big[p_\psi(x^{(i)} \mid y^{(i)})\, p_\phi(y^{(i)})\big]$$
+</Step>
+
+<Step justification="the log of a product is the sum of the logs" sticky="log-rules" fadeable>
+$$\log p_\theta(x^{(i)}, y^{(i)}) = \log p_\psi(x^{(i)} \mid y^{(i)}) + \log p_\phi(y^{(i)})$$
+</Step>
+
+<Step justification="sum step 8 over $i$ and regroup into a prior term and a class-conditional term; $\ell$ is the log-likelihood of step 4" sticky="log-likelihood">
+$$\ell(\phi, \psi) = \underbrace{\sum_{i=1}^{n} \log p_\phi(y^{(i)})}_{\ell_{\mathrm{prior}}(\phi)} + \underbrace{\sum_{i=1}^{n} \log p_\psi(x^{(i)} \mid y^{(i)})}_{\ell_{\mathrm{cc}}(\psi)}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Maximize each part on its own">
+
+<Step justification="the first term contains no $\psi$ and the second no $\phi$, and the two are chosen independently, so the maximum of the sum is the sum of the maxima" fadeable>
+$$\max_{\phi, \psi}\; \ell(\phi, \psi) = \max_{\phi}\; \ell_{\mathrm{prior}}(\phi) + \max_{\psi}\; \ell_{\mathrm{cc}}(\psi)$$
+</Step>
+
+<Step justification="group the examples by label; class $k$ uses only its own parameters $\psi_k$">
+$$\ell_{\mathrm{cc}}(\psi) = \sum_{k=1}^{K} \;\sum_{i:\, y^{(i)} = k} \log p_{\psi_k}(x^{(i)} \mid y = k)$$
+</Step>
+
+<Step justification="only the class-$k$ block contains $\psi_k$, so the argument of step 10 applies once per class">
+$$\hat\psi_k = \argmax_{\psi_k} \sum_{i:\, y^{(i)} = k} \log p_{\psi_k}(x^{(i)} \mid y = k)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+So fitting a generative classifier is $K + 1$ small problems: one for the prior, using only the labels, and one per class, using only that class's examples. When the prior is [[categorical]], its MLE is the vector of class proportions, $\hat\phi_k = n_k / n$; lesson 6.3 derives this with a Lagrange multiplier. If a parameter is shared across classes (GDA with one covariance matrix, Unit 7), the class-conditional problems couple to each other, but they still separate from the prior.
+
+<Callout type="slide">
+
+L8 p.43 calls $\frac{1}{n}\sum_i \log P_\theta(x^{(i)}, y^{(i)})$ "the probability of observing the dataset $D$". Strictly, the probability is the product in step 2; the objective is its log divided by $n$. Steps 3, 5, and 6 show that both have the same maximizer, which is why the slide can treat them as the same goal.
+
+</Callout>
+
+<Check ids={["q-u6-l1-002", "q-u6-l1-010", "q-u6-l1-014", "q-u6-l1-020"]} />
+
+## Which to use
+
+<Callout type="slide">
+
+L9 p.3 writes the discriminative training objective as $P_\theta(y \mid x) = \prod_{i=1}^{n} P_\theta(y^{(i)} \mid x^{(i)})$. The left side looks like the model for one input, but the right side is the conditional likelihood of the whole dataset. We write it as
+
+$$P_\theta\big(y^{(1)}, \dots, y^{(n)} \mid x^{(1)}, \dots, x^{(n)}\big) = \prod_{i=1}^{n} p_\theta(y^{(i)} \mid x^{(i)}).$$
+
+Compare it with step 2 of der-6-1-3: the discriminative likelihood conditions on the inputs; the generative likelihood also explains them.
+
+</Callout>
+
+The slides give the trade-off <SlideRef lecture={9} pages="3-4" />. If you only care about prediction, a discriminative model is simpler, because it never models $p(x)$, and in practice it is often more accurate; it can need many examples to place the boundary well. A generative model can learn from fewer examples, but only by making strong assumptions about $p(x \mid y)$; when those assumptions are wrong, the fitted model is biased. It also supports imputation, anomaly detection, and sampling.
+
+<Callout type="beyond">
+
+The "fewer samples, more bias" trade-off has a classical analysis: Ng and Jordan (2002) compared Naive Bayes with logistic regression and found that Naive Bayes approaches its (higher) asymptotic error with far fewer examples, while logistic regression reaches a lower asymptotic error given enough data. The spam exercise shows the large-data end of this: logistic regression beats Naive Bayes on the test set (lesson 6.4).
+
+</Callout>
+
+<Widget
+  name="generative-vs-discriminative-toggle"
+  dataset="adverse"
+  features={["age", "egfr"]}
+  challenge="Start the prior $p(y=1)$ at the cohort's event rate and drag it up to 0.5. Which way does the generative boundary move? Does the logistic-regression boundary move at all?"
+/>
+
+<Example title="The prior can outvote a likelier class-conditional">
+
+The class priors below are the ones the spam exercise solution estimates from its training split (3,837 emails; `NaiveBayes_Spam_exercise_sol.ipynb`, cell 35, `phis`): $\hat\phi_0 = 0.77195726$ for non-spam and $\hat\phi_1 = 0.22804274$ for spam. The class-conditional values are toy numbers in the style of the L8 p.37 poll, not outputs of the notebook: suppose an email $x$ has
+
+$$p(x \mid y = 1) = 0.6, \qquad p(x \mid y = 0) = 0.4.$$
+
+The email looks more spam-like than non-spam-like. Score each class by step 3 of der-6-1-1:
+
+$$p(x \mid y = 1)\,\hat\phi_1 = 0.6 \times 0.22804274 = 0.13682564,$$
+
+$$p(x \mid y = 0)\,\hat\phi_0 = 0.4 \times 0.77195726 = 0.30878290.$$
+
+The non-spam score is larger, so $\hat y = 0$. To report a probability, normalize by step 6:
+
+$$p(y = 1 \mid x) = \frac{0.13682564}{0.13682564 + 0.30878290} = \frac{0.13682564}{0.44560855} \approx 0.3071.$$
+
+How spam-like must an email look before it is flagged? Predict spam when $p(x \mid y = 1)\,\hat\phi_1 \ge p(x \mid y = 0)\,\hat\phi_0$. Divide both sides by the positive number $p(x \mid y = 0)\,\hat\phi_1$:
+
+$$\frac{p(x \mid y = 1)}{p(x \mid y = 0)} \ge \frac{\hat\phi_0}{\hat\phi_1} = \frac{0.77195726}{0.22804274} \approx 3.385.$$
+
+The class-conditional ratio here is $0.6 / 0.4 = 1.5$, well short of 3.385. The rarer a class, the stronger the evidence it needs.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u6-l1-004", "q-u6-l1-006", "q-u6-l1-011", "q-u6-l1-012", "q-u6-l1-017"]} />
+
+## Pitfalls
+
+<Pitfall title="A larger class-conditional likelihood does not decide the label" misconception="ignore-prior">
+
+The belief: if $p_\theta(x \mid y = 0) = 0.6$ and $p_\theta(x \mid y = 1) = 0.4$, always predict $y = 0$. The fix: the rule is $\argmax_k p(x \mid y = k)\,p(y = k)$. With the toy prior $p(y = 1) = 0.9$, the scores are $0.6 \times 0.1 = 0.06$ and $0.4 \times 0.9 = 0.36$, so the prediction is $y = 1$. This is the L8 p.37 poll trap; the slides answer it on p.38 with "we also need the probability of seeing a class".
+
+</Pitfall>
+
+<Pitfall title="The class-conditionals at one x do not sum to 1" misconception="class-conditionals-sum-to-one">
+
+The belief: $p_\theta(x \mid y = 0) + p_\theta(x \mid y = 1) = 1$ (L8 p.37 poll, statement b). The fix: $p_\theta(\cdot \mid y = 0)$ and $p_\theta(\cdot \mid y = 1)$ are two different distributions over $x$. Each sums to 1 over all $x$, not over $y$. What sums to 1 over $y$ is the posterior, step 7 of der-6-1-1. The toy values above add to 1 only by coincidence; $0.6$ and $0.7$ would be just as valid.
+
+</Pitfall>
+
+<Pitfall title="A joint score is not a probability" misconception="unnormalized-score-as-probability">
+
+The belief: since $p(x)$ can be dropped, $p(x \mid y = 1)\,p(y = 1)$ is the probability of class 1. The fix: dropping $p(x)$ is safe for the argmax only. The product is the joint $p(x, y = 1)$; for a high-dimensional $x$ it can be tiny for every class. Divide by the sum over classes (step 6) before you compare against a threshold or report a risk.
+
+</Pitfall>
+
+<Pitfall title="Spot the error: L9 p.3 writes the dataset likelihood as a model" misconception="dataset-likelihood-notation">
+
+L9 p.3 writes $P_\theta(y \mid x) = \prod_{i=1}^{n} P_\theta(y^{(i)} \mid x^{(i)})$. The left side is the model's output for one input; the right side is a number computed from all $n$ training pairs. The left side should be the conditional likelihood of the labels given the inputs, $P_\theta(y^{(1)}, \dots, y^{(n)} \mid x^{(1)}, \dots, x^{(n)})$, and the product follows from conditional independence of the labels given their inputs.
+
+</Pitfall>
+
+<Pitfall title="The fitted generative classifier is not automatically optimal" misconception="fitted-bayes-is-optimal">
+
+The belief: Naive Bayes is a Bayes classifier, so it has the lowest possible error. The fix: der-6-1-2 proves optimality for the true $p(y \mid x)$. A fitted model plugs in estimates $p_\theta$; if its assumptions are wrong (Naive Bayes assumes conditional independence), its decisions can be far from the Bayes classifier's.
+
+</Pitfall>
+
+<Pitfall title="The optimal classifier still makes mistakes" misconception="bayes-error-zero">
+
+The belief: the Bayes classifier, or any well-modeled classifier, has risk 0. The fix: the Bayes error $1 - \E_X[\max_k p(y = k \mid X)]$ is zero only when the classes never overlap, so that $\max_k p(y = k \mid x) = 1$ at almost every $x$. The pointwise bound in der-6-1-2 is the error that remains at each $x$ even after choosing the best label.
+
+</Pitfall>
+
+<Pitfall title="The prior and the class-conditionals do not need a joint search" misconception="joint-mle-coupled">
+
+The belief: changing the model for $p(x \mid y)$ changes the fitted prior, so everything must be optimized together. The fix: der-6-1-3 splits the log-likelihood into a term in $\phi$ alone and a term in $\psi$ alone. The prior's MLE depends only on the labels, whatever model you choose for the class-conditionals.
+
+</Pitfall>
+
+<Pitfall title="Neither family always wins" misconception="generative-always-worse">
+
+The belief: generative models are an outdated, always-worse alternative (or, conversely, that modeling more of the data always predicts better). The fix: a generative model makes stronger assumptions; when they roughly hold, or when data are scarce, it can match or beat a discriminative model, and it supports imputation and anomaly detection. With plenty of data and wrong assumptions, the discriminative model usually predicts better (L9 pp.3–4).
+
+</Pitfall>
+
+<Connections>
+
+- Notebook: the class priors in the worked example come from <Notebook path="Lectures/NaiveBayes_Spam_exercise_sol.ipynb" cells="35" /> (task 15 of the spam exercise).
+- Next: 6.2 Text as features turns emails and posts into the binary vectors $x$ that a class-conditional must model.
+- Then: 6.3 Naive Bayes applies der-6-1-3 to a Bernoulli class-conditional and der-6-1-1 to predict; the prior's MLE $\hat\phi_k = n_k / n$ is derived there.
+- Unit 7: Gaussian discriminant analysis uses Gaussian class-conditionals; with a shared covariance, the posterior of step 6 becomes a sigmoid of a linear function, the same form as logistic regression.
+- Graph neighbors: [[softmax]] (the discriminative side), [[prior-likelihood-posterior]] (the vocabulary of Bayes' rule), [[log-likelihood]].
+
+</Connections>
+
+<HomeworkBridge hw="hw3" skills={["bayes-classifier", "class-prior", "generative-mle-factorization"]} />
+
+<Summary>
+
+- **Discriminative** model: $p_\theta(y \mid x)$, learns the decision boundary. **Generative** model: $p_\theta(x \mid y)$ and $p_\theta(y)$, hence the joint $p_\theta(x, y) = p_\theta(x \mid y)\,p_\theta(y)$.
+- **Bayes classifier:** $\hat y = \argmax_k p(x \mid y = k)\,p(y = k)$. The prior matters; $p(x)$ does not, for the argmax.
+- **Posterior:** $p(y = k \mid x) = \dfrac{p(x \mid y = k)\,p(y = k)}{\sum_{k'} p(x \mid y = k')\,p(y = k')}$, needed whenever you report a probability.
+- **Optimality:** under 0/1 loss, $h^\star(x) = \argmax_k p(y = k \mid x)$ has the lowest risk of any classifier, $R(h^\star) = 1 - \E_X[\max_k p(y = k \mid X)]$ (the Bayes error), for the true $p$.
+- **MLE for a joint model:** maximize $\frac{1}{n}\sum_i \log p_\theta(x^{(i)}, y^{(i)})$; it splits into $\sum_i \log p_\phi(y^{(i)})$ (prior, from labels only) and $\sum_k \sum_{i:\, y^{(i)} = k} \log p_{\psi_k}(x^{(i)} \mid y = k)$ (one problem per class).
+- $p(x \mid y = 0)$ and $p(x \mid y = 1)$ are different distributions over $x$; their values at one $x$ need not sum to 1.
+
+</Summary>

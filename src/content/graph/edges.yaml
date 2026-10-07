@@ -1,0 +1,41 @@
+# Hand-curated concept-graph edges. Most `requires` edges are derived from each lesson's
+# prerequisites -> concepts; list here only what frontmatter cannot express.
+# Types: requires | generalizes | contrasts | uses. For `generalizes`, `to` generalizes `from`.
+
+# ---------- Unit 6: Generative models and Naive Bayes ----------
+
+# Within lesson 6.1 (course map L8 seed edges between concepts taught in the same lesson;
+# frontmatter derivation cannot produce these because both ends are `concepts` of 6.1).
+- { from: class-prior, to: joint-model, type: requires }
+- { from: class-conditional-distribution, to: joint-model, type: requires }
+- { from: joint-model, to: generative-model, type: uses }
+- { from: bayes-classifier, to: bayes-classifier-optimality, type: requires }
+- { from: joint-model, to: generative-mle-factorization, type: requires }
+
+# Within lessons 6.2-6.3 and toward Unit 7 (course map L9 seed edges)
+- { from: naive-bayes-assumption, to: bernoulli-naive-bayes, type: requires }
+- { from: full-categorical-class-conditional, to: parameter-explosion, type: requires }
+- { from: bernoulli-naive-bayes, to: nb-log-likelihood-decomposition, type: requires }
+- { from: nb-log-likelihood-decomposition, to: bernoulli-nb-mle, type: requires }
+- { from: log-space-prediction, to: nb-prediction, type: requires }
+- { from: bag-of-words, to: count-vectorizer, type: requires }
+- { from: gaussian, to: gaussian-mixture, type: requires }
+
+# Contrasts
+- { from: discriminative-model, to: generative-model, type: contrasts }
+- { from: logistic-regression-text-baseline, to: bernoulli-naive-bayes, type: contrasts }
+- { from: logistic-regression-text-baseline, to: nb-linear-classifier, type: contrasts }
+- { from: bernoulli-naive-bayes, to: multinomial-naive-bayes, type: contrasts }
+- { from: full-categorical-class-conditional, to: naive-bayes-assumption, type: contrasts }
+
+# Generalizes (from = special case, to = general result)
+- { from: nb-log-likelihood-decomposition, to: generative-mle-factorization, type: generalizes }
+- { from: nb-prediction, to: bayes-classifier, type: generalizes }
+
+# Uses
+- { from: bernoulli, to: bernoulli-naive-bayes, type: uses }
+- { from: categorical, to: full-categorical-class-conditional, type: uses }
+- { from: lagrange-multipliers, to: bernoulli-nb-mle, type: uses }
+- { from: beta-prior, to: laplace-smoothing, type: uses }
+- { from: log-sum-exp, to: log-space-prediction, type: uses }
+- { from: text-preprocessing, to: count-vectorizer, type: uses }

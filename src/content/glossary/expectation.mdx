@@ -1,0 +1,12 @@
+---
+id: expectation
+term: Expectation
+aliases: [expected value, population mean, law of total expectation, tower rule]
+field: probability
+firstUsedIn: u2-risk-and-gradient-descent
+related: [conditional-probability, iid, zero-one-loss]
+---
+
+**What it is.** The probability-weighted average of a random quantity: $\E[g(X)] = \sum_x g(x)\,p(x)$, or $\int g(x)\,p(x)\,dx$ for a density. Three facts do most of the work. It is linear. It is monotone: if $g(x) \ge h(x)$ for every $x$, then $\E[g(X)] \ge \E[h(X)]$. The expectation of an indicator is a probability, $\E[\ind{A}] = P(A)$. The law of total expectation averages in two stages, $\E[g(X, Y)] = \E_X\big[\E[g(X, Y) \mid X]\big]$.
+
+**How ML uses it.** True risk is an expectation, $R(h) = \E[\ell(h(X), Y)]$. Conditioning on $X$ turns minimizing risk into one small problem per input, which is how the Bayes classifier is shown to be optimal.

@@ -1,0 +1,16 @@
+---
+id: softmax
+term: Softmax
+aliases: [softmax function, softmax regression, multinomial logistic regression]
+field: ml
+firstUsedIn: u3-logistic-regression-and-mle
+related: [categorical, log-sum-exp, argmax]
+---
+
+**What it is.** The map from $K$ real scores $z_1, \dots, z_K$ to a probability vector,
+
+$$\mathrm{softmax}(z)_k = \frac{e^{z_k}}{\sum_{k'=1}^{K} e^{z_{k'}}}.$$
+
+Exponentiating makes every entry positive; dividing by the sum makes the entries add to 1. Adding the same constant to every score leaves the output unchanged, and the largest score always gets the largest probability.
+
+**How ML uses it.** Softmax regression scores each class with its own linear function, $z_k = \theta_k^\top x$, and reads $\mathrm{softmax}(z)_k$ as $p_\theta(y = k \mid x)$: a discriminative model of a categorical label. Its log is computed stably with log-sum-exp. With $K = 2$ it reduces to the sigmoid: $\mathrm{softmax}(z)_1 = \sigma(z_1 - z_2)$.

@@ -1,0 +1,287 @@
+# Quiz bank: Unit 6, Generative models and Naive Bayes.
+# Format: docs/CONTENT_AUTHORING.md §7. Poll items carry source "L<n> p.<k> poll" and the
+# course map's suggested key (docs/course-map/04-lectures-L8-L10.md).
+
+# ---------- Lesson 6.1: generative-vs-discriminative ----------
+
+- id: q-u6-l1-001
+  lesson: generative-vs-discriminative
+  concepts: [generative-model]
+  type: mc
+  difficulty: 1
+  source: "L8 p.35 poll"
+  prompt: |
+    True or false: a generative model is a special type of probabilistic model.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    A generative model is a probability distribution over the data (L8 p.25), for classification the joint $p_\theta(x, y)$, so it is a probabilistic model.
+  discriminates: [generative-model, discriminative-model]
+
+- id: q-u6-l1-002
+  lesson: generative-vs-discriminative
+  concepts: [generative-mle-factorization]
+  type: mc
+  difficulty: 1
+  source: "L8 p.35 poll"
+  prompt: |
+    True or false: we can fit probabilistic models using maximum likelihood estimation.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    Any parametrized distribution $p_\theta$ can be fit by maximizing $\frac{1}{n}\sum_i \log p_\theta$ of the training data; der-6-1-3 does this for a joint model.
+
+- id: q-u6-l1-003
+  lesson: generative-vs-discriminative
+  concepts: [generative-model, discriminative-model]
+  type: mc
+  difficulty: 2
+  source: "L8 p.35 poll"
+  prompt: |
+    True or false: generative models offer a more complete description of the data than discriminative models by modeling $P(X \mid Y)$ instead of $P(Y \mid X)$.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False", misconception: generative-always-worse }
+  explanation: |
+    True as the slides intend: together with the prior $P(Y)$, a generative model defines the joint $P(X, Y)$, from which $P(Y \mid X)$ follows by Bayes' rule. A discriminative model defines no distribution over $X$. "More complete" is not "more accurate": with plenty of data, the discriminative model often predicts better.
+  discriminates: [generative-model, discriminative-model]
+
+- id: q-u6-l1-004
+  lesson: generative-vs-discriminative
+  concepts: [generative-model]
+  type: mc
+  difficulty: 1
+  source: "L8 p.37 poll"
+  prompt: |
+    True or false: in supervised learning, it is more common to use a generative model for classification than for regression.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    Generative classifiers fit one distribution $p(x \mid y = k)$ per class and a prior over finitely many classes. With a continuous target there is no finite set of classes to model, so regression is almost always done discriminatively.
+
+- id: q-u6-l1-005
+  lesson: generative-vs-discriminative
+  concepts: [class-conditional-distribution]
+  type: mc
+  difficulty: 2
+  source: "L8 p.37 poll"
+  prompt: |
+    True or false: discriminative models learn $p_\theta(y \mid x)$ and generative models learn $p_\theta(x \mid y)$; furthermore, $p_\theta(x \mid y = 0) + p_\theta(x \mid y = 1)$ should always equal 1.
+  options:
+    - { text: "True", misconception: class-conditionals-sum-to-one }
+    - { text: "False", correct: true }
+  explanation: |
+    The first half is right, the second is not. $p_\theta(\cdot \mid y = 0)$ and $p_\theta(\cdot \mid y = 1)$ are two different distributions over $x$; each sums to 1 over $x$. The quantity that sums to 1 over $y$ is the posterior $p(y \mid x)$.
+  discriminates: [class-conditional-distribution, conditional-probability]
+
+- id: q-u6-l1-006
+  lesson: generative-vs-discriminative
+  concepts: [bayes-classifier]
+  type: mc
+  difficulty: 1
+  source: "L8 p.37 poll"
+  prompt: |
+    True or false: the goal of generative classification is eventually to learn $p_\theta(y \mid x)$ in order to predict labels.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The class-conditionals and the prior are a route to the posterior: $p(y = k \mid x) \propto p(x \mid y = k)\,p(y = k)$, and the prediction is its argmax (der-6-1-1).
+
+- id: q-u6-l1-007
+  lesson: generative-vs-discriminative
+  concepts: [bayes-classifier, class-prior]
+  type: mc
+  difficulty: 2
+  source: "L8 p.37 poll"
+  prompt: |
+    True or false: if $p_\theta(x \mid y = 0) = 0.6$ and $p_\theta(x \mid y = 1) = 0.4$, we would always predict $y = 0$.
+  options:
+    - { text: "True", misconception: ignore-prior }
+    - { text: "False", correct: true }
+  explanation: |
+    The prediction is $\argmax_k p(x \mid y = k)\,p(y = k)$. With $p(y = 1) = 0.9$ the scores are $0.6 \times 0.1 = 0.06$ and $0.4 \times 0.9 = 0.36$, so we predict $y = 1$. The prior matters.
+  discriminates: [class-prior, class-conditional-distribution]
+
+- id: q-u6-l1-008
+  lesson: generative-vs-discriminative
+  concepts: [joint-model]
+  type: mc
+  difficulty: 1
+  source: "L8 p.42 poll"
+  prompt: |
+    True or false: in supervised learning, a generative model directly parametrizes the joint distribution, written $p_\theta(x, y) : \mathcal{X} \times \mathcal{Y} \to [0, 1]$.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    Specifying $p_\theta(x \mid y)$ and $p_\theta(y)$ specifies $p_\theta(x, y) = p_\theta(x \mid y)\,p_\theta(y)$ (L8 p.41). For continuous $x$ the values are densities rather than numbers in $[0, 1]$.
+
+- id: q-u6-l1-009
+  lesson: generative-vs-discriminative
+  concepts: [joint-model]
+  type: mc
+  difficulty: 1
+  source: "L8 p.42 poll"
+  prompt: |
+    True or false: a generative model assigns higher scores to $(x, y)$ pairs that are more compatible.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The joint $p_\theta(x, y)$ is large where input and label go together, for example a spam-like email paired with $y = 1$.
+
+- id: q-u6-l1-010
+  lesson: generative-vs-discriminative
+  concepts: [generative-mle-factorization]
+  type: mc
+  difficulty: 1
+  source: "L8 p.42 poll"
+  prompt: |
+    True or false: we can learn the parameters of a generative model via the maximum likelihood principle.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    Maximize $\frac{1}{n}\sum_i \log p_\theta(x^{(i)}, y^{(i)})$ (L8 p.43). der-6-1-3 shows it splits into a prior problem and one class-conditional problem per class.
+
+- id: q-u6-l1-011
+  lesson: generative-vs-discriminative
+  concepts: [bayes-classifier, class-prior]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The spam exercise solution estimates the class priors $\hat\phi_0 = 0.77195726$ (non-spam) and $\hat\phi_1 = 0.22804274$ (spam). Take the toy class-conditionals from the L8 p.37 poll, $p(x \mid y = 0) = 0.6$ and $p(x \mid y = 1) = 0.4$. Compute $p(y = 1 \mid x)$ to three decimals.
+    Note: here the 0.6 belongs to class 0, following the poll's convention; the lesson's worked example gives 0.6 to class 1.
+  answer: 0.165
+  tolerance: 0.002
+  formula: "0.4 * 0.22804274 / (0.4 * 0.22804274 + 0.6 * 0.77195726)"
+  explanation: |
+    Scores: $0.4 \times 0.22804274 = 0.09121710$ and $0.6 \times 0.77195726 = 0.46317436$. Normalize by their sum $0.55439145$: $p(y = 1 \mid x) \approx 0.1645$.
+
+- id: q-u6-l1-012
+  lesson: generative-vs-discriminative
+  concepts: [bayes-classifier, class-prior]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    With the toy class-conditionals $p(x \mid y = 0) = 0.6$ and $p(x \mid y = 1) = 0.4$, which prior $p(y = 1)$ makes the Bayes classifier exactly indifferent between the two labels?
+  answer: 0.6
+  tolerance: 0.005
+  formula: "0.6 / (0.6 + 0.4)"
+  explanation: |
+    Indifference means equal scores: $0.4\,\pi = 0.6\,(1 - \pi)$, so $\pi = 0.6$. For any $p(y = 1)$ above 0.6 the classifier predicts $y = 1$, despite the smaller class-conditional.
+
+- id: q-u6-l1-013
+  lesson: generative-vs-discriminative
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-6-1-1
+  corrupt: { step: 3, replaceTex: '\hat y = \argmax_{k}\; p(x \mid y = k)', explanation: "Only $p(x)$ is constant in $k$. The prior $p(y = k)$ depends on $k$ and cannot be dropped; this is the L8 p.37 poll trap." }
+
+- id: q-u6-l1-014
+  lesson: generative-vs-discriminative
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-6-1-3
+  corrupt: { step: 4, replaceTex: '\log P_\theta(\D) = \prod_{i=1}^{n} \log p_\theta(x^{(i)}, y^{(i)})', explanation: "The log of a product is the sum of the logs, not the product of the logs." }
+
+- id: q-u6-l1-015
+  lesson: generative-vs-discriminative
+  type: which-step
+  difficulty: 3
+  source: "original"
+  derivation: der-6-1-2
+  corrupt: { step: 5, replaceTex: '1 - p\big(y = h(x) \mid x\big) \le 1 - \max_{k}\; p(y = k \mid x)', explanation: 'The inequality is reversed. $p(y = h(x) \mid x) \le \max_k p(y = k \mid x)$, so one minus it is at least one minus the maximum.' }
+
+- id: q-u6-l1-016
+  lesson: generative-vs-discriminative
+  concepts: [bayes-classifier-optimality]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of the proof that the Bayes classifier minimizes 0/1 risk in order.
+  items:
+    - 'Write the risk as the probability of a mistake, $R(h) = P(h(X) \ne Y)$.'
+    - 'Condition on $X$: $R(h) = \E_X[P(Y \ne h(X) \mid X)]$.'
+    - 'At each $x$, the conditional error is $1 - p(y = h(x) \mid x)$.'
+    - 'Bound it below by $1 - \max_k p(y = k \mid x)$.'
+    - "Take expectations of the pointwise bound."
+    - 'Choose $h^\star(x) = \argmax_k p(y = k \mid x)$, which attains the bound at every $x$.'
+  explanation: |
+    Express the risk as an average over inputs, minimize the error at each input separately, then note that the pointwise minimizer also minimizes the average (der-6-1-2).
+
+- id: q-u6-l1-017
+  lesson: generative-vs-discriminative
+  concepts: [discriminative-model]
+  type: mc
+  difficulty: 2
+  source: "L9 p.3 (slide notation)"
+  prompt: |
+    L9 p.3 writes $P_\theta(y \mid x) = \prod_{i=1}^{n} P_\theta(y^{(i)} \mid x^{(i)})$ for logistic regression. What does the right-hand side actually compute?
+  options:
+    - { text: "The conditional likelihood of all training labels given all training inputs", correct: true }
+    - { text: "The predicted probability of the label for one new input $x$", misconception: dataset-likelihood-notation }
+    - { text: 'The joint probability of the inputs and labels, $P_\theta(\mathcal{D})$', misconception: dataset-likelihood-notation }
+    - { text: 'The class-conditional $p_\theta(x \mid y)$ of the training inputs', misconception: dataset-likelihood-notation }
+  explanation: |
+    It is $P_\theta(y^{(1)}, \dots, y^{(n)} \mid x^{(1)}, \dots, x^{(n)})$, a single number for the whole dataset. It does not model the inputs, which is what separates it from the generative likelihood $\prod_i p_\theta(x^{(i)}, y^{(i)})$.
+  discriminates: [discriminative-model, generative-mle-factorization]
+
+- id: q-u6-l1-018
+  lesson: generative-vs-discriminative
+  concepts: [bayes-classifier]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A generative model for the ADVERSE cohort gives scores $s_k = p_\theta(x \mid y = k)\,p_\theta(y = k)$ for a patient. The clinical team will act if the patient's event risk exceeds a fixed threshold. What do you compare against the threshold?
+  options:
+    - { text: "$s_1 / (s_0 + s_1)$", correct: true }
+    - { text: "$s_1$", misconception: unnormalized-score-as-probability }
+    - { text: '$p_\theta(x \mid y = 1)$', misconception: ignore-prior }
+    - { text: "$s_1 - s_0$", misconception: unnormalized-score-as-probability }
+  explanation: |
+    The scores are joint probabilities $p_\theta(x, y = k)$. They rank the classes, but the risk is the posterior, step 6 of der-6-1-1: divide by $\sum_k s_k$.
+  discriminates: [bayes-classifier, class-prior]
+
+- id: q-u6-l1-019
+  lesson: generative-vs-discriminative
+  concepts: [bayes-classifier-optimality]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    Which statement about the Bayes classifier $h^\star(x) = \argmax_k p(y = k \mid x)$ is correct?
+  options:
+    - { text: "Under 0/1 loss, no classifier has a lower true risk, when $p$ is the true data distribution", correct: true }
+    - { text: "Any Naive Bayes model fit by maximum likelihood achieves the lowest possible error", misconception: fitted-bayes-is-optimal }
+    - { text: 'It predicts $\argmax_k p(x \mid y = k)$', misconception: ignore-prior }
+    - { text: "Its risk is always 0 when the classes are well modeled", misconception: bayes-error-zero }
+  explanation: |
+    der-6-1-2 proves optimality for the true $p$. A fitted model only approximates it, and the Bayes error $1 - \E_X[\max_k p(y = k \mid X)]$ is positive whenever the classes overlap.
+  discriminates: [bayes-classifier-optimality, bayes-classifier]
+
+- id: q-u6-l1-020
+  lesson: generative-vs-discriminative
+  concepts: [generative-mle-factorization]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    You fit a generative classifier with a categorical prior $p_\phi(y)$ and Bernoulli class-conditionals, then switch the class-conditionals to Gaussians and refit by maximum likelihood on the same data. What happens to $\hat\phi$?
+  options:
+    - { text: "It does not change: the prior's MLE depends only on the labels", correct: true }
+    - { text: "It changes, because the prior and the class-conditionals are fit jointly", misconception: joint-mle-coupled }
+    - { text: "It must be re-estimated by gradient descent together with the Gaussian means", misconception: joint-mle-coupled }
+  explanation: |
+    The log-likelihood splits into $\sum_i \log p_\phi(y^{(i)})$, which contains no class-conditional parameters, plus a class-conditional term (der-6-1-3, step 9).
+  discriminates: [generative-mle-factorization, joint-model]

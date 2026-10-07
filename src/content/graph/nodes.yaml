@@ -1,0 +1,200 @@
+# Concept-graph nodes. Glossary terms are nodes automatically; list only concepts, methods, metrics, and datasets here.
+# Format: docs/CONTENT_AUTHORING.md §6. One record per block, blank line between records.
+
+# ---------- Unit 6: Generative models and Naive Bayes ----------
+# Seeded from docs/course-map/04-lectures-L8-L10.md, "Concept-graph edges" (L8 generative half, L9).
+
+- id: generative-model
+  label: "Generative model"
+  type: concept
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: generative-vs-discriminative
+  summary: "A model of how the data are distributed; for classification, a class-conditional p(x|y) plus a prior p(y), hence a joint p(x, y)."
+
+- id: discriminative-model
+  label: "Discriminative model"
+  type: concept
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: generative-vs-discriminative
+  summary: "A model of p(y|x) only (softmax or logistic regression); it learns the decision boundary and says nothing about p(x)."
+
+- id: class-conditional-distribution
+  label: "Class-conditional p(x|y)"
+  type: concept
+  field: probability
+  unit: u6-generative-models-and-naive-bayes
+  lesson: generative-vs-discriminative
+  summary: "For each label k, a distribution over inputs that scores how typical x looks for class k; one distribution per class, each summing to 1 over x."
+
+- id: class-prior
+  label: "Class prior p(y)"
+  type: concept
+  field: probability
+  unit: u6-generative-models-and-naive-bayes
+  lesson: generative-vs-discriminative
+  summary: "The probability of each class before seeing x; estimated by the class proportions in the training set."
+
+- id: joint-model
+  label: "Joint model p(x, y)"
+  type: concept
+  field: probability
+  unit: u6-generative-models-and-naive-bayes
+  lesson: generative-vs-discriminative
+  summary: "p(x, y) = p(x|y) p(y): a prior and a class-conditional together define a distribution over input-label pairs."
+
+- id: bayes-classifier
+  label: "Bayes classifier"
+  type: method
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: generative-vs-discriminative
+  summary: "Predict argmax_k p(x|y=k) p(y=k); p(x) drops out of the argmax but is needed to report the posterior."
+  derivation: der-6-1-1
+
+- id: bayes-classifier-optimality
+  label: "Bayes classifier is 0/1-optimal"
+  type: concept
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: generative-vs-discriminative
+  summary: "Among all classifiers, argmax_k p(y=k|x) has the lowest probability of error; its risk is the Bayes error 1 - E[max_k p(y=k|X)]."
+  derivation: der-6-1-2
+
+- id: generative-mle-factorization
+  label: "Generative MLE splits"
+  type: concept
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: generative-vs-discriminative
+  summary: "The joint log-likelihood is a prior term plus a class-conditional term, so the prior and each class-conditional are fit separately."
+  derivation: der-6-1-3
+
+- id: bag-of-words
+  label: "Bag of words"
+  type: concept
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: text-as-features
+  summary: "A document becomes phi(x) in {0,1}^|V|: entry j is 1 if the document contains vocabulary word j."
+
+- id: count-vectorizer
+  label: "CountVectorizer"
+  type: method
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: text-as-features
+  summary: "sklearn's bag-of-words builder: fit_transform learns the vocabulary on training text, transform reuses it; binary=True gives 0/1 features."
+
+- id: logistic-regression-text-baseline
+  label: "Logistic-regression text baseline"
+  type: method
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: text-as-features
+  summary: "Softmax or logistic regression on bag-of-words features: the discriminative baseline on 20 Newsgroups and the spam data."
+
+- id: text-preprocessing
+  label: "Text preprocessing"
+  type: method
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: text-as-features
+  summary: "Stop-word removal, stemming, and dropping rare words to shrink and clean the vocabulary."
+
+- id: full-categorical-class-conditional
+  label: "Full categorical class-conditional"
+  type: concept
+  field: probability
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "Treat each binary vector x as one outcome of a categorical distribution per class; exact but needs 2^d - 1 parameters per class."
+
+- id: parameter-explosion
+  label: "Parameter explosion"
+  type: concept
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "A full model of d binary features has K(2^d - 1) free parameters; at d = 10,000 that exceeds the atoms in the universe."
+
+- id: naive-bayes-assumption
+  label: "Naive Bayes assumption"
+  type: concept
+  field: probability
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "Features are conditionally independent given the label: p(x|y) = prod_j p(x_j|y)."
+
+- id: bernoulli-naive-bayes
+  label: "Bernoulli Naive Bayes"
+  type: method
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "Categorical prior phi_k and one Bernoulli psi_jk per word and class: Kd + K - 1 free parameters."
+
+- id: nb-log-likelihood-decomposition
+  label: "NB log-likelihood decomposition"
+  type: concept
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "The Bernoulli NB log-likelihood is a sum of separate terms for phi and for each psi_jk, so each is optimized alone."
+
+- id: bernoulli-nb-mle
+  label: "Bernoulli NB MLE"
+  type: method
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "psi_jk is the fraction of class-k documents containing word j; phi_k is the class proportion n_k / n."
+
+- id: nb-prediction
+  label: "NB prediction"
+  type: method
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "The Bayes classifier with the NB class-conditional: argmax_k of log phi_k plus a sum of per-word log-probabilities."
+
+- id: log-space-prediction
+  label: "Log-space prediction"
+  type: method
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "Sum log-probabilities instead of multiplying probabilities to avoid underflow; recover posteriors with log-sum-exp."
+
+- id: laplace-smoothing
+  label: "Laplace smoothing"
+  type: method
+  field: statistics
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "Add pseudo-counts so no word gets probability 0 in a class; the MAP estimate under a Beta prior. Not on the slides."
+
+- id: nb-linear-classifier
+  label: "NB is a linear classifier"
+  type: concept
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "For Bernoulli features the NB log-odds are an affine function of x, the generative counterpart of logistic regression."
+
+- id: multinomial-naive-bayes
+  label: "Multinomial Naive Bayes"
+  type: method
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: naive-bayes
+  summary: "NB on word counts with one categorical distribution over the vocabulary per class. Beyond the slides."
+
+- id: gaussian-mixture
+  label: "Gaussian mixture"
+  type: concept
+  field: probability
+  unit: u7-gaussian-discriminant-analysis
+  lesson: gaussian-discriminant-analysis
+  summary: "p(x) = sum_k p(k) N(x; mu_k, sigma_k^2); with one component per class it becomes a generative classifier (GDA)."
