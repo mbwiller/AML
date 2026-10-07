@@ -1,0 +1,62 @@
+---
+id: hw3
+title: "Homework 3: Naive Bayes and GDA"
+due: 2026-10-19
+live: true
+units: [u6-generative-models-and-naive-bayes, u7-gaussian-discriminant-analysis]
+---
+
+{/* live homework (VISION R17): readiness gate and lesson links only. Add the problem-by-problem walkthrough and set live: false after 2026-10-19. */}
+
+HW3 is due Monday, October 19, 2026. The L10 announcement says it focuses on Naive Bayes and Gaussian discriminant analysis. Like every homework in this course it has a Canvas quiz on lecture material, programming questions, and written questions.
+
+This page is a readiness gate. Each row names a skill, the lesson section that teaches it, and an inline check that practices it. When you can answer every check without looking, you are ready to start. The page gives no answers to the homework itself.
+
+## Generative classification (Unit 6)
+
+| Skill | Learn it in | Check |
+|---|---|---|
+| Predict with the Bayes classifier, and explain why $p(x)$ drops out but the prior does not | [6.1 Deriving the Bayes classifier](/units/u6-generative-models-and-naive-bayes/generative-vs-discriminative#deriving-the-bayes-classifier) | q-u6-l1-007 |
+| Explain why the Bayes classifier minimizes the 0/1 risk | [6.1 The Bayes classifier is the best possible classifier](/units/u6-generative-models-and-naive-bayes/generative-vs-discriminative#the-bayes-classifier-is-the-best-possible-classifier) | q-u6-l1-006 |
+| Split the log-likelihood of a generative model into a prior part and a class-conditional part | [6.1 Fitting a generative model by maximum likelihood](/units/u6-generative-models-and-naive-bayes/generative-vs-discriminative#fitting-a-generative-model-by-maximum-likelihood) | q-u6-l1-020 |
+| Turn documents into a binary bag-of-words matrix with `CountVectorizer`, fitting on training text only | [6.2 CountVectorizer and the 20 Newsgroups matrix](/units/u6-generative-models-and-naive-bayes/text-as-features#countvectorizer-and-the-20-newsgroups-matrix) | q-u6-l2-002 |
+| Choose preprocessing: stop words, stemming, rare words | [6.2 Cleaning the vocabulary](/units/u6-generative-models-and-naive-bayes/text-as-features#cleaning-the-vocabulary) | q-u6-l2-006 |
+| Fit and evaluate a logistic-regression baseline on bag-of-words features | [6.2 The logistic-regression baseline](/units/u6-generative-models-and-naive-bayes/text-as-features#the-logistic-regression-baseline) | q-u6-l2-004 |
+
+## Naive Bayes (Unit 6)
+
+| Skill | Learn it in | Check |
+|---|---|---|
+| Count the parameters of the full model and of Bernoulli Naive Bayes | [6.3 Why the full model is hopeless](/units/u6-generative-models-and-naive-bayes/naive-bayes#why-the-full-model-is-hopeless-counting-parameters) | q-u6-l3-011 |
+| State the Naive Bayes assumption and derive the factorization from the chain rule | [6.3 From the chain rule to the Naive Bayes product](/units/u6-generative-models-and-naive-bayes/naive-bayes#from-the-chain-rule-to-the-naive-bayes-product) | q-u6-l3-001 |
+| Show that the log-likelihood decomposes into one problem per word and class | [6.3 Fitting Bernoulli Naive Bayes by maximum likelihood](/units/u6-generative-models-and-naive-bayes/naive-bayes#fitting-bernoulli-naive-bayes-by-maximum-likelihood) | q-u6-l3-008 |
+| Derive the MLE of $\psi_{jk}$ and of $\phi_k$ (with a Lagrange multiplier) | [6.3 Fitting Bernoulli Naive Bayes by maximum likelihood](/units/u6-generative-models-and-naive-bayes/naive-bayes#fitting-bernoulli-naive-bayes-by-maximum-likelihood) | q-u6-l3-009, q-u6-l3-007 |
+| Explain why zero counts break prediction, and derive Laplace smoothing as a MAP estimate | [6.3 Zero counts and Laplace smoothing](/units/u6-generative-models-and-naive-bayes/naive-bayes#zero-counts-and-laplace-smoothing) | q-u6-l3-013 |
+| Predict in log space and recover posteriors with log-sum-exp | [6.3 Predicting in log space](/units/u6-generative-models-and-naive-bayes/naive-bayes#predicting-in-log-space) | q-u6-l3-014 |
+| Show that Bernoulli Naive Bayes is a linear classifier | [6.3 Naive Bayes is a linear classifier](/units/u6-generative-models-and-naive-bayes/naive-bayes#naive-bayes-is-a-linear-classifier) | q-u6-l3-015 |
+| Implement Bernoulli Naive Bayes from scratch with numpy, vectorized | [6.4 Part 4: fitting Naive Bayes](/units/u6-generative-models-and-naive-bayes/spam-exercise#part-4-fitting-naive-bayes-tasks-1317) and [Part 5: predicting](/units/u6-generative-models-and-naive-bayes/spam-exercise#part-5-predicting-tasks-1821) | q-u6-l4-008, q-u6-l4-015 |
+| Diagnose the zero-count problem in code | [6.4 Part 5: predicting](/units/u6-generative-models-and-naive-bayes/spam-exercise#part-5-predicting-tasks-1821) | q-u6-l4-012 |
+
+## Gaussian discriminant analysis (Unit 7)
+
+| Skill | Learn it in | Check |
+|---|---|---|
+| Use the multivariate Gaussian density and read a covariance matrix | [7.1 The density for any covariance](/units/u7-gaussian-discriminant-analysis/multivariate-gaussian-and-covariance#the-density-for-any-covariance) | q-u7-l1-007 |
+| Explain why a covariance matrix is symmetric and positive semi-definite | [7.1 What every covariance matrix satisfies](/units/u7-gaussian-discriminant-analysis/multivariate-gaussian-and-covariance#what-every-covariance-matrix-satisfies) | q-u7-l1-006 |
+| Match a covariance matrix to the shape of its cloud | [7.1 Contours are ellipses along the eigenvectors](/units/u7-gaussian-discriminant-analysis/multivariate-gaussian-and-covariance#contours-are-ellipses-along-the-eigenvectors) | q-u7-l1-005 |
+| State the GDA model and split its log-likelihood | [7.2 Splitting the log-likelihood](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis#splitting-the-log-likelihood) | q-u7-l2-003 |
+| Derive the MLE of $\mu_k$ | [7.2 The mean: gradient of a quadratic form](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis#the-mean-gradient-of-a-quadratic-form) | q-u7-l2-005 |
+| Derive the MLE of $\Sigma_k$ with the trace trick | [7.2 The covariance: the trace trick](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis#the-covariance-the-trace-trick) | q-u7-l2-007 |
+| Predict with a fitted GDA model | [7.2 Predicting with GDA](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis#predicting-with-gda) | q-u7-l2-011 |
+| Recognize when $\hat\Sigma_k$ is singular | [7.2](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis) | q-u7-l2-015 |
+| Show that a shared covariance gives a linear boundary and a sigmoid posterior | [7.3 Shared covariance makes the log-odds affine](/units/u7-gaussian-discriminant-analysis/shared-covariance-and-logistic-regression#shared-covariance-makes-the-log-odds-affine) | q-u7-l3-004, q-u7-l3-016 |
+| Fit the pooled covariance | [7.3 Fitting the shared covariance](/units/u7-gaussian-discriminant-analysis/shared-covariance-and-logistic-regression#fitting-the-shared-covariance) | q-u7-l3-007 |
+| Explain why per-class covariances give a quadratic boundary | [7.3 Per-class covariances: QDA has a quadratic boundary](/units/u7-gaussian-discriminant-analysis/shared-covariance-and-logistic-regression#per-class-covariances-qda-has-a-quadratic-boundary) | q-u7-l3-008 |
+| Relate GDA to Gaussian Naive Bayes | [7.3 Diagonal covariance: Gaussian Naive Bayes](/units/u7-gaussian-discriminant-analysis/shared-covariance-and-logistic-regression#diagonal-covariance-gaussian-naive-bayes) | q-u7-l3-010 |
+| Compare GDA with logistic regression: same form, different fit, different assumptions | [7.3 GDA and logistic regression](/units/u7-gaussian-discriminant-analysis/shared-covariance-and-logistic-regression#gda-and-logistic-regression-same-form-different-fit) | q-u7-l3-013 |
+
+## Before you start
+
+- Review the L8–L10 polls; every one is in the Unit 6 and Unit 7 quiz banks.
+- Re-read the spam exercise walkthrough (lesson 6.4) for the coding patterns: fit the vectorizer on training text only, store parameters as `psis[k, j]`, and score in log space.
+- Work the derivations in lessons 6.3 and 7.2 with the steps hidden. The faded versions of each derivation are the best practice for the written part.
