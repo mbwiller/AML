@@ -12,8 +12,8 @@ const { prev, next } = Astro.props;
       href={prev.href}
       class="rounded-card border border-border bg-surface p-4 text-fg no-underline transition-colors duration-micro ease-standard hover:bg-surface-2"
     >
-      <span class="block text-[12px] tracking-[0.04em] text-muted uppercase">Previous</span>
-      <span class="block text-[15px] font-semibold">
+      <span class="block text-ui-xs tracking-caps text-muted uppercase">Previous</span>
+      <span class="block text-ui-lg font-semibold">
         {prev.number} · {prev.title}
       </span>
     </a>
@@ -25,8 +25,8 @@ const { prev, next } = Astro.props;
       href={next.href}
       class="rounded-card border border-border bg-surface p-4 text-right text-fg no-underline transition-colors duration-micro ease-standard hover:bg-surface-2"
     >
-      <span class="block text-[12px] tracking-[0.04em] text-muted uppercase">Next lesson</span>
-      <span class="block text-[15px] font-semibold">
+      <span class="block text-ui-xs tracking-caps text-muted uppercase">Next lesson</span>
+      <span class="block text-ui-lg font-semibold">
         {next.number} · {next.title}
       </span>
     </a>

@@ -15,16 +15,16 @@ const { unit, lessons } = Astro.props;
 
 <Base title={unit.title} description={unit.summary}>
   <main id="main" class="mx-auto max-w-3xl px-4 py-10">
-    <p class="m-0 font-sans text-[13px] text-muted">
+    <p class="m-0 font-sans text-ui-sm text-muted">
       <a href="/units" class="text-muted no-underline hover:text-fg">
         Units
       </a>{' '}
       · Unit {unit.order} · {unit.lectures}
     </p>
-    <h1 class="mt-1 font-sans text-[2rem] leading-tight font-bold tracking-tight">{unit.title}</h1>
-    <p class="mt-2 max-w-[68ch] text-muted">{unit.summary}</p>
+    <h1 class="mt-1 font-sans text-h1 leading-tight font-bold tracking-tight">{unit.title}</h1>
+    <p class="mt-2 max-w-measure text-muted">{unit.summary}</p>
     {lessons.length === 0 ? (
-      <p class="mt-8 rounded-card border border-border bg-surface-2 p-4 font-sans text-[14px] text-muted">
+      <p class="mt-8 rounded-card border border-border bg-surface-2 p-4 font-sans text-ui text-muted">
         No lessons in this unit yet.
       </p>
     ) : (
@@ -36,20 +36,20 @@ const { unit, lessons } = Astro.props;
               class="block rounded-card border border-border bg-surface p-4 text-fg no-underline transition-colors duration-micro ease-standard hover:bg-surface-2"
             >
               <span class="flex items-baseline gap-3 font-sans">
-                <span class="text-[13px] text-muted tabular-nums">
+                <span class="text-ui-sm text-muted tabular-nums">
                   {lessonNumber(l.data.unit, l.data.order)}
                 </span>
-                <span class="text-[17px] font-semibold">{l.data.title}</span>
-                <span class="ml-auto text-[12px] text-muted">
+                <span class="text-body-sm font-semibold">{l.data.title}</span>
+                <span class="ml-auto text-ui-xs text-muted">
                   {formatMinutes(l.data.estimatedMinutes)}
                 </span>
                 {l.data.status !== 'published' && (
-                  <span class="rounded-full border border-border px-2 py-0.5 text-[11px] tracking-[0.04em] text-muted uppercase">
+                  <span class="rounded-full border border-border px-2 py-0.5 text-ui-xs tracking-caps text-muted uppercase">
                     {l.data.status}
                   </span>
                 )}
               </span>
-              <span class="mt-1 block text-[15px] text-muted">{l.data.summary}</span>
+              <span class="mt-1 block text-ui-lg text-muted">{l.data.summary}</span>
             </a>
           </li>
         ))}

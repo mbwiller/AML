@@ -23,6 +23,31 @@
   --font-serif: 'Source Serif 4 Variable', Georgia, serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
 
+  /* Type scale (STYLE_GUIDE §4.2): 12 / 13 / 14 / 15 / 17 / 18 / 20 / 24 / 32 / 40 px.
+     Named so no page needs an arbitrary value like text-[13px]. */
+  --text-ui-xs: 12px;
+  --text-ui-xs--line-height: 1.4;
+  --text-ui-sm: 13px;
+  --text-ui-sm--line-height: 1.4;
+  --text-ui: 14px;
+  --text-ui--line-height: 1.4;
+  --text-ui-lg: 15px;
+  --text-ui-lg--line-height: 1.4;
+  --text-body-sm: 17px;
+  --text-body-sm--line-height: 1.6;
+  --text-body: 18px;
+  --text-body--line-height: 1.6;
+  --text-h4: 1rem;
+  --text-h4--line-height: 1.3;
+  --text-h3: 1.2rem;
+  --text-h3--line-height: 1.3;
+  --text-h2: 1.5rem;
+  --text-h2--line-height: 1.25;
+  --text-h1: 2rem;
+  --text-h1--line-height: 1.15;
+  --tracking-caps: 0.04em;
+  --container-measure: 68ch;
+
   /* Surfaces and text */
   --color-bg: var(--bg);
   --color-surface: var(--surface);

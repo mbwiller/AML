@@ -33,28 +33,28 @@ const groups = [
 ---
 
 <section id="tokens" class="font-sans">
-  <h2 class="text-[1.5rem] font-semibold">Design tokens</h2>
+  <h2 class="text-h2 font-semibold">Design tokens</h2>
   {groups.map(([title, names]) => (
     <div class="mt-6">
-      <h3 class="text-[1rem] font-semibold tracking-[0.04em] text-muted uppercase">{title}</h3>
+      <h3 class="text-h4 font-semibold tracking-caps text-muted uppercase">{title}</h3>
       <ul class="mt-2 grid list-none grid-cols-2 gap-2 p-0 sm:grid-cols-4 lg:grid-cols-7">
         {names.map((n) => (
           <li class="m-0 overflow-hidden rounded-card border border-border">
             <div class="swatch h-12" style={`background: var(--${n})`} />
-            <code class="block px-2 py-1 text-[12px]">--{n}</code>
+            <code class="block px-2 py-1 text-ui-xs">--{n}</code>
           </li>
         ))}
       </ul>
     </div>
   ))}
   <div class="mt-6">
-    <h3 class="text-[1rem] font-semibold tracking-[0.04em] text-muted uppercase">Symbol classes</h3>
-    <p class="mt-2 text-[14px] text-muted">
+    <h3 class="text-h4 font-semibold tracking-caps text-muted uppercase">Symbol classes</h3>
+    <p class="mt-2 text-ui text-muted">
       Written in math as <code>\htmlClass&#123;sym-theta&#125;&#123;\theta&#125;</code>.
     </p>
     <ul class="mt-2 flex list-none flex-wrap gap-2 p-0">
       {syms.map((s) => (
-        <li class={`m-0 rounded-control border border-border px-2 py-1 text-[14px] sym-${s}`}>
+        <li class={`m-0 rounded-control border border-border px-2 py-1 text-ui sym-${s}`}>
           sym-{s}
         </li>
       ))}
@@ -62,15 +62,13 @@ const groups = [
   </div>
   <div class="mt-6 grid gap-4 sm:grid-cols-3">
     <div class="rounded-card border border-border p-4">
-      <h3 class="text-[1rem] font-semibold tracking-[0.04em] text-muted uppercase">Type</h3>
-      <p class="mt-2 font-serif text-[18px]">Source Serif 4 for prose, 18 px / 1.6.</p>
-      <p class="mt-1 font-sans text-[14px]">Inter for interface, 14–15 px / 1.4.</p>
-      <p class="mt-1 font-mono text-[14px]">JetBrains Mono for code, 14 px / 1.55.</p>
+      <h3 class="text-h4 font-semibold tracking-caps text-muted uppercase">Type</h3>
+      <p class="mt-2 font-serif text-body">Source Serif 4 for prose, 18 px / 1.6.</p>
+      <p class="mt-1 font-sans text-ui">Inter for interface, 14–15 px / 1.4.</p>
+      <p class="mt-1 font-mono text-ui">JetBrains Mono for code, 14 px / 1.55.</p>
     </div>
     <div class="rounded-card border border-border p-4">
-      <h3 class="text-[1rem] font-semibold tracking-[0.04em] text-muted uppercase">
-        Radii and elevation
-      </h3>
+      <h3 class="text-h4 font-semibold tracking-caps text-muted uppercase">Radii and elevation</h3>
       <div class="mt-2 flex items-end gap-3">
         <div
           class="size-10 rounded-control border border-border bg-surface-2"
@@ -85,8 +83,8 @@ const groups = [
       </div>
     </div>
     <div class="rounded-card border border-border p-4">
-      <h3 class="text-[1rem] font-semibold tracking-[0.04em] text-muted uppercase">Motion</h3>
-      <p class="mt-2 text-[14px] text-muted">
+      <h3 class="text-h4 font-semibold tracking-caps text-muted uppercase">Motion</h3>
+      <p class="mt-2 text-ui text-muted">
         120 / 250 / 400 ms, cubic-bezier(0.2, 0, 0, 1). Hover the swatch.
       </p>
       <div class="mt-2 h-8 w-24 rounded-control bg-surface-2 transition-transform duration-reveal ease-standard hover:translate-x-6 motion-reduce:transition-none"></div>

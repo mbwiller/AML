@@ -20,53 +20,49 @@ const nextMilestone = milestones.find((m) => m.date >= today);
 
 <Base title="Home" description="Interactive, fully derived CS 5785 Applied Machine Learning.">
   <main id="main" class="mx-auto max-w-5xl px-4 py-10">
-    <h1 class="font-sans text-[2rem] leading-tight font-bold tracking-tight">AML Atlas</h1>
-    <p class="mt-2 max-w-[68ch] text-muted">
+    <h1 class="font-sans text-h1 leading-tight font-bold tracking-tight">AML Atlas</h1>
+    <p class="mt-2 max-w-measure text-muted">
       Every result the lectures state, derived step by step. Every prerequisite, where it is used.
     </p>
 
     <div class="mt-8 grid gap-4 font-sans sm:grid-cols-3">
       <section class="rounded-card border border-border bg-surface p-5">
-        <h2 class="m-0 text-[12px] font-semibold tracking-[0.04em] text-muted uppercase">
-          Continue
-        </h2>
+        <h2 class="m-0 text-ui-xs font-semibold tracking-caps text-muted uppercase">Continue</h2>
         {first ? (
           <a
             href={lessonHref(first.data.unit, first.data.slug)}
-            class="mt-2 block text-[16px] font-semibold text-fg no-underline hover:underline"
+            class="mt-2 block text-ui-lg font-semibold text-fg no-underline hover:underline"
           >
             {lessonNumber(first.data.unit, first.data.order)} · {first.data.title}
           </a>
         ) : (
-          <p class="mt-2 text-[14px] text-muted">No lessons published yet.</p>
+          <p class="mt-2 text-ui text-muted">No lessons published yet.</p>
         )}
-        <p class="mt-1 text-[13px] text-muted">
+        <p class="mt-1 text-ui-sm text-muted">
           Your place is remembered once progress tracking ships.
         </p>
       </section>
       <section class="rounded-card border border-border bg-surface p-5">
-        <h2 class="m-0 text-[12px] font-semibold tracking-[0.04em] text-muted uppercase">
-          Due today
-        </h2>
-        <p class="mt-2 text-[16px] font-semibold">0 reviews</p>
-        <p class="mt-1 text-[13px] text-muted">Flashcards arrive with the practice engine.</p>
+        <h2 class="m-0 text-ui-xs font-semibold tracking-caps text-muted uppercase">Due today</h2>
+        <p class="mt-2 text-ui-lg font-semibold">0 reviews</p>
+        <p class="mt-1 text-ui-sm text-muted">Flashcards arrive with the practice engine.</p>
       </section>
       <section class="rounded-card border border-border bg-surface p-5">
-        <h2 class="m-0 text-[12px] font-semibold tracking-[0.04em] text-muted uppercase">
+        <h2 class="m-0 text-ui-xs font-semibold tracking-caps text-muted uppercase">
           Next deadline
         </h2>
         {nextMilestone && (
           <>
-            <p class="mt-2 text-[16px] font-semibold">{nextMilestone.label}</p>
-            <p class="mt-1 text-[13px] text-muted">{nextMilestone.date}</p>
+            <p class="mt-2 text-ui-lg font-semibold">{nextMilestone.label}</p>
+            <p class="mt-1 text-ui-sm text-muted">{nextMilestone.date}</p>
           </>
         )}
       </section>
     </div>
 
     <section class="mt-10">
-      <h2 class="font-sans text-[1.2rem] font-semibold">Course calendar</h2>
-      <ol class="mt-3 m-0 grid list-none gap-2 p-0 font-sans text-[14px]">
+      <h2 class="font-sans text-h3 font-semibold">Course calendar</h2>
+      <ol class="mt-3 m-0 grid list-none gap-2 p-0 font-sans text-ui">
         {milestones.map((m) => (
           <li
             class:list={[
@@ -81,7 +77,7 @@ const nextMilestone = milestones.find((m) => m.date >= today);
       </ol>
     </section>
 
-    <p class="mt-10 font-sans text-[14px]">
+    <p class="mt-10 font-sans text-ui">
       <a href="/units">Browse the units</a>
     </p>
   </main>
