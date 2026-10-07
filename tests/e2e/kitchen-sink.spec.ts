@@ -24,5 +24,9 @@ for (const theme of THEMES) {
     expect(consoleErrors, 'console errors').toEqual([]);
 
     await page.screenshot({ path: `test-results/kitchen-sink-${theme}.png`, fullPage: true });
+    // Pixel comparison runs only in CI, where the Linux baselines are generated and committed.
+    if (process.env.CI) {
+      await expect(page).toHaveScreenshot(`kitchen-sink-${theme}.png`, { fullPage: true });
+    }
   });
 }
