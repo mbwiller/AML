@@ -71,12 +71,16 @@ const provenance = lectureProvenance(lesson.lectures);
 
   <div class="lesson-grid mx-auto max-w-7xl px-4">
     <aside class="lesson-rail" aria-label="Lesson outline">
-      <details class="rail-details" open>
+      {/* Phones and tablets: a collapsed disclosure. Desktop: the sticky rail. Same items, one hidden by CSS. */}
+      <details class="rail-details lg:hidden">
         <summary class="rail-summary font-sans text-[14px] font-semibold">Outline</summary>
-        <div class="rail-body">
+        <div class="pb-4">
           <OutlineRail items={outline} />
         </div>
       </details>
+      <div class="hidden lg:block">
+        <OutlineRail items={outline} />
+      </div>
     </aside>
 
     <main id="main" class="lesson-main">
@@ -180,16 +184,6 @@ const provenance = lectureProvenance(lesson.lectures);
       max-height: calc(100dvh - 4rem);
       overflow-y: auto;
       padding-bottom: 2rem;
-    }
-    .rail-summary {
-      pointer-events: none;
-    }
-    .rail-summary::before,
-    .rail-details[open] .rail-summary::before {
-      content: '';
-    }
-    .rail-summary {
-      display: none;
     }
   }
   @media (width >= 1280px) {

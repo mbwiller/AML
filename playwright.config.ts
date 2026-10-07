@@ -22,7 +22,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: `pnpm preview --port ${PORT}`,
+    command: `node scripts/serve-dist.mjs dist ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

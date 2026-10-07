@@ -1,0 +1,63 @@
+---
+/**
+ * `<Check ids={["q-u6-l3-001", "q-u6-l3-002"]} />` — inline check pulling
+ * items from the quiz bank (docs/CONTENT_AUTHORING.md §4, §7). M0 is a
+ * placeholder that lists the ids; the practice engine (M1) renders and
+ * grades the items.
+ */
+interface Props {
+  ids: string[];
+}
+const { ids = [] } = Astro.props;
+---
+
+<section class="check" data-check-ids={ids.join(',')} aria-label="Check your understanding">
+  <p class="check-label">Check your understanding</p>
+  <ul class="check-ids">
+    {ids.map((id) => (
+      <li data-check-id={id}>{id}</li>
+    ))}
+  </ul>
+  <p class="check-note">Inline checks arrive with the practice engine.</p>
+</section>
+
+<style>
+  .check {
+    margin-block: 1.5em;
+    padding: 1rem 1.25rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface-2);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+  .check-label {
+    margin: 0 0 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .check-ids {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .check-ids li {
+    margin: 0;
+    padding: 0.05rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+  .check-note {
+    margin: 0.75rem 0 0;
+  }
+</style>

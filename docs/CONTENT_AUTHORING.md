@@ -82,7 +82,7 @@ Skipping a part requires an MDX comment: `{/* no-hook: this is a notation-only l
 
 ## 4. Component reference
 
-Lesson files contain **no imports**; every component below is provided globally. Markdown inside a component must be separated from the tags by blank lines (an MDX rule). Math works everywhere, including inside props that end in `Tex`.
+Lesson files contain **no imports**; every component below is provided globally. Markdown inside a component must be separated from the tags by blank lines (an MDX rule). Math works everywhere: props that end in `Tex` take raw TeX; the `title`, `justification`, `keyIdea`, `challenge`, `caption`, and `<Frame>` props take prose with `$…$` spans. A literal dollar is `\$`.
 
 ### `<Frame data="…" model="…" objective="…" optimizer="…" />`
 The four-component strip for this lesson. One line each, may contain math.
@@ -144,7 +144,7 @@ $$\frac{d^2\ell}{d\psi_{jk}^2} = -\frac{s}{\psi_{jk}^2} - \frac{n_k - s}{(1-\psi
 </Derivation>
 ```
 
-Props: `goalTex` and `resultTex` are TeX without `$`. `justification` is plain text (may include `$…$`). `sticky` is a glossary id shown beside that step. `fadeable` marks steps eligible for the generated faded-example and "which step is wrong" variants. `figureState` is a JSON string handed to the nearest preceding `<Widget>` when the step is revealed. ≤15 steps per derivation; one algebraic move per step.
+Props: `goalTex` and `resultTex` are TeX without `$`. `justification` is plain text (may include `$…$`). The display math inside a `<Step>` may sit directly under the tag (as above) or be separated by blank lines; either renders in display mode. `source` is parsed as `L<n> p.<k>` or `L<n> pp.<a>-<b>` followed by an optional note in parentheses; anything else is shown verbatim. `sticky` is a glossary id shown beside that step. `fadeable` marks steps eligible for the generated faded-example and "which step is wrong" variants. `figureState` is a JSON string handed to the nearest preceding `<Widget>` when the step is revealed. ≤15 steps per derivation; one algebraic move per step.
 
 ### `<Proof collapsed title="Convergence of GD on L-smooth convex functions" keyIdea="telescoping the descent lemma">` … `</Proof>`
 Full proof, folded; the key idea stays visible.

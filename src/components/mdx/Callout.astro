@@ -1,0 +1,115 @@
+---
+/**
+ * `<Callout type="note | warning | slide | beyond" title?>` … `</Callout>`
+ * (docs/CONTENT_AUTHORING.md §4). `slide` = what the slide says and how we
+ * normalize it; `beyond` = beyond the slides. Hairline border on
+ * `--surface-2`; the left edge carries the type color (note uses `--muted`
+ * so the page keeps one accent). Icons are inline 16px paths (lucide).
+ */
+import { renderInlineTex } from '@/lib/markdown/render-tex';
+
+type CalloutType = 'note' | 'warning' | 'slide' | 'beyond';
+
+interface Props {
+  type?: CalloutType | undefined;
+  title?: string | undefined;
+}
+const { type = 'note', title } = Astro.props;
+
+const LABELS: Record<CalloutType, string> = {
+  note: 'Note',
+  warning: 'Warning',
+  slide: 'On the slide',
+  beyond: 'Beyond the slides',
+};
+
+// lucide icon paths (ISC): info, triangle-alert, presentation, compass
+const ICONS: Record<CalloutType, string> = {
+  note: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  warning:
+    '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  slide:
+    '<path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/>',
+  beyond:
+    '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+};
+const label = LABELS[type] ?? LABELS.note;
+const icon = ICONS[type] ?? ICONS.note;
+---
+
+<aside class="callout" data-type={type} aria-label={label}>
+  <p class="callout-head">
+    <svg
+      class="callout-icon"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+      set:html={icon}
+    />
+    <span class="callout-label">{label}</span>
+    {title && <span class="callout-title" set:html={renderInlineTex(title)} />}
+  </p>
+  <div class="callout-body">
+    <slot />
+  </div>
+</aside>
+
+<style>
+  .callout {
+    --callout-edge: var(--muted);
+    margin-block: 1.5em;
+    padding: 0.75rem 1.25rem 0.875rem;
+    border: 1px solid var(--border);
+    border-inline-start: 3px solid var(--callout-edge);
+    border-radius: var(--radius-card);
+    background: var(--surface-2);
+  }
+  .callout[data-type='warning'] {
+    --callout-edge: var(--field-calculus);
+  }
+  .callout[data-type='slide'] {
+    --callout-edge: var(--field-statistics);
+  }
+  .callout[data-type='beyond'] {
+    --callout-edge: var(--field-linear-algebra);
+  }
+  .callout-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.35rem;
+    font-family: var(--font-sans);
+    line-height: 1.4;
+    color: var(--muted);
+  }
+  .callout-icon {
+    flex: none;
+  }
+  .callout-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .callout-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .callout-body {
+    font-size: 0.9444em;
+  }
+  .callout-body > :global(:first-child) {
+    margin-block-start: 0;
+  }
+  .callout-body > :global(:last-child) {
+    margin-block-end: 0;
+  }
+</style>

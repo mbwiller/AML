@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { escapeHtml, renderDisplayTex, renderInlineMath, renderInlineTex } from './render-tex';
+import {
+  escapeHtml,
+  promoteInlineMath,
+  renderDisplayTex,
+  renderInlineMath,
+  renderInlineTex,
+} from './render-tex';
 
 describe('renderDisplayTex', () => {
   it('renders a display block with HTML and MathML', () => {
@@ -101,5 +107,34 @@ describe('renderInlineTex', () => {
   it('expands macros inside spans', () => {
     const html = renderInlineTex('the data $\\D$ with $\\ex{i} \\in \\R^d$');
     expect(html).not.toContain('katex-error');
+  });
+});
+
+describe('promoteInlineMath', () => {
+  it('re-renders a lone inline equation in display mode', () => {
+    const inline = `<p>${renderInlineMath('\\hat y = \\argmax_y p(y \\mid \\mathbf{x})')}</p>`;
+    const html = promoteInlineMath(inline);
+    expect(html).toContain('katex-display');
+    expect(html).toContain('op-limits');
+    expect(html).not.toContain('katex-error');
+  });
+
+  it('round-trips TeX that KaTeX escaped in the annotation', () => {
+    const inline = `<p>${renderInlineMath('a < b \\quad \\text{"and"} \\& c')}</p>`;
+    const html = promoteInlineMath(inline);
+    expect(html).toContain('katex-display');
+    expect(html).not.toContain('katex-error');
+  });
+
+  it('leaves display math alone', () => {
+    const display = renderDisplayTex('x');
+    expect(promoteInlineMath(display)).toBe(display);
+  });
+
+  it('leaves prose and multiple spans alone', () => {
+    const prose = `<p>so ${renderInlineMath('x')} holds</p>`;
+    expect(promoteInlineMath(prose)).toBe(prose);
+    const two = `<p>${renderInlineMath('x')} ${renderInlineMath('y')}</p>`;
+    expect(promoteInlineMath(two)).toBe(two);
   });
 });

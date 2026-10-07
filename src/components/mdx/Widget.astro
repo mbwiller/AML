@@ -1,0 +1,86 @@
+---
+/**
+ * `<Widget name="…" challenge="…" …params />` — an explorable
+ * (docs/CONTENT_AUTHORING.md §4; VISION.md §9.3). M0 is a placeholder frame
+ * that shows the name, the challenge line, and the params as JSON, and
+ * reserves 16rem of height. M1 mounts the React island from
+ * `src/components/widgets/registry.ts` inside `<WidgetFrame>` and validates
+ * params against the manifest.
+ */
+import { renderInlineTex } from '@/lib/markdown/render-tex';
+
+interface Props {
+  name: string;
+  challenge?: string | undefined;
+  [param: string]: unknown;
+}
+const { name, challenge, ...rest } = Astro.props;
+const params = JSON.stringify(rest, null, 2);
+const hasParams = Object.keys(rest).length > 0;
+---
+
+<figure class="widget" data-widget={name} data-widget-params={JSON.stringify(rest)}>
+  <figcaption class="widget-head">
+    <span class="widget-label">Widget</span>
+    <span class="widget-name">{name}</span>
+  </figcaption>
+  {challenge && <p class="widget-challenge" set:html={renderInlineTex(challenge)} />}
+  {hasParams && <pre class="widget-params"><code>{params}</code></pre>}
+  <p class="widget-note">Interactive explorable coming soon.</p>
+</figure>
+
+<style>
+  .widget {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 16rem;
+    margin-block: 1.5em;
+    padding: 1rem 1.25rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+  }
+  .widget-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: var(--fg);
+  }
+  .widget-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .widget-name {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+  }
+  .widget-challenge {
+    margin: 0;
+    font-size: 0.9444em;
+  }
+  .widget-params {
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    overflow-x: auto;
+    border-radius: var(--radius-control);
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+  .widget-note {
+    margin: auto 0 0;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+</style>

@@ -1,0 +1,36 @@
+---
+/**
+ * `<Summary>` … `</Summary>` — definitions and results on one screen
+ * (docs/CONTENT_AUTHORING.md §4). The flashcard source, together with the
+ * boxed results; M1 extracts cards from `[data-flashcard-source]`.
+ */
+---
+
+<section id="summary" class="summary" aria-labelledby="summary-heading" data-flashcard-source>
+  <h2 id="summary-heading">Summary card</h2>
+  <div class="summary-body">
+    <slot />
+  </div>
+</section>
+
+<style>
+  .summary {
+    margin-block: 2.5em 1.5em;
+    padding: 1rem 1.25rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+  }
+  .summary h2 {
+    margin-block: 0 0.5em;
+    padding-block-end: 0.5rem;
+    border-block-end: 1px solid var(--border);
+    font-size: 1.25rem;
+  }
+  .summary-body > :global(:first-child) {
+    margin-block-start: 0;
+  }
+  .summary-body > :global(:last-child) {
+    margin-block-end: 0;
+  }
+</style>

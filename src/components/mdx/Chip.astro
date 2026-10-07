@@ -1,0 +1,49 @@
+---
+/**
+ * Internal: an inline chip (slide reference, notebook cells, case id,
+ * "see: term"). A link when `href` is given, a span otherwise.
+ * Hairline border, muted Inter 12px, full radius. Not in the MDX registry.
+ */
+interface Props {
+  href?: string | undefined;
+  title?: string | undefined;
+  class?: string | undefined;
+  [data: `data-${string}`]: string | undefined;
+}
+const { href, title, class: className, ...rest } = Astro.props;
+const Tag = href ? 'a' : 'span';
+---
+
+<Tag class:list={['chip', className]} href={href} title={title} {...rest}>
+  <slot />
+</Tag>
+
+<style>
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    max-width: 100%;
+    padding: 0.05rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: nowrap;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    text-decoration: none;
+    vertical-align: 0.1em;
+    transition:
+      color var(--duration-micro) var(--ease-standard),
+      border-color var(--duration-micro) var(--ease-standard);
+  }
+  a.chip:hover {
+    color: var(--fg);
+    border-color: var(--muted);
+    text-decoration: none;
+  }
+</style>

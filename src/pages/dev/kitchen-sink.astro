@@ -14,7 +14,7 @@ import KitchenSink, { getHeadings } from './_kitchen-sink.mdx';
 const lesson = lessonSchema.parse({
   title: 'Kitchen sink: the skeleton lesson',
   unit: 'u6-generative-models-and-naive-bayes',
-  order: 0,
+  order: 1,
   slug: 'kitchen-sink',
   summary:
     'Every MDX component in the contract and every design token, rendered in the real lesson layout.',
@@ -48,7 +48,7 @@ const prerequisites = [
 
 <Lesson
   lesson={lesson}
-  number="6.0"
+  number="6.1"
   unitTitle="Generative models and Naive Bayes"
   unitHref="/units/u6-generative-models-and-naive-bayes"
   outline={[...headings, { depth: 2, slug: 'tokens', text: 'Design tokens' }]}

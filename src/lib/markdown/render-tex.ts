@@ -99,3 +99,37 @@ function findClosing(text: string, from: number, delimiter: string): number {
   }
   return -1;
 }
+
+/**
+ * Promote a step body that MDX parsed as inline math to display math.
+ *
+ * The contract's skeleton writes `<Step …>` and `$$…$$` on adjacent lines
+ * with no blank line between them, which MDX reads as a paragraph holding
+ * one inline `<span class="katex">`. When the rendered slot is exactly that
+ * (one paragraph, one inline KaTeX span, nothing else), the TeX is read back
+ * from KaTeX's `<annotation encoding="application/x-tex">` and re-rendered in
+ * display mode. Anything else (display math already, prose, several spans)
+ * is returned untouched.
+ */
+export function promoteInlineMath(html: string): string {
+  if (html.includes('katex-display')) return html;
+  const paragraph = /^\s*<p>\s*(<span class="katex">[\s\S]*<\/span>)\s*<\/p>\s*$/.exec(html);
+  if (!paragraph?.[1]) return html;
+  const spans = paragraph[1].match(/<span class="katex">/g);
+  if (!spans || spans.length !== 1) return html;
+  const annotation = /<annotation encoding="application\/x-tex">([\s\S]*?)<\/annotation>/.exec(
+    paragraph[1],
+  );
+  if (!annotation?.[1]) return html;
+  return renderDisplayTex(unescapeHtml(annotation[1]));
+}
+
+function unescapeHtml(text: string): string {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, '&');
+}

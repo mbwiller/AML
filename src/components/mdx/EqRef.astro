@@ -1,0 +1,25 @@
+---
+/**
+ * `<EqRef id="eq-6-3-1" />` — links to a display equation tagged with
+ * `\tag{6.3.1}` and `\htmlId{eq-6-3-1}{}` (docs/CONTENT_AUTHORING.md §4).
+ * Text is derived from the id: `eq-6-3-1` → "(6.3.1)". M1 adds a hover
+ * preview of the equation.
+ */
+import { eqRefText } from '@/lib/markdown/numbering';
+
+interface Props {
+  id: string;
+}
+const { id } = Astro.props;
+---
+
+<a href={`#${id}`} class="eqref" data-eqref={id}>
+  {eqRefText(id)}
+</a>
+
+<style>
+  .eqref {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+</style>
