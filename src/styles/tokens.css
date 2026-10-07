@@ -19,9 +19,9 @@
  * ------------------------------------------------------------------------- */
 @theme inline {
   /* Type families (self-hosted via fontsource, imported in global.css) */
-  --font-sans: "Inter Variable", system-ui, sans-serif;
-  --font-serif: "Source Serif 4 Variable", Georgia, serif;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-serif: 'Source Serif 4 Variable', Georgia, serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
 
   /* Surfaces and text */
   --color-bg: var(--bg);
@@ -166,7 +166,7 @@
 /* ---------------------------------------------------------------------------
  * Dark theme
  * ------------------------------------------------------------------------- */
-[data-theme="dark"] {
+[data-theme='dark'] {
   color-scheme: dark;
 
   --bg: oklch(0.17 0.012 260);

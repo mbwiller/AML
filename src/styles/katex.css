@@ -69,6 +69,6 @@
   transition: background-color var(--duration-micro) var(--ease-standard);
 }
 .math-hl:hover,
-.math-hl[data-active="true"] {
+.math-hl[data-active='true'] {
   background-color: var(--math-hl);
 }

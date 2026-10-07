@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest';
 
 import {
   findDerivations,
@@ -8,34 +8,25 @@ import {
   findStickyUses,
   maskNonProse,
   splitFrontmatter,
-} from "./mdx-scan";
-import { quizItemSchema } from "./schemas";
-import {
-  findCycle,
-  runValidation,
-  summaryLine,
-  type RawFile,
-} from "./validate";
+} from './mdx-scan';
+import { quizItemSchema } from './schemas';
+import { findCycle, runValidation, summaryLine, type RawFile } from './validate';
 
 // ---------------------------------------------------------------------------
 // Fixtures: a minimal, passing content tree held in memory
 // ---------------------------------------------------------------------------
 
-const NOW = new Date("2026-10-06T12:00:00Z");
-const UNIT = "u6-generative-models-and-naive-bayes";
+const NOW = new Date('2026-10-06T12:00:00Z');
+const UNIT = 'u6-generative-models-and-naive-bayes';
 
-const glossaryFile = (
-  id: string,
-  term: string,
-  related: string[] = [],
-): RawFile => ({
+const glossaryFile = (id: string, term: string, related: string[] = []): RawFile => ({
   path: `src/content/glossary/${id}.mdx`,
   text: `---
 id: ${id}
 term: ${term}
 field: probability
 firstUsedIn: ${UNIT}
-related: [${related.join(", ")}]
+related: [${related.join(', ')}]
 ---
 
 **What it is.** A short definition with $p(x \\mid y)$ in it.
@@ -44,7 +35,7 @@ related: [${related.join(", ")}]
 `,
 });
 
-const lessonText = (body: string, extraFrontmatter = ""): string => `---
+const lessonText = (body: string, extraFrontmatter = ''): string => `---
 title: "Naive Bayes"
 unit: ${UNIT}
 order: 3
@@ -118,12 +109,10 @@ A zero count is not a zero probability.
 
 </Summary>`;
 
-function baseFixture(
-  overrides: Partial<Record<string, string>> = {},
-): RawFile[] {
+function baseFixture(overrides: Partial<Record<string, string>> = {}): RawFile[] {
   const files: RawFile[] = [
     {
-      path: "src/content/units.yaml",
+      path: 'src/content/units.yaml',
       text: `- id: ${UNIT}
   title: "Generative models and Naive Bayes"
   order: 6
@@ -135,10 +124,10 @@ function baseFixture(
       path: `src/content/units/${UNIT}/03-naive-bayes.mdx`,
       text: lessonText(LESSON_BODY),
     },
-    glossaryFile("bernoulli", "Bernoulli distribution", ["bayes-rule"]),
-    glossaryFile("bayes-rule", "Bayes' rule"),
+    glossaryFile('bernoulli', 'Bernoulli distribution', ['bayes-rule']),
+    glossaryFile('bayes-rule', "Bayes' rule"),
     {
-      path: "src/content/graph/nodes.yaml",
+      path: 'src/content/graph/nodes.yaml',
       text: `- id: bernoulli-nb-mle
   label: "Bernoulli NB MLE"
   type: method
@@ -155,7 +144,7 @@ function baseFixture(
 `,
     },
     {
-      path: "src/content/graph/edges.yaml",
+      path: 'src/content/graph/edges.yaml',
       text: `- { from: bernoulli-nb-mle, to: laplace-smoothing, type: requires }
 `,
     },
@@ -206,7 +195,7 @@ function baseFixture(
 `,
     },
     {
-      path: "src/content/cases/notes.mdx",
+      path: 'src/content/cases/notes.mdx',
       text: `---
 id: notes
 title: "Clinical notes"
@@ -225,7 +214,7 @@ A hospital's notes, generated with [[bernoulli]] features.
 `,
     },
     {
-      path: "src/content/homework/hw3.mdx",
+      path: 'src/content/homework/hw3.mdx',
       text: `---
 id: hw3
 title: "HW3: Naive Bayes and GDA"
@@ -243,21 +232,18 @@ units: [${UNIT}]
     },
   ];
   return files.map((f) =>
-    overrides[f.path] !== undefined
-      ? { path: f.path, text: overrides[f.path] ?? "" }
-      : f,
+    overrides[f.path] !== undefined ? { path: f.path, text: overrides[f.path] ?? '' } : f,
   );
 }
 
-const messages = (findings: { message: string }[]) =>
-  findings.map((f) => f.message);
+const messages = (findings: { message: string }[]) => findings.map((f) => f.message);
 
 // ---------------------------------------------------------------------------
 // End-to-end validation
 // ---------------------------------------------------------------------------
 
-describe("runValidation", () => {
-  it("accepts a complete, consistent content tree with no errors or warnings", () => {
+describe('runValidation', () => {
+  it('accepts a complete, consistent content tree with no errors or warnings', () => {
     const result = runValidation(baseFixture(), { now: NOW });
     expect(messages(result.errors)).toEqual([]);
     expect(messages(result.warnings)).toEqual([]);
@@ -274,19 +260,19 @@ describe("runValidation", () => {
     });
     expect(result.content.quizzes[0]?.data.unit).toBe(UNIT);
     expect(summaryLine(result)).toBe(
-      "validate:content: 0 errors, 0 warnings across 1 lesson, 2 glossary terms, 2 graph nodes, 1 graph edge, 4 quiz items, 1 flashcard, 1 case, 1 homework bridge, 1 unit",
+      'validate:content: 0 errors, 0 warnings across 1 lesson, 2 glossary terms, 2 graph nodes, 1 graph edge, 4 quiz items, 1 flashcard, 1 case, 1 homework bridge, 1 unit',
     );
   });
 
-  it("reports an unresolved [[term]] with its line", () => {
-    const body = LESSON_BODY.replace("[[bernoulli]]", "[[bernouli]]");
+  it('reports an unresolved [[term]] with its line', () => {
+    const body = LESSON_BODY.replace('[[bernoulli]]', '[[bernouli]]');
     const result = runValidation(
       baseFixture({
         [`src/content/units/${UNIT}/03-naive-bayes.mdx`]: lessonText(body),
       }),
       { now: NOW },
     );
-    const hit = result.errors.find((e) => e.message.includes("[[bernouli]]"));
+    const hit = result.errors.find((e) => e.message.includes('[[bernouli]]'));
     expect(hit).toBeDefined();
     expect(hit?.message).toContain('no glossary term with id "bernouli"');
     expect(hit?.file).toBe(`src/content/units/${UNIT}/03-naive-bayes.mdx`);
@@ -306,21 +292,21 @@ describe("runValidation", () => {
     );
   });
 
-  it("rejects a cycle in the requires relation and names it", () => {
+  it('rejects a cycle in the requires relation and names it', () => {
     // The lesson derives bayes-rule → bernoulli-nb-mle; this hand edge closes the loop.
     const result = runValidation(
       baseFixture({
-        "src/content/graph/edges.yaml": `- { from: bernoulli-nb-mle, to: bayes-rule, type: requires }\n`,
+        'src/content/graph/edges.yaml': `- { from: bernoulli-nb-mle, to: bayes-rule, type: requires }\n`,
       }),
       { now: NOW },
     );
-    const hit = result.errors.find((e) => e.message.includes("cycle"));
+    const hit = result.errors.find((e) => e.message.includes('cycle'));
     expect(hit?.message).toMatch(
       /bayes-rule → bernoulli-nb-mle → bayes-rule|bernoulli-nb-mle → bayes-rule → bernoulli-nb-mle/,
     );
   });
 
-  it("rejects a component that is not in the contract", () => {
+  it('rejects a component that is not in the contract', () => {
     const body = `${LESSON_BODY}\n\n<Spoiler>\n\nhidden\n\n</Spoiler>\n`;
     const result = runValidation(
       baseFixture({
@@ -329,11 +315,11 @@ describe("runValidation", () => {
       { now: NOW },
     );
     expect(messages(result.errors)).toContain(
-      "unknown component Spoiler; the contract is docs/CONTENT_AUTHORING.md §4",
+      'unknown component Spoiler; the contract is docs/CONTENT_AUTHORING.md §4',
     );
   });
 
-  it("rejects import/export statements in a lesson", () => {
+  it('rejects import/export statements in a lesson', () => {
     const body = `import Foo from './Foo';\n\n${LESSON_BODY}`;
     const result = runValidation(
       baseFixture({
@@ -341,12 +327,10 @@ describe("runValidation", () => {
       }),
       { now: NOW },
     );
-    expect(messages(result.errors)).toContainEqual(
-      expect.stringContaining("no import/export"),
-    );
+    expect(messages(result.errors)).toContainEqual(expect.stringContaining('no import/export'));
   });
 
-  it("rejects numeric answers and solution sections in a live homework", () => {
+  it('rejects numeric answers and solution sections in a live homework', () => {
     const hw = `---
 id: hw3
 title: "HW3"
@@ -365,30 +349,20 @@ Problem 2: $\\hat\\psi = 0.15$.
 
 The answer is 42.
 `;
-    const result = runValidation(
-      baseFixture({ "src/content/homework/hw3.mdx": hw }),
-      { now: NOW },
-    );
-    const hwErrors = result.errors.filter(
-      (e) => e.file === "src/content/homework/hw3.mdx",
-    );
+    const result = runValidation(baseFixture({ 'src/content/homework/hw3.mdx': hw }), { now: NOW });
+    const hwErrors = result.errors.filter((e) => e.file === 'src/content/homework/hw3.mdx');
     expect(messages(hwErrors)).toEqual(
       expect.arrayContaining([
         expect.stringContaining('solution section ("Walkthrough")'),
-        "live homework must not contain a numeric answer in math",
-        "live homework must not state a numeric answer",
+        'live homework must not contain a numeric answer in math',
+        'live homework must not state a numeric answer',
       ]),
     );
-    expect(hwErrors.map((e) => e.line)).toEqual(
-      expect.arrayContaining([13, 15, 17]),
-    );
+    expect(hwErrors.map((e) => e.line)).toEqual(expect.arrayContaining([13, 15, 17]));
   });
 
-  it("warns when a lesson feeding a live homework states a decimal result in an Example", () => {
-    const body = LESSON_BODY.replace(
-      "$\\hat\\psi = 6/40$",
-      "$\\hat\\psi = 0.15$",
-    );
+  it('warns when a lesson feeding a live homework states a decimal result in an Example', () => {
+    const body = LESSON_BODY.replace('$\\hat\\psi = 6/40$', '$\\hat\\psi = 0.15$');
     const result = runValidation(
       baseFixture({
         [`src/content/units/${UNIT}/03-naive-bayes.mdx`]: lessonText(body),
@@ -397,20 +371,20 @@ The answer is 42.
     );
     expect(messages(result.errors)).toEqual([]);
     expect(messages(result.warnings)).toContainEqual(
-      expect.stringContaining("feeds a live homework"),
+      expect.stringContaining('feeds a live homework'),
     );
   });
 
-  it("warns about due dates that disagree with the live flag", () => {
+  it('warns about due dates that disagree with the live flag', () => {
     const past = runValidation(baseFixture(), {
-      now: new Date("2026-11-01T00:00:00Z"),
+      now: new Date('2026-11-01T00:00:00Z'),
     });
     expect(messages(past.warnings)).toContainEqual(
-      expect.stringContaining("live: true but due 2026-10-19 is in the past"),
+      expect.stringContaining('live: true but due 2026-10-19 is in the past'),
     );
   });
 
-  it("reports schema failures with the file and item", () => {
+  it('reports schema failures with the file and item', () => {
     const result = runValidation(
       baseFixture({
         [`src/content/quizzes/${UNIT}.yaml`]: `- id: q-u6-l3-001
@@ -428,20 +402,21 @@ The answer is 42.
     expect(messages(result.errors)).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "item 1 (q-u6-l3-001): options: an mc item needs exactly one correct option (found 2)",
+          'item 1 (q-u6-l3-001): options: an mc item needs exactly one correct option (found 2)',
         ),
       ]),
     );
   });
 
-  it("checks references across collections", () => {
+  it('checks references across collections', () => {
     const body = LESSON_BODY;
     const result = runValidation(
       baseFixture({
-        [`src/content/units/${UNIT}/03-naive-bayes.mdx`]: lessonText(
-          body,
-        ).replace("cases: [notes]", "cases: [ghost]"),
-        "src/content/graph/edges.yaml": `- { from: bernoulli-nb-mle, to: nowhere, type: uses }\n`,
+        [`src/content/units/${UNIT}/03-naive-bayes.mdx`]: lessonText(body).replace(
+          'cases: [notes]',
+          'cases: [ghost]',
+        ),
+        'src/content/graph/edges.yaml': `- { from: bernoulli-nb-mle, to: nowhere, type: uses }\n`,
       }),
       { now: NOW },
     );
@@ -450,18 +425,15 @@ The answer is 42.
     );
     expect(messages(result.errors)).toEqual(
       expect.arrayContaining([
-        expect.stringContaining(
-          '"nowhere" is neither a graph node nor a glossary term',
-        ),
+        expect.stringContaining('"nowhere" is neither a graph node nor a glossary term'),
       ]),
     );
   });
 
-  it("warns about derivations that break the step rules", () => {
-    const steps = Array.from(
-      { length: 16 },
-      (_, i) => `<Step>\n$$x_{${i}}$$\n</Step>`,
-    ).join("\n\n");
+  it('warns about derivations that break the step rules', () => {
+    const steps = Array.from({ length: 16 }, (_, i) => `<Step>\n$$x_{${i}}$$\n</Step>`).join(
+      '\n\n',
+    );
     const body = `${LESSON_BODY}\n\n<Derivation id="der-6-3-9" title="Long">\n\n${steps}\n\n</Derivation>\n`;
     const result = runValidation(
       baseFixture({
@@ -471,18 +443,14 @@ The answer is 42.
     );
     expect(messages(result.errors)).toEqual([]);
     const w = messages(result.warnings);
-    expect(w).toContain(
-      'Derivation "der-6-3-9" has 16 steps; chunk or collapse beyond 15',
-    );
+    expect(w).toContain('Derivation "der-6-3-9" has 16 steps; chunk or collapse beyond 15');
     expect(w).toContain('Derivation "der-6-3-9" is missing goalTex');
     expect(w).toContain('Derivation "der-6-3-9" is missing resultTex');
-    expect(w).toContain(
-      'Derivation "der-6-3-9" is missing source (slide provenance)',
-    );
+    expect(w).toContain('Derivation "der-6-3-9" is missing source (slide provenance)');
     expect(w).toContain('Derivation "der-6-3-9" step 1 has no justification');
   });
 
-  it("is fine with an empty tree except for units", () => {
+  it('is fine with an empty tree except for units', () => {
     const [units] = baseFixture();
     const result = runValidation(units ? [units] : [], { now: NOW });
     expect(result.errors).toEqual([]);
@@ -493,47 +461,43 @@ The answer is 42.
 // Scanner units
 // ---------------------------------------------------------------------------
 
-describe("mdx-scan", () => {
-  it("splits frontmatter and keeps body line numbers", () => {
-    const { frontmatter, body, bodyLine } = splitFrontmatter(
-      "---\na: 1\n---\n\nhello",
-    );
-    expect(frontmatter).toBe("a: 1");
-    expect(body).toBe("\nhello");
+describe('mdx-scan', () => {
+  it('splits frontmatter and keeps body line numbers', () => {
+    const { frontmatter, body, bodyLine } = splitFrontmatter('---\na: 1\n---\n\nhello');
+    expect(frontmatter).toBe('a: 1');
+    expect(body).toBe('\nhello');
     expect(bodyLine).toBe(4);
   });
 
-  it("ignores [[…]] and tags inside code, math, and comments", () => {
+  it('ignores [[…]] and tags inside code, math, and comments', () => {
     const body = [
-      "Real [[alpha]] use.",
-      "`[[beta]]` and $[[gamma]]$ and $$<Gamma/> [[delta]]$$",
-      "```",
-      "<Code/> [[epsilon]]",
-      "```",
-      "{/* <Comment/> [[zeta]] */}",
+      'Real [[alpha]] use.',
+      '`[[beta]]` and $[[gamma]]$ and $$<Gamma/> [[delta]]$$',
+      '```',
+      '<Code/> [[epsilon]]',
+      '```',
+      '{/* <Comment/> [[zeta]] */}',
       '<Real x="1" />',
-    ].join("\n");
-    expect(findStickyUses(body).map((u) => u.id)).toEqual(["alpha"]);
-    expect(findJsxTags(maskNonProse(body)).map((t) => t.name)).toEqual([
-      "Real",
-    ]);
+    ].join('\n');
+    expect(findStickyUses(body).map((u) => u.id)).toEqual(['alpha']);
+    expect(findJsxTags(maskNonProse(body)).map((t) => t.name)).toEqual(['Real']);
   });
 
-  it("parses props written as strings, expressions, and bare flags", () => {
+  it('parses props written as strings, expressions, and bare flags', () => {
     const [tag] = findJsxTags(
       '<Step justification="chain rule" fadeable figureState={{"a": 1}} n={7} />',
     );
     expect(tag?.attrs).toEqual({
-      justification: "chain rule",
+      justification: 'chain rule',
       fadeable: true,
       figureState: '{"a": 1}',
-      n: "7",
+      n: '7',
     });
-    expect(tag?.exprAttrs.has("n")).toBe(true);
+    expect(tag?.exprAttrs.has('n')).toBe(true);
     expect(tag?.selfClosing).toBe(true);
   });
 
-  it("collects derivations with their steps through chunks", () => {
+  it('collects derivations with their steps through chunks', () => {
     const body = `<Derivation id="der-1-1-1" goalTex="a" resultTex="b" source="L1 p.1">
 <Chunk title="x">
 <Step justification="j1" sticky="s1">
@@ -545,57 +509,54 @@ $$b$$
 </Chunk>
 </Derivation>`;
     const [d] = findDerivations(body);
-    expect(d?.id).toBe("der-1-1-1");
+    expect(d?.id).toBe('der-1-1-1');
     expect(d?.steps).toHaveLength(2);
-    expect(d?.steps[0]?.sticky).toBe("s1");
+    expect(d?.steps[0]?.sticky).toBe('s1');
     expect(d?.steps[1]?.justification).toBeUndefined();
     expect(d?.unclosed).toBe(false);
   });
 
-  it("finds headings and math spans", () => {
-    const body = "# Title\n\ntext $a = 1.5$ and \\$5\n\n$$\nb = 2\n$$\n";
-    expect(findHeadings(body)).toEqual([{ level: 1, text: "Title", line: 1 }]);
-    expect(findMathSpans(body).map((m) => m.tex.trim())).toEqual([
-      "a = 1.5",
-      "b = 2",
-    ]);
+  it('finds headings and math spans', () => {
+    const body = '# Title\n\ntext $a = 1.5$ and \\$5\n\n$$\nb = 2\n$$\n';
+    expect(findHeadings(body)).toEqual([{ level: 1, text: 'Title', line: 1 }]);
+    expect(findMathSpans(body).map((m) => m.tex.trim())).toEqual(['a = 1.5', 'b = 2']);
   });
 });
 
-describe("findCycle", () => {
-  it("returns null for a DAG and the loop for a cycle", () => {
+describe('findCycle', () => {
+  it('returns null for a DAG and the loop for a cycle', () => {
     const dag = new Map([
-      ["a", new Set(["b"])],
-      ["b", new Set(["c"])],
-      ["c", new Set<string>()],
+      ['a', new Set(['b'])],
+      ['b', new Set(['c'])],
+      ['c', new Set<string>()],
     ]);
     expect(findCycle(dag)).toBeNull();
-    dag.get("c")?.add("a");
-    expect(findCycle(dag)).toEqual(["a", "b", "c", "a"]);
+    dag.get('c')?.add('a');
+    expect(findCycle(dag)).toEqual(['a', 'b', 'c', 'a']);
   });
 });
 
-describe("quizItemSchema", () => {
-  it("keeps extra fields on open item types and defaults the common ones", () => {
+describe('quizItemSchema', () => {
+  it('keeps extra fields on open item types and defaults the common ones', () => {
     const parsed = quizItemSchema.parse({
-      id: "q-u1-l1-001",
-      lesson: "x",
-      type: "order",
-      prompt: "Order the steps",
-      steps: ["a", "b"],
+      id: 'q-u1-l1-001',
+      lesson: 'x',
+      type: 'order',
+      prompt: 'Order the steps',
+      steps: ['a', 'b'],
     });
-    expect(parsed.type).toBe("order");
+    expect(parsed.type).toBe('order');
     expect(parsed.difficulty).toBe(2);
-    expect(parsed.source).toBe("original");
-    expect((parsed as Record<string, unknown>)["steps"]).toEqual(["a", "b"]);
+    expect(parsed.source).toBe('original');
+    expect((parsed as Record<string, unknown>)['steps']).toEqual(['a', 'b']);
   });
 
-  it("requires a formula when a numeric item is seeded", () => {
+  it('requires a formula when a numeric item is seeded', () => {
     const r = quizItemSchema.safeParse({
-      id: "q-u1-l1-002",
-      lesson: "x",
-      type: "numeric",
-      prompt: "p",
+      id: 'q-u1-l1-002',
+      lesson: 'x',
+      type: 'numeric',
+      prompt: 'p',
       answer: 1,
       seeded: { n: [1, 2] },
     });

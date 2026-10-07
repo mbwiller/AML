@@ -1,0 +1,258 @@
+---
+/**
+ * Lesson page layout (STYLE_GUIDE §5; VISION §7 "Lesson page").
+ * ≥1280px: outline rail · reading column (68ch) · right margin (derivations and
+ * widgets break out into it). ≥1024px: rail + reading column. Below: one column,
+ * the outline as a collapsible at the top.
+ */
+import Base from '@/layouts/Base.astro';
+import NextLessonCard from '@/components/shell/NextLessonCard.astro';
+import OutlineRail from '@/components/shell/OutlineRail.astro';
+import { formatMinutes, lectureProvenance, type OutlineItem } from '@/lib/lessons';
+import type { Lesson } from '@/lib/content/schemas';
+
+export interface PrereqChip {
+  id: string;
+  label: string;
+  href: string;
+  field?: string | undefined;
+}
+
+export interface LessonNeighbor {
+  href: string;
+  number: string;
+  title: string;
+}
+
+interface Props {
+  lesson: Lesson;
+  /** "6.3" */
+  number: string;
+  unitTitle: string;
+  unitHref: string;
+  outline: OutlineItem[];
+  prerequisites: PrereqChip[];
+  prev?: LessonNeighbor | undefined;
+  next?: LessonNeighbor | undefined;
+}
+const { lesson, number, unitTitle, unitHref, outline, prerequisites, prev, next } = Astro.props;
+const provenance = lectureProvenance(lesson.lectures);
+---
+
+<Base title={`${number} ${lesson.title}`} description={lesson.summary}>
+  <div
+    class="sticky top-0 z-40 border-b border-border bg-bg/95 font-sans text-[13px] backdrop-blur"
+    data-mini-header
+  >
+    <div class="mx-auto flex h-9 max-w-7xl items-center gap-3 px-4">
+      <a href={unitHref} class="truncate text-muted no-underline hover:text-fg">
+        {unitTitle}
+      </a>
+      <span class="text-muted" aria-hidden="true">
+        /
+      </span>
+      <span class="truncate font-medium text-fg">
+        {number} · {lesson.title}
+      </span>
+      {lesson.status !== 'published' && (
+        <span class="ml-auto rounded-full border border-border px-2 py-0.5 text-[11px] tracking-[0.04em] text-muted uppercase">
+          {lesson.status}
+        </span>
+      )}
+    </div>
+    <div class="h-0.5 w-full bg-border">
+      <div
+        class="h-full w-0 bg-accent transition-[width] duration-micro ease-standard"
+        data-reading-progress
+        aria-hidden="true"
+      ></div>
+    </div>
+  </div>
+
+  <div class="lesson-grid mx-auto max-w-7xl px-4">
+    <aside class="lesson-rail" aria-label="Lesson outline">
+      <details class="rail-details" open>
+        <summary class="rail-summary font-sans text-[14px] font-semibold">Outline</summary>
+        <div class="rail-body">
+          <OutlineRail items={outline} />
+        </div>
+      </details>
+    </aside>
+
+    <main id="main" class="lesson-main">
+      <header class="lesson-header font-sans">
+        <p class="m-0 text-[13px] text-muted">
+          <a href={unitHref} class="text-muted no-underline hover:text-fg">
+            {unitTitle}
+          </a>
+          <span aria-hidden="true"> · </span>Lesson {number}
+        </p>
+        <h1 class="mt-1 mb-2 text-[2rem] leading-tight font-bold tracking-tight">{lesson.title}</h1>
+        <p class="m-0 max-w-[68ch] font-serif text-[18px] text-muted">{lesson.summary}</p>
+        <dl class="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-[13px]">
+          <div class="flex gap-1.5">
+            <dt class="text-muted">Time</dt>
+            <dd class="m-0">{formatMinutes(lesson.estimatedMinutes)}</dd>
+          </div>
+          {provenance && (
+            <div class="flex gap-1.5">
+              <dt class="text-muted">Slides</dt>
+              <dd class="m-0">{provenance}</dd>
+            </div>
+          )}
+          {lesson.homework.length > 0 && (
+            <div class="flex gap-1.5">
+              <dt class="text-muted">Feeds</dt>
+              <dd class="m-0">{lesson.homework.map((h) => h.toUpperCase()).join(', ')}</dd>
+            </div>
+          )}
+        </dl>
+        {prerequisites.length > 0 && (
+          <div class="mt-4">
+            <p class="m-0 mb-1.5 text-[12px] font-semibold tracking-[0.04em] text-muted uppercase">
+              Prerequisites
+            </p>
+            <ul class="m-0 flex list-none flex-wrap gap-1.5 p-0">
+              {prerequisites.map((p) => (
+                <li class="m-0">
+                  <a
+                    href={p.href}
+                    data-field={p.field}
+                    class="prereq-chip inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[13px] text-fg no-underline hover:bg-surface-2"
+                  >
+                    <span class="prereq-dot size-2 rounded-full bg-muted" aria-hidden="true" />
+                    {p.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </header>
+
+      <article class="prose lesson-body mt-8">
+        <slot />
+      </article>
+
+      <NextLessonCard prev={prev} next={next} />
+    </main>
+
+    <aside class="lesson-margin" aria-hidden="true"></aside>
+  </div>
+</Base>
+
+<style>
+  .lesson-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 2rem;
+    padding-top: 1.5rem;
+  }
+  .lesson-main {
+    min-width: 0;
+  }
+  .lesson-body {
+    max-width: var(--measure-prose);
+  }
+  .rail-summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 0.5rem 0;
+  }
+  .rail-summary::-webkit-details-marker {
+    display: none;
+  }
+  .rail-summary::before {
+    content: '▸ ';
+    color: var(--muted);
+  }
+  .rail-details[open] .rail-summary::before {
+    content: '▾ ';
+  }
+  @media (width >= 1024px) {
+    .lesson-grid {
+      grid-template-columns: 14rem minmax(0, 1fr);
+    }
+    .lesson-rail {
+      position: sticky;
+      top: 3.5rem;
+      align-self: start;
+      max-height: calc(100dvh - 4rem);
+      overflow-y: auto;
+      padding-bottom: 2rem;
+    }
+    .rail-summary {
+      pointer-events: none;
+    }
+    .rail-summary::before,
+    .rail-details[open] .rail-summary::before {
+      content: '';
+    }
+    .rail-summary {
+      display: none;
+    }
+  }
+  @media (width >= 1280px) {
+    .lesson-grid {
+      grid-template-columns: 14rem minmax(0, var(--measure-prose)) 16rem;
+    }
+    .lesson-margin {
+      display: block;
+    }
+    /* Derivations and widgets break out into the right margin (STYLE_GUIDE §5). */
+    .lesson-body :global(.derivation),
+    .lesson-body :global(.widget),
+    .lesson-body :global(figure.breakout) {
+      width: calc(100% + 16rem + 2rem);
+      max-width: none;
+    }
+  }
+  .prereq-chip[data-field='probability'] .prereq-dot {
+    background: var(--field-probability);
+  }
+  .prereq-chip[data-field='statistics'] .prereq-dot {
+    background: var(--field-statistics);
+  }
+  .prereq-chip[data-field='linear-algebra'] .prereq-dot {
+    background: var(--field-linear-algebra);
+  }
+  .prereq-chip[data-field='calculus'] .prereq-dot {
+    background: var(--field-calculus);
+  }
+  .prereq-chip[data-field='information-theory'] .prereq-dot {
+    background: var(--field-information);
+  }
+  .prereq-chip[data-field='ml'] .prereq-dot {
+    background: var(--field-ml);
+  }
+  .prereq-chip[data-field='evaluation'] .prereq-dot {
+    background: var(--field-evaluation);
+  }
+</style>
+
+<script>
+  // Reading progress in the mini header; no React, no layout work beyond one read per frame.
+  const bar = document.querySelector<HTMLElement>('[data-reading-progress]');
+  const main = document.getElementById('main');
+  if (bar && main) {
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const rect = main.getBoundingClientRect();
+      const total = rect.height - window.innerHeight;
+      const done = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 1;
+      bar.style.width = `${(done * 100).toFixed(1)}%`;
+    };
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(update);
+        }
+      },
+      { passive: true },
+    );
+    update();
+  }
+</script>

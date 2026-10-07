@@ -1,17 +1,17 @@
 /* Entry stylesheet, imported once by src/layouts/Base.astro. Keep
    `@import 'tailwindcss'` first; order below is load-bearing. */
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Self-hosted variable fonts (fontsource, font-display: swap) */
-@import "@fontsource-variable/inter";
-@import "@fontsource-variable/source-serif-4";
-@import "@fontsource-variable/jetbrains-mono";
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/source-serif-4';
+@import '@fontsource-variable/jetbrains-mono';
 
 /* Tokens, then KaTeX base + our overrides, then prose rhythm */
-@import "./tokens.css";
-@import "katex/dist/katex.min.css";
-@import "./katex.css";
-@import "./prose.css";
+@import './tokens.css';
+@import 'katex/dist/katex.min.css';
+@import './katex.css';
+@import './prose.css';
 
 @layer base {
   html {

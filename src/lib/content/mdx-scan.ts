@@ -25,23 +25,22 @@ export interface FrontmatterSplit {
 }
 
 export function splitFrontmatter(src: string): FrontmatterSplit {
-  const text = src.startsWith("﻿") ? src.slice(1) : src;
-  const lines = text.split("\n");
-  if (lines[0]?.trimEnd() !== "---")
-    return { frontmatter: null, body: text, bodyLine: 1 };
+  const text = src.startsWith('﻿') ? src.slice(1) : src;
+  const lines = text.split('\n');
+  if (lines[0]?.trimEnd() !== '---') return { frontmatter: null, body: text, bodyLine: 1 };
   for (let i = 1; i < lines.length; i++) {
-    if (lines[i]?.trimEnd() === "---") {
+    if (lines[i]?.trimEnd() === '---') {
       return {
-        frontmatter: lines.slice(1, i).join("\n"),
-        body: lines.slice(i + 1).join("\n"),
+        frontmatter: lines.slice(1, i).join('\n'),
+        body: lines.slice(i + 1).join('\n'),
         bodyLine: i + 2,
       };
     }
   }
   // Unterminated frontmatter: treat the whole file as frontmatter so YAML errors surface.
   return {
-    frontmatter: lines.slice(1).join("\n"),
-    body: "",
+    frontmatter: lines.slice(1).join('\n'),
+    body: '',
     bodyLine: lines.length + 1,
   };
 }
@@ -53,8 +52,7 @@ export function splitFrontmatter(src: string): FrontmatterSplit {
 /** Returns a function mapping a 0-based offset to a 1-based line number. */
 export function lineIndex(text: string): (offset: number) => number {
   const starts = [0];
-  for (let i = 0; i < text.length; i++)
-    if (text[i] === "\n") starts.push(i + 1);
+  for (let i = 0; i < text.length; i++) if (text[i] === '\n') starts.push(i + 1);
   return (offset) => {
     let lo = 0;
     let hi = starts.length - 1;
@@ -82,21 +80,21 @@ export interface MaskOptions {
  */
 export function maskNonProse(body: string, options: MaskOptions = {}): string {
   const math = options.math ?? true;
-  const out = body.split("");
+  const out = body.split('');
   const blank = (from: number, to: number) => {
-    for (let i = from; i < to; i++) if (out[i] !== "\n") out[i] = " ";
+    for (let i = from; i < to; i++) if (out[i] !== '\n') out[i] = ' ';
   };
   const atLineStart = (i: number) => {
     let j = i - 1;
-    while (j >= 0 && (body[j] === " " || body[j] === "\t")) j--;
-    return j < 0 || body[j] === "\n";
+    while (j >= 0 && (body[j] === ' ' || body[j] === '\t')) j--;
+    return j < 0 || body[j] === '\n';
   };
   const n = body.length;
   let i = 0;
   while (i < n) {
     const ch = body[i];
     // Fenced code block at line start.
-    if ((ch === "`" || ch === "~") && atLineStart(i)) {
+    if ((ch === '`' || ch === '~') && atLineStart(i)) {
       let k = i;
       while (body[k] === ch) k++;
       const fenceLen = k - i;
@@ -106,14 +104,11 @@ export function maskNonProse(body: string, options: MaskOptions = {}): string {
         while (close !== -1) {
           let e = close + 1 + fenceLen;
           while (body[e] === ch) e++;
-          const rest = body.slice(
-            e,
-            body.indexOf("\n", e) === -1 ? n : body.indexOf("\n", e),
-          );
-          if (rest.trim() === "") break;
+          const rest = body.slice(e, body.indexOf('\n', e) === -1 ? n : body.indexOf('\n', e));
+          if (rest.trim() === '') break;
           close = body.indexOf(`\n${fence}`, close + 1);
         }
-        const end = close === -1 ? n : body.indexOf("\n", close + 1 + fenceLen);
+        const end = close === -1 ? n : body.indexOf('\n', close + 1 + fenceLen);
         const stop = end === -1 ? n : end;
         blank(i, stop);
         i = stop;
@@ -121,19 +116,19 @@ export function maskNonProse(body: string, options: MaskOptions = {}): string {
       }
     }
     // MDX comment.
-    if (body.startsWith("{/*", i)) {
-      const close = body.indexOf("*/}", i + 3);
+    if (body.startsWith('{/*', i)) {
+      const close = body.indexOf('*/}', i + 3);
       const stop = close === -1 ? n : close + 3;
       blank(i, stop);
       i = stop;
       continue;
     }
     // Inline code (single line).
-    if (ch === "`") {
+    if (ch === '`') {
       let k = i;
-      while (body[k] === "`") k++;
+      while (body[k] === '`') k++;
       const ticks = body.slice(i, k);
-      const lineEnd = body.indexOf("\n", k);
+      const lineEnd = body.indexOf('\n', k);
       const limit = lineEnd === -1 ? n : lineEnd;
       const close = body.indexOf(ticks, k);
       if (close !== -1 && close < limit) {
@@ -145,28 +140,28 @@ export function maskNonProse(body: string, options: MaskOptions = {}): string {
       continue;
     }
     // Escaped dollar.
-    if (ch === "\\" && body[i + 1] === "$") {
+    if (ch === '\\' && body[i + 1] === '$') {
       i += 2;
       continue;
     }
-    if (math && ch === "$") {
-      if (body[i + 1] === "$") {
-        const close = body.indexOf("$$", i + 2);
+    if (math && ch === '$') {
+      if (body[i + 1] === '$') {
+        const close = body.indexOf('$$', i + 2);
         const stop = close === -1 ? n : close + 2;
         blank(i, stop);
         i = stop;
         continue;
       }
-      const lineEnd = body.indexOf("\n", i + 1);
+      const lineEnd = body.indexOf('\n', i + 1);
       const limit = lineEnd === -1 ? n : lineEnd;
       let k = i + 1;
       let found = -1;
       while (k < limit) {
-        if (body[k] === "\\") {
+        if (body[k] === '\\') {
           k += 2;
           continue;
         }
-        if (body[k] === "$") {
+        if (body[k] === '$') {
           found = k;
           break;
         }
@@ -180,7 +175,7 @@ export function maskNonProse(body: string, options: MaskOptions = {}): string {
     }
     i++;
   }
-  return out.join("");
+  return out.join('');
 }
 
 // ---------------------------------------------------------------------------
@@ -244,41 +239,39 @@ function parseAttrs(
   let i = from;
   const n = text.length;
   while (i < n) {
-    const ch = text[i] ?? "";
+    const ch = text[i] ?? '';
     if (/\s/.test(ch)) {
       i++;
       continue;
     }
-    if (ch === "/" && text[i + 1] === ">")
+    if (ch === '/' && text[i + 1] === '>')
       return { attrs, exprAttrs, selfClosing: true, end: i + 2 };
-    if (ch === ">") return { attrs, exprAttrs, selfClosing: false, end: i + 1 };
-    if (ch === "{") {
+    if (ch === '>') return { attrs, exprAttrs, selfClosing: false, end: i + 1 };
+    if (ch === '{') {
       // spread attribute {...x}: skip balanced braces
       const close = matchBrace(text, i);
       if (close === -1) return null;
       i = close + 1;
       continue;
     }
-    const nameMatch = /^[A-Za-z_:][A-Za-z0-9_:.-]*/.exec(
-      text.slice(i, i + 128),
-    );
+    const nameMatch = /^[A-Za-z_:][A-Za-z0-9_:.-]*/.exec(text.slice(i, i + 128));
     if (!nameMatch) return null;
     const name = nameMatch[0];
     i += name.length;
-    while (i < n && /\s/.test(text[i] ?? "")) i++;
-    if (text[i] !== "=") {
+    while (i < n && /\s/.test(text[i] ?? '')) i++;
+    if (text[i] !== '=') {
       attrs[name] = true;
       continue;
     }
     i++;
-    while (i < n && /\s/.test(text[i] ?? "")) i++;
+    while (i < n && /\s/.test(text[i] ?? '')) i++;
     const q = text[i];
     if (q === '"' || q === "'") {
       const close = text.indexOf(q, i + 1);
       if (close === -1) return null;
       attrs[name] = text.slice(i + 1, close);
       i = close + 1;
-    } else if (q === "{") {
+    } else if (q === '{') {
       const close = matchBrace(text, i);
       if (close === -1) return null;
       attrs[name] = text.slice(i + 1, close).trim();
@@ -297,14 +290,14 @@ function matchBrace(text: string, open: number): number {
   let i = open;
   while (i < text.length) {
     const ch = text[i];
-    if (ch === '"' || ch === "'" || ch === "`") {
+    if (ch === '"' || ch === "'" || ch === '`') {
       const close = text.indexOf(ch, i + 1);
       if (close === -1) return -1;
       i = close + 1;
       continue;
     }
-    if (ch === "{") depth++;
-    else if (ch === "}") {
+    if (ch === '{') depth++;
+    else if (ch === '}') {
       depth--;
       if (depth === 0) return i;
     }
@@ -323,11 +316,11 @@ export function findJsxTags(masked: string): JsxTag[] {
   TAG_START_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = TAG_START_RE.exec(masked)) !== null) {
-    const closing = m[1] === "/";
-    const name = m[2] ?? "";
+    const closing = m[1] === '/';
+    const name = m[2] ?? '';
     const afterName = m.index + m[0].length;
     if (closing) {
-      const gt = masked.indexOf(">", afterName);
+      const gt = masked.indexOf('>', afterName);
       if (gt === -1) break;
       out.push({
         name,
@@ -375,8 +368,7 @@ export function findJsxTags(masked: string): JsxTag[] {
 /** Distinct component names used in a body (opening or closing tags). */
 export function findComponentNames(body: string): string[] {
   const names = new Set<string>();
-  for (const tag of findJsxTags(maskNonProse(body)))
-    names.add(tag.name.split(".")[0] ?? tag.name);
+  for (const tag of findJsxTags(maskNonProse(body))) names.add(tag.name.split('.')[0] ?? tag.name);
   return [...names];
 }
 
@@ -384,8 +376,7 @@ export function findComponentNames(body: string): string[] {
 export function parseStringList(expr: JsxAttrValue | undefined): string[] {
   if (expr === undefined || expr === true) return [];
   const out: string[] = [];
-  for (const m of expr.matchAll(/["'`]([^"'`]*)["'`]/g))
-    if (m[1] !== undefined) out.push(m[1]);
+  for (const m of expr.matchAll(/["'`]([^"'`]*)["'`]/g)) if (m[1] !== undefined) out.push(m[1]);
   return out;
 }
 
@@ -405,11 +396,7 @@ export interface ElementRange {
 }
 
 /** Pair each opening tag of `name` with its closing tag (depth-aware). */
-export function findElements(
-  tags: JsxTag[],
-  name: string,
-  textLength: number,
-): ElementRange[] {
+export function findElements(tags: JsxTag[], name: string, textLength: number): ElementRange[] {
   const out: ElementRange[] = [];
   for (let i = 0; i < tags.length; i++) {
     const t = tags[i];
@@ -474,35 +461,31 @@ export interface DerivationInfo {
 }
 
 function str(v: JsxAttrValue | undefined): string | undefined {
-  return typeof v === "string" ? v : undefined;
+  return typeof v === 'string' ? v : undefined;
 }
 
 /** Every `<Derivation>` with the `<Step>`s nested inside it (through any `<Chunk>`). */
 export function findDerivations(body: string): DerivationInfo[] {
   const masked = maskNonProse(body);
   const tags = findJsxTags(masked);
-  return findElements(tags, "Derivation", masked.length).map((el) => {
+  return findElements(tags, 'Derivation', masked.length).map((el) => {
     const steps = tags
       .filter(
-        (t) =>
-          t.name === "Step" &&
-          !t.closing &&
-          t.start > el.innerStart &&
-          t.start < el.innerEnd,
+        (t) => t.name === 'Step' && !t.closing && t.start > el.innerStart && t.start < el.innerEnd,
       )
       .map((t) => ({
         line: t.line,
-        justification: str(t.attrs["justification"]),
-        sticky: str(t.attrs["sticky"]),
-        fadeable: t.attrs["fadeable"] !== undefined,
-        figureState: str(t.attrs["figureState"]),
+        justification: str(t.attrs['justification']),
+        sticky: str(t.attrs['sticky']),
+        fadeable: t.attrs['fadeable'] !== undefined,
+        figureState: str(t.attrs['figureState']),
       }));
     return {
-      id: str(el.open.attrs["id"]),
-      title: str(el.open.attrs["title"]),
-      goalTex: str(el.open.attrs["goalTex"]),
-      resultTex: str(el.open.attrs["resultTex"]),
-      source: str(el.open.attrs["source"]),
+      id: str(el.open.attrs['id']),
+      title: str(el.open.attrs['title']),
+      goalTex: str(el.open.attrs['goalTex']),
+      resultTex: str(el.open.attrs['resultTex']),
+      source: str(el.open.attrs['source']),
       line: el.open.line,
       steps,
       unclosed: !el.closed,
@@ -546,10 +529,9 @@ export interface Heading {
 export function findHeadings(body: string): Heading[] {
   const masked = maskNonProse(body, { math: false });
   const out: Heading[] = [];
-  masked.split("\n").forEach((raw, idx) => {
+  masked.split('\n').forEach((raw, idx) => {
     const m = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/.exec(raw);
-    if (m?.[1] && m[2] !== undefined)
-      out.push({ level: m[1].length, text: m[2], line: idx + 1 });
+    if (m?.[1] && m[2] !== undefined) out.push({ level: m[1].length, text: m[2], line: idx + 1 });
   });
   return out;
 }
@@ -558,7 +540,7 @@ export function findHeadings(body: string): Heading[] {
 export function findEsmLines(body: string): number[] {
   const masked = maskNonProse(body, { math: false });
   const out: number[] = [];
-  masked.split("\n").forEach((raw, idx) => {
+  masked.split('\n').forEach((raw, idx) => {
     if (/^(import|export)\s/.test(raw)) out.push(idx + 1);
   });
   return out;
@@ -579,13 +561,13 @@ export function findMathSpans(body: string): MathSpan[] {
   let i = 0;
   while (i < n) {
     const ch = noCode[i];
-    if (ch === "\\" && noCode[i + 1] === "$") {
+    if (ch === '\\' && noCode[i + 1] === '$') {
       i += 2;
       continue;
     }
-    if (ch === "$") {
-      if (noCode[i + 1] === "$") {
-        const close = noCode.indexOf("$$", i + 2);
+    if (ch === '$') {
+      if (noCode[i + 1] === '$') {
+        const close = noCode.indexOf('$$', i + 2);
         if (close === -1) break;
         out.push({
           tex: noCode.slice(i + 2, close),
@@ -595,16 +577,16 @@ export function findMathSpans(body: string): MathSpan[] {
         i = close + 2;
         continue;
       }
-      const lineEnd = noCode.indexOf("\n", i + 1);
+      const lineEnd = noCode.indexOf('\n', i + 1);
       const limit = lineEnd === -1 ? n : lineEnd;
       let k = i + 1;
       let found = -1;
       while (k < limit) {
-        if (noCode[k] === "\\") {
+        if (noCode[k] === '\\') {
           k += 2;
           continue;
         }
-        if (noCode[k] === "$") {
+        if (noCode[k] === '$') {
           found = k;
           break;
         }

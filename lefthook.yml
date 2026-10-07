@@ -1,42 +1,31 @@
-# EXAMPLE USAGE:
+# https://lefthook.dev/configuration/
+# Installed by `pnpm install` (the `prepare` script runs `lefthook install`).
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: forbidden paths
+      run: >-
+        sh -c 'for f in "$@"; do
+          case "$f" in
+            *.DS_Store|.claude/settings.local.json)
+              echo "refusing to commit $f (CLAUDE.md non-negotiable 9)"; exit 1;;
+          esac;
+        done' sh {staged_files}
+
+    - name: prettier
+      glob: '*.{ts,tsx,astro,css,json,yml,yaml,mjs,js}'
+      run: pnpm exec prettier --check {staged_files}
+
+    - name: eslint
+      glob: '*.{ts,tsx,astro,js,mjs}'
+      run: pnpm exec eslint {staged_files}
+
+# commit-msg: conventional commits via commitlint. @commitlint/cli is not installed
+# yet; add it (plus @commitlint/config-conventional and commitlint.config.js) and
+# uncomment this block.
 #
-#   Refer for explanation to following link:
-#   https://lefthook.dev/configuration/
-#
-# pre-push:
+# commit-msg:
 #   jobs:
-#     - name: packages audit
-#       tags:
-#         - frontend
-#         - security
-#       run: yarn audit
-#
-#     - name: gems audit
-#       tags:
-#         - backend
-#         - security
-#       run: bundle audit
-#
-# pre-commit:
-#   parallel: true
-#   jobs:
-#     - run: yarn eslint {staged_files}
-#       glob: "*.{js,ts,jsx,tsx}"
-#
-#     - name: rubocop
-#       glob: "*.rb"
-#       exclude:
-#         - config/application.rb
-#         - config/routes.rb
-#       run: bundle exec rubocop --force-exclusion -- {all_files}
-#
-#     - name: govet
-#       files: git ls-files -m
-#       glob: "*.go"
-#       run: go vet -- {files}
-#
-#     - script: "hello.js"
-#       runner: node
-#
-#     - script: "hello.go"
-#       runner: go run
+#     - name: commitlint
+#       run: pnpm exec commitlint --edit {1}

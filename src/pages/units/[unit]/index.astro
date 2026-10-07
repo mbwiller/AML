@@ -1,0 +1,59 @@
+---
+import Base from '@/layouts/Base.astro';
+import { formatMinutes, lessonHref, lessonNumber } from '@/lib/lessons';
+import { getCourseLessons } from '@/lib/site';
+
+export async function getStaticPaths() {
+  const { units, lessons } = await getCourseLessons();
+  return units.map((unit) => ({
+    params: { unit: unit.id },
+    props: { unit, lessons: lessons.filter((l) => l.data.unit === unit.id) },
+  }));
+}
+const { unit, lessons } = Astro.props;
+---
+
+<Base title={unit.title} description={unit.summary}>
+  <main id="main" class="mx-auto max-w-3xl px-4 py-10">
+    <p class="m-0 font-sans text-[13px] text-muted">
+      <a href="/units" class="text-muted no-underline hover:text-fg">
+        Units
+      </a>{' '}
+      · Unit {unit.order} · {unit.lectures}
+    </p>
+    <h1 class="mt-1 font-sans text-[2rem] leading-tight font-bold tracking-tight">{unit.title}</h1>
+    <p class="mt-2 max-w-[68ch] text-muted">{unit.summary}</p>
+    {lessons.length === 0 ? (
+      <p class="mt-8 rounded-card border border-border bg-surface-2 p-4 font-sans text-[14px] text-muted">
+        No lessons in this unit yet.
+      </p>
+    ) : (
+      <ol class="mt-8 m-0 list-none p-0 grid gap-3">
+        {lessons.map((l) => (
+          <li class="m-0">
+            <a
+              href={lessonHref(l.data.unit, l.data.slug)}
+              class="block rounded-card border border-border bg-surface p-4 text-fg no-underline transition-colors duration-micro ease-standard hover:bg-surface-2"
+            >
+              <span class="flex items-baseline gap-3 font-sans">
+                <span class="text-[13px] text-muted tabular-nums">
+                  {lessonNumber(l.data.unit, l.data.order)}
+                </span>
+                <span class="text-[17px] font-semibold">{l.data.title}</span>
+                <span class="ml-auto text-[12px] text-muted">
+                  {formatMinutes(l.data.estimatedMinutes)}
+                </span>
+                {l.data.status !== 'published' && (
+                  <span class="rounded-full border border-border px-2 py-0.5 text-[11px] tracking-[0.04em] text-muted uppercase">
+                    {l.data.status}
+                  </span>
+                )}
+              </span>
+              <span class="mt-1 block text-[15px] text-muted">{l.data.summary}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    )}
+  </main>
+</Base>
