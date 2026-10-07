@@ -2,7 +2,7 @@
 
 *An interactive, mathematically rigorous learning platform for CS 5785 Applied Machine Learning (Cornell Tech, Fall 2026).*
 
-> **Working title.** "AML Atlas" is a placeholder chosen because the product's signature feature is a navigable map of how machine-learning concepts connect. Rename freely; everything else in this document stands.
+> **Name.** "AML Atlas", because the product's signature feature is a navigable map of how machine-learning concepts connect. Confirmed 2026-10-06.
 
 **Status:** v1.0, written 2026-10-06 from `CONVERSATION.md` (the founding conversation between Matt and Jide), every lecture slide and notebook in `AML Course Material/` (read page-by-page by subject-explorer agents), the two homeworks and their solutions, and research into pedagogy, curriculum references, and tooling. This is the source of truth for *what* we are building and *why*. `STYLE_GUIDE.md` is the source of truth for *how it looks and how code and content are written*. `docs/WORKSTREAMS.md` says *who builds what*.
 
@@ -367,7 +367,7 @@ In priority order for the next two weeks: (1) Bernoulli NB MLE and Laplace smoot
 | State / storage | **nanostores** (+persistent) for small cross-island state; **Dexie** (IndexedDB) for FSRS cards and review logs, indexed by `due`; JSON export/import | No backend for v1; IndexedDB avoids localStorage's size cap and gives queries |
 | Spaced repetition | **ts-fsrs** (FSRS-6) | Modern scheduler; per-card retrievability drives mastery |
 | Search | Pagefind (static index at build) | Zero-backend full-text search |
-| Hosting / CI | GitHub Actions → **Cloudflare Workers Static Assets** (free, unlimited bandwidth, per-branch preview URLs, no `base` path); GitHub Pages as fallback | Previews are essential for reviewing two parallel streams; a project-site `base` path is a recurring source of broken asset paths for agents |
+| Hosting / CI | GitHub Actions for lint/test/build on every PR; **Vercel (free Hobby tier)** for the deployed site with per-PR previews, or simply `pnpm preview` locally. The build is fully static, so Cloudflare or GitHub Pages work too if Vercel ever stops being free | Zero cost; previews help review two parallel streams; no lock-in because `dist/` is plain files |
 
 The tech-stack research memo with alternatives considered, config snippets, the exact package list with versions verified on 2026-10-06, and a first-week spike checklist is `docs/reference/tech-stack.md`; when it and this table disagree, update this table and say so in the PR.
 
@@ -504,12 +504,11 @@ Each milestone is also a tag on `main` and a deployed URL.
 
 **Non-goals for v1.** Accounts and server-side sync; in-browser Python execution; a general CMS; mobile apps; covering material beyond this course; leaderboards or social features; AI chat inside the site (we use Claude to *build* the site, not to answer questions on it; revisit after the midterm).
 
-**Open decisions** (tracked in `docs/decisions/`):
-1. Product name (working title "AML Atlas").
-2. Hosting: Cloudflare Workers Static Assets (free, previews, no base path) vs GitHub Pages (no third party, but a `/AML` base path) vs Vercel. Default: Cloudflare.
-3. Whether to share the site with classmates this semester (affects R17 handling and whether we add a login). Default: private link, no login.
-4. Account sync after the midterm (Supabase vs none).
-5. Whether to include an LLM "ask about this step" helper after the midterm.
+**Decided 2026-10-06** (see `docs/decisions/`): the name is **AML Atlas**; hosting is whatever is free (Vercel Hobby with PR previews, or local `pnpm preview`; the static build is portable); the site is for the two of us for now, so no login and no sharing work, while R17 (no live-homework answers) stays as a cheap habit.
+
+**Open decisions:**
+1. Account sync after the midterm (Supabase vs none).
+2. Whether to include an LLM "ask about this step" helper after the midterm.
 
 ---
 

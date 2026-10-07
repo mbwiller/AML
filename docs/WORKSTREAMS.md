@@ -43,7 +43,7 @@ Nothing in B blocks on A except final visual polish. Nothing in A blocks on B ex
 3. `src/content.config.ts` with every collection in `docs/CONTENT_AUTHORING.md`; `scripts/validate-content.ts` (ids, `[[term]]` resolution, graph DAG, homework-safety flag on `live: true`); `pnpm validate:content`.
 4. Plain versions of every MDX component in the contract, registered globally; the `[[term]]` remark plugin; `<Widget>` placeholder for unknown names.
 5. Lesson layout (three columns, outline rail, next-lesson card), unit index, home stub; `/dev/kitchen-sink` rendering every component in both themes.
-6. CI (lint, typecheck, test, build, validate) and deploy to Cloudflare with PR previews; `.github/PULL_REQUEST_TEMPLATE.md` with the definition of done.
+6. CI (lint, typecheck, test, build, validate) on every PR; deploy to Vercel's free tier with PR previews (or document `pnpm preview` for local use); `.github/PULL_REQUEST_TEMPLATE.md` with the definition of done.
 
 **M1 — HW3-ready alpha (Oct 13)**
 7. `<Derivation>` for real: goal banner, chunks, step reveal with keyboard, justifications in the margin, boxed result, URL fragments per step, `figureState` dispatch.
@@ -106,7 +106,9 @@ Paste these into Claude Code in the repo root on day 1.
 
 **Jide (Workstream B):**
 
-> Read `CLAUDE.md`, then `VISION.md` §6, §8, §10.1 (Units 6–7), and §9.1–9.2; `STYLE_GUIDE.md` §1–§3; `docs/CONTENT_AUTHORING.md` in full; and `docs/course-map/04-lectures-L8-L10.md`. Then execute Workstream B item 2 from `docs/WORKSTREAMS.md` §5 on a branch `content/u6-glossary`: write the glossary terms Units 6–7 need, one MDX file each, following §5 of the authoring guide. Open a PR. Next session: lesson 6.3 Naive Bayes with the `lesson-writer` agent, then a `math-reviewer` pass, on branch `content/u6-l3-naive-bayes`.
+> Read `docs/START-HERE-JIDE.md` and follow it from the top. Do Task 1 in this session.
+
+(`docs/START-HERE-JIDE.md` is the self-contained onboarding for Workstream B: reading order, the per-session recipe, and the first five tasks with acceptance criteria.)
 
 ## 8. Conflict avoidance
 
