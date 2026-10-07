@@ -2,8 +2,9 @@
 /**
  * `<Pitfall title="…" misconception="nb-zero-prob">` … `</Pitfall>` — a
  * false belief, stated as the title, then the fix as the body
- * (docs/CONTENT_AUTHORING.md §4). `data-misconception` lets M1 surface the
- * pitfall when a learner picks the matching quiz distractor.
+ * (docs/CONTENT_AUTHORING.md §4). `data-misconception` and the stable
+ * `id="pitfall-<misconception>"` let `<Check>` link a wrong answer to the
+ * pitfall that fixes it.
  */
 import { renderInlineTex } from '@/lib/markdown/render-tex';
 
@@ -14,7 +15,12 @@ interface Props {
 const { title, misconception } = Astro.props;
 ---
 
-<aside class="pitfall" data-misconception={misconception} aria-label="Pitfall">
+<aside
+  class="pitfall"
+  id={misconception ? `pitfall-${misconception}` : undefined}
+  data-misconception={misconception}
+  aria-label="Pitfall"
+>
   <p class="pitfall-head">
     <span class="pitfall-label">Pitfall</span>
     <span class="pitfall-title" set:html={renderInlineTex(title)} />
@@ -31,6 +37,10 @@ const { title, misconception } = Astro.props;
     border: 1px solid var(--border);
     border-radius: var(--radius-card);
     background: var(--surface);
+    scroll-margin-top: 4rem;
+  }
+  .pitfall:target {
+    border-color: var(--accent);
   }
   .pitfall-head {
     display: flex;
