@@ -1,14 +1,98 @@
-/* PLACEHOLDER — replaced by the tokens subagent. Minimal set so the math spike renders. */
+/*
+ * Design tokens — the single source of truth for color, type, space, radius,
+ * elevation, and motion (STYLE_GUIDE.md §4). Every other file references
+ * these as var(--…) or through the Tailwind utilities exposed below.
+ *
+ * Rules (CI greps for violations):
+ *   - Only OKLCH color values, and only in this file.
+ *   - Components reference semantic tokens (--bg, --fg, --field-*, --viz-*),
+ *     never raw values and never Tailwind's default palette.
+ *   - Light values live on :root; dark values on [data-theme='dark'], which
+ *     the inline head script in src/layouts/Base.astro sets before paint.
+ */
+
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-@theme {
-  --font-sans: 'Inter Variable', system-ui, sans-serif;
-  --font-serif: 'Source Serif 4 Variable', Georgia, serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
-  --radius-card: 10px;
+/* ---------------------------------------------------------------------------
+ * Tailwind bridge. `inline` makes utilities emit var(--bg) etc. directly, so
+ * bg-surface, text-fg, border-border, … flip with the theme at runtime.
+ * ------------------------------------------------------------------------- */
+@theme inline {
+  /* Type families (self-hosted via fontsource, imported in global.css) */
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+  --font-serif: "Source Serif 4 Variable", Georgia, serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  /* Surfaces and text */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+
+  /* Field colors (mean the same thing everywhere: sticky notes, graph nodes,
+     header chips, highlighted symbols) */
+  --color-field-probability: var(--field-probability);
+  --color-field-statistics: var(--field-statistics);
+  --color-field-linear-algebra: var(--field-linear-algebra);
+  --color-field-calculus: var(--field-calculus);
+  --color-field-information: var(--field-information);
+  --color-field-ml: var(--field-ml);
+  --color-field-evaluation: var(--field-evaluation);
+
+  /* Visualization series and semantics */
+  --color-viz-1: var(--viz-1);
+  --color-viz-2: var(--viz-2);
+  --color-viz-3: var(--viz-3);
+  --color-viz-4: var(--viz-4);
+  --color-viz-5: var(--viz-5);
+  --color-viz-6: var(--viz-6);
+  --color-viz-positive: var(--viz-positive);
+  --color-viz-negative: var(--viz-negative);
+  --color-viz-boundary: var(--viz-boundary);
+  --color-math-hl: var(--math-hl);
+
+  /* Mastery ramp */
+  --color-mastery-0: var(--mastery-0);
+  --color-mastery-1: var(--mastery-1);
+  --color-mastery-2: var(--mastery-2);
+  --color-mastery-3: var(--mastery-3);
+  --color-mastery-4: var(--mastery-4);
+
+  /* Radii → rounded-control, rounded-card, rounded-popover, rounded-full */
+  --radius-control: var(--radius-control);
+  --radius-card: var(--radius-card);
+  --radius-popover: var(--radius-popover);
+  --radius-full: var(--radius-full);
+
+  /* Elevation → shadow-popover */
+  --shadow-popover: var(--shadow-popover);
+
+  /* Motion → ease-standard (durations are @utility below) */
+  --ease-standard: var(--ease-standard);
 }
 
+/* Tailwind v4 has no --duration-* theme namespace, so the three named
+   durations are registered as utilities explicitly. */
+@utility duration-micro {
+  transition-duration: var(--duration-micro);
+}
+@utility duration-reveal {
+  transition-duration: var(--duration-reveal);
+}
+@utility duration-layout {
+  transition-duration: var(--duration-layout);
+}
+
+/* ---------------------------------------------------------------------------
+ * Light theme (default)
+ * ------------------------------------------------------------------------- */
 :root {
+  color-scheme: light;
+
+  /* Neutrals and roles (STYLE_GUIDE.md §4.1) */
   --bg: oklch(0.985 0.005 85);
   --surface: oklch(1 0 0);
   --surface-2: oklch(0.96 0.006 85);
@@ -16,6 +100,8 @@
   --muted: oklch(0.5 0.015 260);
   --border: oklch(0.88 0.008 85);
   --accent: oklch(0.55 0.16 255);
+
+  /* Field colors */
   --field-probability: oklch(0.62 0.12 195);
   --field-statistics: oklch(0.58 0.14 250);
   --field-linear-algebra: oklch(0.56 0.16 300);
@@ -23,9 +109,66 @@
   --field-information: oklch(0.62 0.17 15);
   --field-ml: oklch(0.66 0.17 35);
   --field-evaluation: oklch(0.62 0.15 150);
+
+  /* Categorical series: the field colors minus evaluation, in table order */
+  --viz-1: var(--field-probability);
+  --viz-2: var(--field-statistics);
+  --viz-3: var(--field-linear-algebra);
+  --viz-4: var(--field-calculus);
+  --viz-5: var(--field-information);
+  --viz-6: var(--field-ml);
+
+  /* Class 1 / class 0, correct / incorrect */
+  --viz-positive: var(--field-evaluation);
+  --viz-negative: var(--field-information);
+
+  /* Decision boundaries and level sets: --fg at 70% */
+  --viz-boundary: color-mix(in oklch, var(--fg) 70%, transparent);
+
+  /* Hovered symbol background: --accent at 18% alpha */
+  --math-hl: color-mix(in oklch, var(--accent) 18%, transparent);
+
+  /* Concept mastery fill: neutral → accent */
+  --mastery-0: var(--border);
+  --mastery-1: color-mix(in oklch, var(--muted) 75%, var(--accent));
+  --mastery-2: color-mix(in oklch, var(--muted) 50%, var(--accent));
+  --mastery-3: color-mix(in oklch, var(--muted) 25%, var(--accent));
+  --mastery-4: var(--accent);
+
+  /* Radii (§4.3) */
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-popover: 14px;
+  --radius-full: 9999px;
+
+  /* Elevation (§4.3): hairline borders by default; this one shadow is for
+     popovers and the widget frame only */
+  --shadow-popover: 0 4px 20px oklch(0 0 0 / 0.08);
+
+  /* Motion (§4.4) */
+  --duration-micro: 120ms;
+  --duration-reveal: 250ms;
+  --duration-layout: 400ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Prose rhythm (§4.2): 18px / 1.6 on desktop, 17px on phones, measure 68ch */
+  --text-prose: 1.125rem;
+  --leading-prose: 1.6;
+  --measure-prose: 68ch;
 }
 
-[data-theme='dark'] {
+@media (width < 640px) {
+  :root {
+    --text-prose: 1.0625rem;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark theme
+ * ------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+
   --bg: oklch(0.17 0.012 260);
   --surface: oklch(0.21 0.012 260);
   --surface-2: oklch(0.25 0.012 260);
@@ -33,6 +176,7 @@
   --muted: oklch(0.7 0.01 85);
   --border: oklch(0.3 0.012 260);
   --accent: oklch(0.75 0.14 255);
+
   --field-probability: oklch(0.78 0.11 195);
   --field-statistics: oklch(0.76 0.12 250);
   --field-linear-algebra: oklch(0.78 0.13 300);
@@ -40,8 +184,7 @@
   --field-information: oklch(0.78 0.14 15);
   --field-ml: oklch(0.8 0.14 35);
   --field-evaluation: oklch(0.78 0.13 150);
-}
 
-.sym-theta { color: var(--field-ml); }
-.sym-x { color: var(--field-statistics); }
-.sym-y { color: var(--field-evaluation); }
+  /* --viz-*, --math-hl, --mastery-* are derived from the roles above with
+     var()/color-mix(), so they follow the theme without being restated. */
+}

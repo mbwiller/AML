@@ -1,0 +1,57 @@
+# Units of AML Atlas (docs/CONTENT_AUTHORING.md §1; docs/course-map/00-course-overview.md "Unit map").
+# Units follow conceptual continuity, not lecture file boundaries; slide ranges are exact.
+# Append `u9-…` and later as lectures land. Ids are stable forever.
+
+- id: u0-orientation
+  title: "Orientation: what machine learning is"
+  order: 0
+  summary: "What a learning problem is, the three kinds of learning, and how this course and this site are organized."
+  lectures: "L1 all"
+
+- id: u1-linear-regression
+  title: "Supervised learning and linear regression"
+  order: 1
+  summary: "Datasets, models, and objectives; least squares in matrix form and the normal equations, derived."
+  lectures: "L2 all; L3 pp. 1–25"
+
+- id: u2-risk-and-gradient-descent
+  title: "Data-generating distributions, risk, and gradient descent"
+  order: 2
+  summary: "True versus empirical risk, why gradient descent moves downhill, and what the step size does."
+  lectures: "L3 pp. 26–45; L4 all; L5 pp. 1–16"
+
+- id: u3-logistic-regression-and-mle
+  title: "Logistic regression and maximum likelihood"
+  order: 3
+  summary: "From the sigmoid to the Bernoulli log-likelihood, its gradient, and softmax for K classes."
+  lectures: "L5 pp. 17–50; L6 pp. 1–25"
+
+- id: u4-evaluating-classifiers
+  title: "Evaluating classifiers"
+  order: 4
+  summary: "Confusion matrices, precision and recall, thresholds, ROC and AUC, and averaging across classes."
+  lectures: "L6 pp. 26–38; L7 pp. 1–11"
+
+- id: u5-overfitting-and-regularization
+  title: "Divergences, overfitting, and regularization"
+  order: 5
+  summary: "KL divergence and why it is the right loss, bias and variance, ridge and lasso, and model selection."
+  lectures: "L7 pp. 12–54; L8 pp. 1–18"
+
+- id: u6-generative-models-and-naive-bayes
+  title: "Generative models and Naive Bayes"
+  order: 6
+  summary: "Modeling p(x | y) p(y), the Bayes classifier, text as features, and the Bernoulli Naive Bayes MLE with smoothing."
+  lectures: "L8 pp. 19–43; L9 pp. 1–40"
+
+- id: u7-gaussian-discriminant-analysis
+  title: "Gaussian discriminant analysis"
+  order: 7
+  summary: "Class-conditional Gaussians, the GDA maximum-likelihood estimates, and why a shared covariance gives a linear boundary."
+  lectures: "L9 pp. 41–46; L10 pp. 1–21"
+
+- id: u8-unsupervised-learning-and-kmeans
+  title: "Unsupervised learning and k-means"
+  order: 8
+  summary: "Learning without labels, the k-means objective, Lloyd's alternating updates, and choosing k."
+  lectures: "L10 pp. 22–49"
