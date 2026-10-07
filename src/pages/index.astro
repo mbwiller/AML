@@ -26,7 +26,7 @@ const nextMilestone = milestones.find((m) => m.date >= today);
     </p>
 
     <div class="mt-8 grid gap-4 font-sans sm:grid-cols-3">
-      <section class="rounded-card border border-border bg-surface p-5">
+      <section class="rounded-card border border-border bg-surface p-5" data-continue>
         <h2 class="m-0 text-ui-xs font-semibold tracking-caps text-muted uppercase">Continue</h2>
         {first ? (
           <a
@@ -38,8 +38,8 @@ const nextMilestone = milestones.find((m) => m.date >= today);
         ) : (
           <p class="mt-2 text-ui text-muted">No lessons published yet.</p>
         )}
-        <p class="mt-1 text-ui-sm text-muted">
-          Your place is remembered once progress tracking ships.
+        <p class="mt-1 text-ui-sm text-muted" data-continue-note>
+          Open any lesson and your place is remembered on this device.
         </p>
       </section>
       <section class="rounded-card border border-border bg-surface p-5">
@@ -82,3 +82,27 @@ const nextMilestone = milestones.find((m) => m.date >= today);
     </p>
   </main>
 </Base>
+
+<script>
+  import { LAST_LESSON_KEY, parseLastLesson, relativeTime } from '@/lib/progress';
+
+  const card = document.querySelector<HTMLElement>('[data-continue]');
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(LAST_LESSON_KEY);
+  } catch {
+    /* storage unavailable: nothing to continue */
+  }
+  const last = parseLastLesson(raw);
+  if (card && last) {
+    const link = card.querySelector('a');
+    const note = card.querySelector<HTMLElement>('[data-continue-note]');
+    if (link) {
+      link.href = last.href;
+      link.textContent = `${last.number} · ${last.title}`;
+    }
+    if (note) {
+      note.textContent = `${Math.round(last.progress * 100)}% read, ${relativeTime(last.at, Date.now())}.`;
+    }
+  }
+</script>

@@ -83,7 +83,13 @@ const provenance = lectureProvenance(lesson.lectures);
       </div>
     </aside>
 
-    <main id="main" class="lesson-main">
+    <main
+      id="main"
+      class="lesson-main"
+      data-lesson-href={Astro.url.pathname}
+      data-lesson-number={number}
+      data-lesson-title={lesson.title}
+    >
       <header class="lesson-header font-sans">
         <p class="m-0 text-ui-sm text-muted">
           <a href={unitHref} class="text-muted no-underline hover:text-fg">
@@ -225,9 +231,32 @@ const provenance = lectureProvenance(lesson.lectures);
 </style>
 
 <script>
+  import { LAST_LESSON_KEY } from '@/lib/progress';
+
   // Reading progress in the mini header; no React, no layout work beyond one read per frame.
   const bar = document.querySelector<HTMLElement>('[data-reading-progress]');
   const main = document.getElementById('main');
+
+  // "Continue where you left off" (VISION §9.11): remember this lesson and how far you got.
+  let lastSaved = -1;
+  const saveLastLesson = (progress: number) => {
+    if (!main || Math.abs(progress - lastSaved) < 0.02) return;
+    lastSaved = progress;
+    try {
+      localStorage.setItem(
+        LAST_LESSON_KEY,
+        JSON.stringify({
+          href: main.dataset.lessonHref,
+          number: main.dataset.lessonNumber,
+          title: main.dataset.lessonTitle,
+          progress,
+          at: Date.now(),
+        }),
+      );
+    } catch {
+      /* storage unavailable: nothing to remember */
+    }
+  };
   if (bar && main) {
     let ticking = false;
     const update = () => {
@@ -236,6 +265,7 @@ const provenance = lectureProvenance(lesson.lectures);
       const total = rect.height - window.innerHeight;
       const done = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 1;
       bar.style.width = `${(done * 100).toFixed(1)}%`;
+      saveLastLesson(done);
     };
     window.addEventListener(
       'scroll',
