@@ -32,7 +32,10 @@ const Tag = href ? 'a' : 'span';
     font-size: 0.75rem;
     font-weight: 500;
     line-height: 1.5;
-    white-space: nowrap;
+    /* Long free-text sources must wrap, or the chip forces horizontal scroll on phones (STYLE_GUIDE §5). */
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
     color: var(--muted);
     font-variant-numeric: tabular-nums;
     text-decoration: none;
