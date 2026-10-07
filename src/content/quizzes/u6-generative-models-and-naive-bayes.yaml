@@ -680,3 +680,624 @@
     - { text: "The $K$ classes", misconception: feature-index-clash }
   explanation: |
     The product runs to $d$, the number of features. In our notation it is $\prod_{j=1}^{d} p(x_j \mid y)$; $i$ is reserved for examples, $x^{(i)}$.
+
+# ---------- Lesson 6.2: text-as-features ----------
+# L9 pp.6-19 contain no Poll Everywhere questions; all items are original.
+
+- id: q-u6-l2-001
+  lesson: text-as-features
+  concepts: [bag-of-words, count-vectorizer]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    On L9 p.13, `CountVectorizer(binary=True).fit_transform(twenty_train.data)` returns a matrix of shape `(2257, 35788)`. What is 35788?
+  options:
+    - { text: "The number of distinct words learned from the 2,257 training posts, one column each", correct: true }
+    - { text: "The total number of word tokens in the 2,257 posts" }
+    - { text: "The number of nonzero entries in the matrix" }
+    - { text: "The length of the longest training post" }
+  explanation: |
+    Rows are documents and columns are vocabulary words, so the second dimension is $|V|$ (der-6-2-2 step 3). Tokens are counted inside the rows, not by the shape, and most of the $2257 \times 35788$ entries are zero.
+  discriminates: [bag-of-words, sparse-matrix]
+
+- id: q-u6-l2-002
+  lesson: text-as-features
+  concepts: [count-vectorizer]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The companion re-vectorizes the 2,257 training posts with `max_features=1000` and calls `.toarray()`. Stored densely with 8 bytes per entry, how many megabytes ($10^6$ bytes) does the array take? Give two decimals.
+  answer: 18.06
+  tolerance: 0.01
+  formula: "2257 * 1000 * 8 / 1e6"
+  explanation: |
+    Entries: $2257 \times 1000 = 2{,}257{,}000$. Bytes: $\times 8 = 18{,}056{,}000$, about 18.06 MB (der-6-2-3 step 9). The full $35788$-column matrix would take about 646 MB.
+
+- id: q-u6-l2-003
+  lesson: text-as-features
+  concepts: [count-vectorizer]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-6-2-3
+  corrupt: { step: 6, replaceTex: '\text{bytes per entry} = 64', explanation: "64 is the number of bits in an int64 entry. A byte is 8 bits, so each entry takes 64 / 8 = 8 bytes; using 64 inflates the total eightfold." }
+
+- id: q-u6-l2-004
+  lesson: text-as-features
+  concepts: [logistic-regression-text-baseline]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-6-2-5
+  corrupt: { step: 10, replaceTex: '\log\frac{p_\theta(y = k \mid x)}{p_\theta(y = l \mid x)} = \frac{z_k}{z_l}', explanation: 'The log of $e^{z_k}/e^{z_l}$ is the difference $z_k - z_l$, not the ratio of the exponents.' }
+
+- id: q-u6-l2-005
+  lesson: text-as-features
+  concepts: [count-vectorizer, fit-preprocessing-on-train]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    You have fit `count_vect.fit_transform(text_train)`. How should you vectorize the test text?
+  options:
+    - { text: "count_vect.transform(text_test)", correct: true }
+    - { text: "count_vect.fit_transform(text_test)", misconception: fit-vectorizer-on-test }
+    - { text: "A new CountVectorizer().fit_transform(text_test), so the test vocabulary is complete", misconception: fit-vectorizer-on-test }
+    - { text: "Refit on text_train plus text_test, then transform both", misconception: fit-vectorizer-on-test }
+  explanation: |
+    The vocabulary is part of the model. `transform` keeps the training columns in the training order, so the fitted weights line up with them, and the test data play no part in choosing features. Each alternative either renumbers the columns or lets the test text choose them (spam exercise task 5 does it correctly).
+  discriminates: [count-vectorizer, text-preprocessing]
+
+- id: q-u6-l2-006
+  lesson: text-as-features
+  concepts: [count-vectorizer, text-preprocessing]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    With default settings apart from `binary=True` and `max_features=1000`, spam exercise task 7 checks two tokens. Which result does it find?
+  options:
+    - { text: "',' is not in vocabulary_, and 'and' is", correct: true }
+    - { text: "',' is in vocabulary_, and 'and' is not", misconception: default-removes-stop-words }
+    - { text: "Neither is in vocabulary_", misconception: default-removes-stop-words }
+    - { text: "Both are in vocabulary_" }
+  explanation: |
+    The default tokenizer keeps runs of two or more word characters, so punctuation and single-character tokens such as 'a' never become tokens. Stop words are kept unless you ask for their removal, so the very common word "and" makes the top 1,000.
+
+- id: q-u6-l2-007
+  lesson: text-as-features
+  concepts: [text-preprocessing, count-vectorizer]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the steps of a train-only text pipeline in order.
+  items:
+    - "Split the documents into training and test sets."
+    - "Lowercase and tokenize the training documents."
+    - "Remove stop words, then stem the remaining tokens."
+    - "Learn the vocabulary from the training documents (fit)."
+    - "Vectorize the training documents and fit the classifier."
+    - "Apply the same cleaning to the test documents and vectorize them with the fitted vocabulary (transform)."
+  explanation: |
+    Split first so the test documents cannot influence any choice. Remove stop words before stemming, because stop-word lists contain unstemmed words. The test set goes through the identical cleaning and only `transform`.
+
+- id: q-u6-l2-008
+  lesson: text-as-features
+  concepts: [bag-of-words]
+  type: mc
+  difficulty: 1
+  source: "L9 p.28 (slide notation)"
+  prompt: |
+    In lesson 6.3 the prior is written $P_\theta(y = k) = \phi_k$ (the slides write $\phi_K$). In this lesson the bag-of-words feature is written $\phi(x)_j$. Which reading is right?
+  options:
+    - { text: "$\\phi_k$ is the prior probability of class $k$; $\\phi(x)_j$ is feature $j$ of document $x$; the letter is reused for unrelated objects", correct: true }
+    - { text: "$\\phi_k$ is the $k$-th bag-of-words entry of the current document", misconception: phi-feature-map-vs-prior }
+    - { text: "$\\phi_k$ is the fraction of documents containing word $k$", misconception: phi-feature-map-vs-prior }
+  explanation: |
+    A document argument marks the feature map; a lone class subscript marks the prior. The fraction of class-$k$ documents containing word $j$ is $\psi_{jk}$, not any $\phi$.
+  discriminates: [bag-of-words, class-prior]
+
+- id: q-u6-l2-009
+  lesson: text-as-features
+  concepts: [logistic-regression-text-baseline]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Softmax regression with one weight vector and one intercept per class is fit to the 20 Newsgroups matrix ($K = 4$ classes, $|V| = 35788$ columns). How many numbers does sklearn store in `coef_` and `intercept_` together?
+  answer: 143156
+  tolerance: 0
+  formula: "4 * (35788 + 1)"
+  explanation: |
+    $K|V| + K = K(|V| + 1) = 4 \times 35789 = 143{,}156$ (der-6-2-6 step 2), about 63 per training post.
+
+- id: q-u6-l2-010
+  lesson: text-as-features
+  concepts: [count-features, bag-of-words]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A report contains the token "icu" three times. What is its entry in the "icu" column under `CountVectorizer()` (the default) and under `CountVectorizer(binary=True)`?
+  options:
+    - { text: "3 and 1", correct: true }
+    - { text: "1 and 1", misconception: binary-equals-counts }
+    - { text: "3 and 3", misconception: binary-equals-counts }
+    - { text: "1 and 3" }
+  explanation: |
+    The default stores the count $c_j(x)$; `binary=True` stores $\min(c_j(x), 1)$ (def-6-2-3).
+  discriminates: [count-features, bag-of-words]
+
+- id: q-u6-l2-011
+  lesson: text-as-features
+  concepts: [logistic-regression-text-baseline]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    L9 p.17 fits `LogisticRegression(C=1e5, multi_class='multinomial')`. What does $C = 10^5$ say about regularization?
+  options:
+    - { text: "The penalty weight is $\\lambda = 1/C = 10^{-5}$: essentially unregularized", correct: true }
+    - { text: "The penalty weight is $10^5$: very strong regularization", misconception: large-c-strong-regularization }
+    - { text: "It caps the optimizer at $10^5$ iterations" }
+    - { text: "It keeps the $10^5$ most frequent words" }
+  explanation: |
+    sklearn's `C` is the inverse of the penalty weight. With 143,156 parameters for 2,257 posts and almost no penalty, the fit reaches a training loss of about $5 \times 10^{-4}$.
+
+- id: q-u6-l2-012
+  lesson: text-as-features
+  concepts: [count-vectorizer]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A vectorizer fit on "Patient hospitalized after syncope" and "Mild headache resolved" transforms the new report "Patient developed syncope and arrhythmia". What happens to "arrhythmia"?
+  options:
+    - { text: "It is dropped: it has no column in the fitted vocabulary", correct: true }
+    - { text: "It is added as an eighth column", misconception: oov-words-kept }
+    - { text: "transform raises an error for unknown words", misconception: oov-words-kept }
+    - { text: "It is mapped to the closest known word, syncope" }
+  explanation: |
+    `transform` uses the fitted `vocabulary_` and silently ignores every other token. The new vector is $(0, 0, 0, 0, 1, 0, 1)$.
+
+- id: q-u6-l2-013
+  lesson: text-as-features
+  concepts: [count-vectorizer]
+  type: mc
+  difficulty: 1
+  source: "L9 p.14"
+  prompt: |
+    `count_vect.vocabulary_.get(u'church')` returns 8609. What does 8609 tell you?
+  options:
+    - { text: "The column of X_train that records whether each post contains 'church'", correct: true }
+    - { text: "How many times 'church' occurs in the training posts", misconception: vocab-index-meaning }
+    - { text: "The rank of 'church' by frequency, or by importance to the religion classes", misconception: vocab-index-meaning }
+    - { text: "The number of posts that contain 'church'", misconception: vocab-index-meaning }
+  explanation: |
+    `vocabulary_` maps a word to its column index (assigned in alphabetical order of the learned words), so `X_train[i, 8609]` is 1 when post $i$ contains "church".
+
+- id: q-u6-l2-014
+  lesson: text-as-features
+  concepts: [bag-of-words, vocabulary]
+  type: mc
+  difficulty: 1
+  source: "L9 p.12 (slide notation)"
+  prompt: |
+    L9 p.12 says the bag-of-words feature vector has "dimension V". What is its dimension?
+  options:
+    - { text: "$|V|$, the number of words in the vocabulary", correct: true }
+    - { text: "$V$ itself, the set of words", misconception: dimension-v-vs-size }
+    - { text: "The number of words in the document", misconception: dimension-v-vs-size }
+    - { text: "1, as in the sklearn table on L9 p.8", misconception: dimension-v-vs-size }
+  explanation: |
+    $V$ is a set; the vector has one coordinate per element, so its length is the size $|V|$, and it is the same for every document. The "Dimensionality 1" on L9 p.8 counts raw text fields, not features.
+
+- id: q-u6-l2-015
+  lesson: text-as-features
+  concepts: [count-vectorizer]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Why does the companion call `.toarray()` only after setting `max_features=1000`?
+  options:
+    - { text: "A dense 2257 × 35788 int64 array takes about 646 MB, while 2257 × 1000 takes about 18 MB", correct: true }
+    - { text: "toarray() only works on matrices with at most 1,000 columns", misconception: toarray-is-free }
+    - { text: "Dense and sparse storage cost the same; max_features is only for speed", misconception: toarray-is-free }
+  explanation: |
+    A dense array stores every zero (der-6-2-3); a CSR matrix stores about 12 bytes per nonzero plus row pointers (der-6-2-4).
+
+- id: q-u6-l2-016
+  lesson: text-as-features
+  concepts: [logistic-regression-text-baseline]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    For softmax regression on binary bag-of-words features, which rule gives the same prediction as $\argmax_k p_\theta(y = k \mid x)$?
+  options:
+    - { text: "The class with the largest intercept plus sum of weights over the words the document contains", correct: true }
+    - { text: "The class with the largest sum of weights over all vocabulary words" }
+    - { text: "The class whose weight on the document's most frequent word is largest" }
+    - { text: "None: the softmax denominator must be computed before any argmax" }
+  explanation: |
+    The denominator is shared and the exponential is increasing, so $\hat y = \argmax_k z_k$, and with 0/1 features $z_k = b_k + \sum_{j \in W(x)} \theta_{kj}$ (der-6-2-5 steps 3 and 8).
+
+- id: q-u6-l2-017
+  lesson: text-as-features
+  concepts: [text-preprocessing]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A team classifies trial eligibility text and removes sklearn's English stop-word list before vectorizing. What can go wrong?
+  options:
+    - { text: "Negations such as 'no' and 'not' are removed, so 'no prior chemotherapy' and 'prior chemotherapy' become the same vector", correct: true }
+    - { text: "Nothing: stop words carry no information about any label", misconception: stop-words-always-safe }
+    - { text: "The vocabulary grows, because each stop word is split into characters" }
+  explanation: |
+    Stop-word removal is a modeling choice. Check the list against the words the label depends on and keep negations when they matter.
+
+- id: q-u6-l2-018
+  lesson: text-as-features
+  concepts: [logistic-regression-text-baseline]
+  type: mc
+  difficulty: 1
+  source: "L9 p.18"
+  prompt: |
+    The baseline labels 'God is love' as soc.religion.christian and 'OpenGL on the GPU is fast' as comp.graphics. What does this establish?
+  options:
+    - { text: "The pipeline runs end to end; accuracy still has to be measured on held-out documents", correct: true }
+    - { text: "The classifier is accurate on new posts", misconception: two-predictions-as-evaluation }
+    - { text: "The classifier does not overfit, since both new sentences are classified correctly", misconception: two-predictions-as-evaluation }
+  explanation: |
+    Two hand-picked sentences are a smoke test, not an estimate of error. The fit is nearly perfect on the training set (loss about $5 \times 10^{-4}$), which says nothing about generalization by itself.
+
+- id: q-u6-l2-019
+  lesson: text-as-features
+  concepts: [bag-of-words]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    With the 20 Newsgroups vocabulary of $|V| = 35788$ words, what is the largest number of distinct vocabulary words a post can contain while fewer than 1% of its row's entries are nonzero?
+  answer: 357
+  tolerance: 0
+  formula: "floor(0.01 * 35788)"
+  explanation: |
+    Row $i$ is under 1% nonzero exactly when $u_i / 35788 < 0.01$, that is $u_i < 357.88$, and a whole number below 357.88 is at most 357 (der-6-2-2 steps 8–9).
+
+- id: q-u6-l2-020
+  lesson: text-as-features
+  concepts: [fixed-length-features]
+  type: mc
+  difficulty: 1
+  source: "L9 p.6"
+  prompt: |
+    Why can logistic regression not be applied to raw word sequences directly?
+  options:
+    - { text: "$\\theta^\\top x$ needs every $x$ to have the same length as $\\theta$, with a fixed meaning per coordinate; word sequences vary in length and position $j$ holds different words", correct: true }
+    - { text: "Logistic regression requires real-valued inputs, and words are strings; any numbering of the words would do" }
+    - { text: "Raw text contains punctuation, which the sigmoid cannot process" }
+  explanation: |
+    der-6-2-1 step 3: the inner product is defined only for vectors in $\mathbb{R}^p$. A feature map with fixed output length and one word per coordinate, such as the bag of words, solves both problems.
+
+# ---------- Lesson 6.4: spam-exercise ----------
+# Every number is one printed by NaiveBayes_Spam_exercise_sol (HW3 is live; nothing new is computed on the spam data).
+
+- id: q-u6-l4-001
+  lesson: spam-exercise
+  concepts: [bag-of-words]
+  type: mc
+  difficulty: 1
+  source: "NaiveBayes_Spam_exercise task 2"
+  prompt: |
+    Task 2 answers "$x^{(1)}$ is the first email's text." What does the Naive Bayes model actually receive as $x^{(1)}$?
+  options:
+    - { text: 'The binary vector $\phi(x^{(1)}) \in \{0,1\}^{1000}$ built by the vectorizer in task 5', correct: true }
+    - { text: "The email's text, as a string of words in order", misconception: raw-text-as-feature }
+    - { text: "The list of every word in the email, including words outside the vocabulary", misconception: raw-text-as-feature }
+    - { text: "The spam label of the first email", misconception: raw-text-as-feature }
+  explanation: |
+    The raw text is the input before featurization. The model sees one 0/1 entry per vocabulary word, so word order, repetition, and out-of-vocabulary words are gone.
+
+- id: q-u6-l4-002
+  lesson: spam-exercise
+  concepts: [train-test-split]
+  type: mc
+  difficulty: 1
+  source: "NaiveBayes_Spam_exercise task 4"
+  prompt: |
+    After `train_test_split(text, Y, test_size=0.33, random_state=42)`, the training set is 22.80% spam and the test set 26.07%. What change would make the two rates match the overall 23.9%?
+  options:
+    - { text: "Pass `stratify=Y`", correct: true }
+    - { text: "Nothing: a random split already preserves the class balance exactly", misconception: random-split-preserves-balance }
+    - { text: "Change `random_state` until the rates match", misconception: random-split-preserves-balance }
+    - { text: "Use a larger `test_size`", misconception: random-split-preserves-balance }
+  explanation: |
+    A random split matches the class rate only on average. Stratifying splits each class separately, so both parts inherit the overall rate. Searching over seeds for a "nice" split is a form of tuning on the test set.
+
+- id: q-u6-l4-003
+  lesson: spam-exercise
+  concepts: [fit-preprocessing-on-train]
+  type: mc
+  difficulty: 2
+  source: "NaiveBayes_Spam_exercise task 5"
+  prompt: |
+    The solution calls `count_vect.fit_transform(text_train)` and then `count_vect.transform(text_test)`. Why not `fit_transform` on all 5728 emails?
+  options:
+    - { text: "`max_features=1000` picks words by their frequency in the fitted text, so fitting on everything lets the test emails help choose the features they are scored with", correct: true }
+    - { text: "It makes no difference, because the vocabulary is only preprocessing", misconception: fit-vectorizer-on-test }
+    - { text: "Fitting on all emails would make the test matrix a different width from the training matrix", misconception: fit-vectorizer-on-test }
+    - { text: "`fit_transform` cannot handle more than 5000 documents" }
+  explanation: |
+    Anything learned from data is learned from the training split (def-6-4-1). A vocabulary chosen with test emails in view is a small leak that makes test metrics optimistic. One welcome side effect of the train-only fit: every vocabulary word occurs in some training email.
+
+- id: q-u6-l4-004
+  lesson: spam-exercise
+  concepts: [count-vectorizer, text-preprocessing]
+  type: mc
+  difficulty: 1
+  source: "NaiveBayes_Spam_exercise task 7"
+  prompt: |
+    With the default `CountVectorizer` settings, task 7 checks `',' in count_vect.vocabulary_` and `'and' in count_vect.vocabulary_`. What do they print?
+  options:
+    - { text: "`False`, `True`", correct: true }
+    - { text: "`False`, `False`", misconception: default-removes-stop-words }
+    - { text: "`True`, `True`" }
+    - { text: "`True`, `False`", misconception: default-removes-stop-words }
+  explanation: |
+    The default token pattern keeps runs of two or more word characters, so punctuation and single-character tokens such as 'a' never become tokens. Stop-words are kept unless you ask to remove them, which tasks 22–23 then do by hand.
+
+- id: q-u6-l4-005
+  lesson: spam-exercise
+  concepts: [logistic-regression-text-baseline]
+  type: mc
+  difficulty: 1
+  source: "NaiveBayes_Spam_exercise tasks 10–11"
+  prompt: |
+    `LogisticRegression(penalty="none")` scores 0.99974 accuracy on the training emails and 0.97726 on the test emails. Which statement is right?
+  options:
+    - { text: "0.97726 is the estimate of accuracy on new email; the gap reflects mild overfitting of an unregularized model", correct: true }
+    - { text: "The model is 99.97% accurate on email in general", misconception: train-accuracy-is-generalization }
+    - { text: "The gap shows the test set is mislabeled", misconception: train-accuracy-is-generalization }
+    - { text: "With `penalty=\"none\"`, the value of `C` controls the overfitting" }
+  explanation: |
+    Training accuracy measures fit to the emails the model was trained on. Only held-out accuracy estimates performance on new data. With the penalty off, `C` has no effect; regularization tuned on a validation split is the remedy.
+
+- id: q-u6-l4-006
+  lesson: spam-exercise
+  concepts: [f1-score]
+  type: mc
+  difficulty: 2
+  source: "NaiveBayes_Spam_exercise task 12"
+  prompt: |
+    About three in four test emails are ham. A filter that labels every email as ham has which F1 score for the spam class?
+  options:
+    - { text: "0, because it catches no spam (recall 0)", correct: true }
+    - { text: "The same as its accuracy", misconception: accuracy-enough-imbalanced }
+    - { text: "1, because it never raises a false alarm", misconception: accuracy-enough-imbalanced }
+    - { text: "Undefined, so F1 cannot be used on imbalanced data" }
+  explanation: |
+    $F_1$ is the harmonic mean of precision and recall and ignores true negatives. With no true positives, recall is 0 and $F_1$ is 0 (scikit-learn also reports 0 for the undefined precision, with a warning). High accuracy here would hide a useless filter, which is why task 12 asks for F1.
+
+- id: q-u6-l4-007
+  lesson: spam-exercise
+  concepts: [bernoulli-nb-mle]
+  type: predict
+  difficulty: 1
+  source: "NaiveBayes_Spam_exercise task 15 (helper cell)"
+  prompt: |
+    Predict the output.
+    ```python
+    a = np.array([[1, 2, 3],
+                  [4, 5, 6]])
+    print(np.mean(a, axis=0))
+    ```
+  options:
+    - { text: "`[2.5 3.5 4.5]`", correct: true }
+    - { text: "`[2. 5.]`", misconception: numpy-axis-confusion }
+    - { text: "`3.5`" }
+    - { text: "`[6. 15.]`" }
+  explanation: |
+    `axis=0` is the axis that is averaged away: the rows. One mean per column remains, which is how `X_k.mean(axis=0)` gives one $\hat\psi_{jk}$ per word (der-6-4-1 step 2). `axis=1` would give the row means `[2. 5.]`, as the helper cell prints.
+
+- id: q-u6-l4-008
+  lesson: spam-exercise
+  concepts: [bernoulli-nb-mle]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Toy data: the class-1 rows of a binary matrix are `X_1 = [[1,0,1],[0,0,1],[1,1,1],[1,0,1]]`. What is `X_1.mean(axis=0)[0]`, that is, $\hat\psi_{11}$?
+  answer: 0.75
+  tolerance: 0.001
+  formula: "3 / 4"
+  explanation: |
+    Column 0 holds $1, 0, 1, 1$: word 1 appears in $s = 3$ of the $n_1 = 4$ class-1 rows, so $\hat\psi_{11} = 3/4$ (der-6-4-1 steps 3–4). Column 2 shows the boundary case: it is all ones, so its estimate is exactly 1.
+
+- id: q-u6-l4-009
+  lesson: spam-exercise
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-6-4-1
+  corrupt: { step: 4, replaceTex: '\texttt{psis}[k, j] = \frac{s_{jk}}{n} = \hat\psi_{jk}', explanation: "The mean is over the $n_k$ class-$k$ rows selected in step 1, not all $n$ emails. Dividing by $n$ gives $P(x_j = 1, y = k)$, a joint frequency, not the class-conditional $\\psi_{jk}$." }
+
+- id: q-u6-l4-010
+  lesson: spam-exercise
+  concepts: [nb-linear-classifier]
+  type: mc
+  difficulty: 2
+  source: "NaiveBayes_Spam_exercise task 17"
+  prompt: |
+    Task 17's ten highest-$\psi_{j1}$ words are, in no particular order: and, for, in, is, of, subject, the, to, you, your. Which ranking would list the words that most push an email toward spam?
+  options:
+    - { text: 'Sort by $w_j = \mathrm{logit}(\psi_{j1}) - \mathrm{logit}(\psi_{j0})$, which uses both rows of `psis`', correct: true }
+    - { text: 'Task 17''s ranking is already right: a large $\psi_{j1}$ means strong spam evidence', misconception: high-psi-is-spammy }
+    - { text: 'Sort by $\psi_{j0}$ ascending', misconception: high-psi-is-spammy }
+    - { text: 'Sort by $\psi_{j1} + \psi_{j0}$', misconception: high-psi-is-spammy }
+  explanation: |
+    Evidence is relative frequency. A word as frequent in ham as in spam has weight 0 (der-6-4-2 step 5), however large its $\psi_{j1}$. Rarer words that are much more common in spam than in ham have the large positive $w_j$.
+
+- id: q-u6-l4-011
+  lesson: spam-exercise
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-6-4-2
+  corrupt: { step: 2, replaceTex: 't_j(1) - t_j(0) = \log\frac{\psi_{j1}}{\psi_{j0}}', explanation: "At $x_j = 0$ the term is not zero: an absent word still contributes $\\log\\frac{1 - \\psi_{j1}}{1 - \\psi_{j0}}$. The swing from absent to present subtracts that term, which is why $w_j$ involves $1 - \\psi$ as well." }
+
+- id: q-u6-l4-012
+  lesson: spam-exercise
+  concepts: [zero-count-problem]
+  type: code-trace
+  difficulty: 1
+  source: "NaiveBayes_Spam_exercise task 18"
+  prompt: |
+    Right after fitting, `np.sum(psis==0)` prints 34. What does the last line print?
+    ```python
+    psis.clip(1e-14, 1-1e-14)
+    print(np.sum(psis==0))
+    ```
+  options:
+    - { text: "`34`", correct: true }
+    - { text: "`0`", misconception: clip-without-assignment }
+    - { text: "`17`" }
+    - { text: "An error, because `clip` needs an `out` argument" }
+  explanation: |
+    `clip` returns a clipped copy and leaves `psis` unchanged; the copy is thrown away. The solution then writes `psis = psis.clip(1e-14, 1-1e-14)`, after which the count is 0.
+
+- id: q-u6-l4-013
+  lesson: spam-exercise
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-6-4-3
+  corrupt: { step: 7, replaceTex: '\log P(x''_j \mid y = k;\ \psi_{jk}) = x''_j\log\psi_{jk} + (1 - x''_j)\log\psi_{jk}', explanation: "When the word is absent, $x'_j = 0$, its probability is $1 - \\psi_{jk}$, so the second term must be $(1 - x'_j)\\log(1 - \\psi_{jk})$. As written, an absent word would count as if it were present." }
+
+- id: q-u6-l4-014
+  lesson: spam-exercise
+  concepts: [zero-count-problem]
+  type: code-trace
+  difficulty: 2
+  source: "NaiveBayes_Spam_exercise task 21"
+  prompt: |
+    Task 18 ended with `psis = psis.clip(1e-14, 1-1e-14)`. Task 21 then runs:
+    ```python
+    print(np.sum(psis[0]==0), np.sum(psis[1]==0))
+    ```
+    It prints `0 0`. What can you conclude?
+  options:
+    - { text: "Nothing about the data: after the clip no entry can be 0; before it, 34 entries were", correct: true }
+    - { text: "Every vocabulary word appears in both classes", misconception: clip-before-check }
+    - { text: "The 34 zeros of task 18 were a numerical error", misconception: clip-before-check }
+    - { text: "Laplace smoothing is unnecessary for this dataset", misconception: clip-before-check }
+  explanation: |
+    The check is run on the clipped array, whose smallest possible entry is $10^{-14}$. Diagnostics belong on the raw estimates; keep them under their own name.
+
+- id: q-u6-l4-015
+  lesson: spam-exercise
+  concepts: [nb-vectorized-scoring]
+  type: mc
+  difficulty: 2
+  source: "NaiveBayes_Spam_exercise task 19"
+  prompt: |
+    `X` is $n \times d$ (0/1), `psis` is $K \times d$, `phis` has length $K$. Which line computes the same $n \times K$ score matrix as task 19's double loop?
+  options:
+    - { text: "`X @ np.log(psis).T + (1 - X) @ np.log(1 - psis).T + np.log(phis)`", correct: true }
+    - { text: "`np.log(psis) @ X.T + np.log(phis)`" }
+    - { text: "`X @ np.log(psis).T + np.log(phis)`" }
+    - { text: "`np.log(X @ psis.T) + np.log(phis)`" }
+  explanation: |
+    Entry $(i, k)$ of $X(\log\Psi)^{\top}$ is $\sum_j x^{(i)}_j \log\psi_{jk}$, and the absent words need the second product with $1 - X$ (der-6-4-3 step 9). Broadcasting adds $\log\phi_k$ to column $k$. The second option has the wrong shape ($K \times n$) and drops absent words; the third drops absent words; the fourth takes the log of a sum, not a sum of logs.
+
+- id: q-u6-l4-016
+  lesson: spam-exercise
+  concepts: [bernoulli-naive-bayes, logistic-regression-text-baseline]
+  type: mc
+  difficulty: 2
+  source: "NaiveBayes_Spam_exercise tasks 11 and 20"
+  prompt: |
+    Logistic regression: train 0.99974, test 0.97726. Clipped Bernoulli NB: train 0.9268, test 0.9217. Which reading is best supported?
+  options:
+    - { text: "With several thousand training emails the discriminative model is more accurate on this split, while NB barely overfits; one split does not rank the methods in general", correct: true }
+    - { text: "Naive Bayes is a worse method and should not be used for spam", misconception: nb-lower-accuracy-means-useless }
+    - { text: "Naive Bayes overfits more, because its train-test gap is larger", misconception: train-accuracy-is-generalization }
+    - { text: "Logistic regression wins because it is a generative model" }
+  explanation: |
+    NB's train-test gap is small; LR's is larger. LR still wins on test, as L9 p.3 predicts when data are plentiful. The NB here is unsmoothed and clipped, and the comparison is one split on accuracy only; the lesson's extensions change each of those.
+
+- id: q-u6-l4-017
+  lesson: spam-exercise
+  concepts: [text-preprocessing]
+  type: mc
+  difficulty: 1
+  source: "NaiveBayes_Spam_exercise task 24"
+  prompt: |
+    After task 24 the training matrix has shape `(3837, 742)`. The `psis` from task 15 has shape `(2, 1000)`. What must happen before Naive Bayes can classify with the stemmed features?
+  options:
+    - { text: "Re-estimate `psis` and `phis` on the new matrix (tasks 15–20 again)", correct: true }
+    - { text: "Nothing: the classifier already uses the new vocabulary", misconception: stale-psis-after-vocab-change }
+    - { text: "Keep only the first 742 columns of `psis`", misconception: stale-psis-after-vocab-change }
+    - { text: "Only re-clip `psis`", misconception: stale-psis-after-vocab-change }
+  explanation: |
+    The parameters describe the 1000 original words, column by column. New columns mean different features, so the model must be re-fit; truncating `psis` would pair stems with the wrong words.
+
+- id: q-u6-l4-018
+  lesson: spam-exercise
+  concepts: [text-preprocessing]
+  type: mc
+  difficulty: 3
+  source: "NaiveBayes_Spam_exercise task 24"
+  prompt: |
+    Task 24 sets `count_vect.vocabulary_ = new_dict`, whose keys are Porter stems, and re-runs `transform`. An email contains the word "meetings", whose stem is "meet". Does it turn on the "meet" column?
+  options:
+    - { text: "No: the tokenizer is unchanged, so it looks up the raw token \"meetings\", which is not a key", correct: true }
+    - { text: "Yes: assigning a stemmed vocabulary stems the documents too", misconception: vocab-assign-stems-docs }
+    - { text: "Yes, but only if \"meet\" also appears in the email", misconception: vocab-assign-stems-docs }
+    - { text: "It raises an error because \"meetings\" is not in the vocabulary" }
+  explanation: |
+    With scikit-learn's default tokenizer, `transform` tokenizes with the vectorizer's analyzer and keeps tokens found in `vocabulary_`; out-of-vocabulary tokens are silently ignored. Only tokens spelled exactly like a stem match. Stem inside the analyzer so documents and vocabulary pass through the same function.
+
+- id: q-u6-l4-019
+  lesson: spam-exercise
+  concepts: [count-vectorizer, text-preprocessing]
+  type: predict
+  difficulty: 1
+  source: "NaiveBayes_Spam_exercise task 22"
+  prompt: |
+    The vocabulary has 1000 words and `'and'` is at index 107. Predict the two outputs.
+    ```python
+    print(count_vect.vocabulary_.pop('and'))
+    print(count_vect.transform(text_train).toarray().shape)
+    ```
+  options:
+    - { text: "`107` and `(3837, 999)`", correct: true }
+    - { text: "`'and'` and `(3837, 1000)`" }
+    - { text: "`107` and `(3837, 1000)`" }
+    - { text: "`None` and `(3837, 999)`" }
+  explanation: |
+    `dict.pop` returns the removed value, here the column index 107, and the re-transformed matrix has one column per remaining word. The fitted `psis` still has 1000 columns, so it no longer matches.
+
+- id: q-u6-l4-020
+  lesson: spam-exercise
+  concepts: [fit-preprocessing-on-train, nb-vectorized-scoring]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the steps of a sound Naive Bayes spam experiment in order.
+  items:
+    - "Split the emails into train and test, stratified by label."
+    - "Fit the vectorizer on the training text; transform both splits with it."
+    - "Count: `psis[k] = X_k.mean(axis=0)` and `phis[k] = n_k / n` on the training rows."
+    - "Inspect the raw estimates (for example, count the zeros)."
+    - "Smooth (or, as the solution does, clip) the estimates."
+    - "Score in log space and take the argmax over classes."
+    - "Report accuracy and F1 on the test split."
+  explanation: |
+    Every fitted object (vocabulary, $\psi$, $\phi$) comes from training data; diagnostics come before the patch that would hide them; the test split is touched once, at the end.

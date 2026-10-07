@@ -1,0 +1,12 @@
+---
+id: sparse-matrix
+term: Sparse matrix
+aliases: [CSR matrix, scipy.sparse, sparse representation]
+field: linear-algebra
+firstUsedIn: u6-generative-models-and-naive-bayes
+related: [feature-map]
+---
+
+**What it is.** A matrix in which most entries are zero, stored by listing only the nonzero ones. The compressed sparse row (CSR) format keeps three arrays: the nonzero values, the column index of each value, and $n + 1$ row pointers saying where each row's entries start and the last one ends. Memory grows with the number of nonzeros, not with rows times columns.
+
+**How ML uses it.** A bag-of-words matrix has one row per document and one column per vocabulary word, and each document uses only a small share of the vocabulary. `CountVectorizer.fit_transform` therefore returns a `scipy.sparse` CSR matrix. Calling `.toarray()` stores every zero explicitly: fine for 1,000 columns, impractical for tens of thousands. Linear models such as `LogisticRegression` accept sparse input directly.

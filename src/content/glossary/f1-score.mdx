@@ -1,0 +1,12 @@
+---
+id: f1-score
+term: F1 score
+aliases: [F1, precision, recall, F-measure]
+field: evaluation
+firstUsedIn: u4-evaluating-classifiers
+related: [zero-one-loss, train-test-split]
+---
+
+**What it is.** For a chosen positive class, precision $= \frac{TP}{TP + FP}$ is the fraction of flagged items that are truly positive, and recall $= \frac{TP}{TP + FN}$ is the fraction of true positives that get flagged. $F_1 = \frac{2PR}{P + R}$ is their harmonic mean: it is high only when both are, and it never uses the true negatives.
+
+**How ML uses it.** On imbalanced data, accuracy rewards ignoring the rare class: a spam filter that flags nothing is right about every ham email. Its recall is 0, so its $F_1$ is 0. scikit-learn's `metrics.f1_score(y_true, y_pred)` treats label 1 as positive by default; report precision and recall alongside $F_1$ when the two kinds of error cost different amounts.

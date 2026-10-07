@@ -1,0 +1,12 @@
+---
+id: train-test-split
+term: Train/test split
+aliases: [held-out test set, train_test_split, stratified split]
+field: evaluation
+firstUsedIn: u5-overfitting-and-regularization
+related: [f1-score, iid]
+---
+
+**What it is.** Partition the labeled data once, at random, into a training set used for every fitting decision and a test set used only to measure the final model. If the examples are i.i.d., the test error estimates the error on new data from the same distribution. A **stratified** split keeps each class's proportion the same in both parts; a plain random split matches it only on average.
+
+**How ML uses it.** `train_test_split(X, y, test_size=0.33, random_state=42)` holds out a third, reproducibly; add `stratify=y` for imbalanced labels. Anything learned from data, including a vocabulary or a scaler, is fit on the training part only and then applied to the test part, or the test estimate becomes optimistic.

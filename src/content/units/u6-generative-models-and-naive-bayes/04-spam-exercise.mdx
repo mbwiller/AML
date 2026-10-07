@@ -1,0 +1,656 @@
+---
+title: "The spam exercise, walked through"
+unit: u6-generative-models-and-naive-bayes
+order: 4
+slug: spam-exercise
+summary: "All 24 tasks of the in-class spam exercise: what each asked, what the solution did, what it printed, and what to learn from it, including the 34 zero probabilities that a later check reports as 0."
+lectures:
+  - { lecture: 9, pages: "12-38" }
+  - { lecture: 8, pages: "36-38" }
+concepts:
+  - spam-email-dataset
+  - nb-vectorized-scoring
+prerequisites:
+  - fit-preprocessing-on-train
+  - bag-of-words
+  - count-vectorizer
+  - text-preprocessing
+  - logistic-regression-text-baseline
+  - bayes-classifier
+  - bernoulli-naive-bayes
+  - bernoulli-nb-mle
+  - categorical-prior-mle
+  - nb-prediction
+  - log-space-prediction
+  - zero-count-problem
+  - laplace-smoothing
+  - nb-linear-classifier
+  - train-test-split
+  - f1-score
+  - bernoulli
+  - conditional-independence
+  - bayes-rule
+  - argmax
+  - log-rules
+  - sigmoid
+homework: [hw3]
+cases: [notes]
+companions:
+  - { notebook: "Lectures/NaiveBayes_Spam_exercise.ipynb", cells: "all" } # TODO: narrow once cell numbers are recorded in the course map
+  - { notebook: "Lectures/NaiveBayes_Spam_exercise_sol.ipynb", cells: "all" }
+estimatedMinutes: 60
+status: review
+authors: [jide]
+---
+
+<Frame
+  data="5,728 Enron emails as binary bag-of-words vectors $x^{(i)} \in \{0,1\}^{1000}$, labels $y^{(i)} \in \{0, 1\}$ (1 = spam)"
+  model="logistic regression $p_\theta(y \mid x)$, then Bernoulli Naive Bayes $p(x, y = k) = \phi_k \prod_j \psi_{jk}^{x_j}(1 - \psi_{jk})^{1 - x_j}$"
+  objective="maximize the conditional likelihood (LR); maximize the joint likelihood (NB)"
+  optimizer="L-BFGS (LR); counting with column means (NB)"
+/>
+
+<Objectives>
+
+- Trace each of the 24 tasks of the spam exercise from question to code to printed output.
+- Derive the decision rule the exercise states in task 18, $\argmax_k \sum_j \log P(x'_j \mid y = k) + \log\phi_k$, and its vectorized array form.
+- Explain why `X_k.mean(axis=0)` over the class-$k$ rows is exactly the MLE $\hat\psi_{jk}$, and why `X_k.shape[0]/n` is $\hat\phi_k$.
+- Diagnose three bugs-in-waiting in the solution: a clip that is never assigned, a zero check run after clipping, and a stemmed vocabulary applied to unstemmed text.
+- Explain why the highest-$\psi_{j1}$ words are stop-words, and rank words by the log-odds weight $w_j$ instead.
+- Read the recorded numbers (LR 0.977 test accuracy, NB 0.9217) as evidence about the generative-discriminative trade-off, not as a verdict.
+
+</Objectives>
+
+<Hook>
+
+Task 18 of the solution notebook asks how many entries of the fitted word probabilities are exactly zero, and prints **34**. Three tasks later, task 21 asks almost the same question, whether any word appears in only one class, and prints **0** for both classes. Nothing was re-trained in between, and both answers are correctly computed.
+
+How can the same model have 34 zero probabilities and none? By the end of this lesson you will be able to point to the exact line that changed the answer, say why the first number is the honest one, and say what the notebook should have done instead.
+
+{/* hook-figure: the bow-nb-scorer widget in the Explore section, with smoothing off, is the hook's explorable */}
+
+</Hook>
+
+<Callout type="warning">
+
+HW3 (Naive Bayes and GDA) is live until 2026-10-19 and may reuse this dataset. Every number in this lesson is one the posted exercise solution printed. Where a natural next step would produce a new number (a smoothed model, a re-trained model, a new metric), we pose it as an exercise and do not give the answer.
+
+</Callout>
+
+## Three ideas the exercise leans on
+
+<Definition id="def-6-4-1" title="Fit on training data, transform everything" source="NaiveBayes_Spam_exercise_sol, task 5">
+
+Any preprocessing step that learns from data (here, the vocabulary and the choice of the top `max_features` words) is **fit on the training set only** and then applied unchanged to the test set. Lesson 6.2, section *Fit on training text, transform everything else*, gives the reasons.
+
+Also written as: `fit_transform(text_train)` then `transform(text_test)`; "no leakage from the test set".
+
+</Definition>
+
+<Definition id="def-6-4-2" title="Precision, recall, and F1" source="NaiveBayes_Spam_exercise_sol, task 12 (review of the classification-metrics lecture)">
+
+With spam as the positive class, count true positives TP, false positives FP, and false negatives FN on a labeled set. Then
+
+$$\text{precision} = \frac{TP}{TP + FP}, \qquad \text{recall} = \frac{TP}{TP + FN}, \qquad F_1 = \frac{2\,\text{precision}\cdot\text{recall}}{\text{precision} + \text{recall}}.$$
+
+$F_1$ is the harmonic mean of the two, and it never looks at the true negatives. See [[f1-score]].
+
+Also written as: $P$, $R$, $F$; `metrics.f1_score(y_true, y_pred)`.
+
+</Definition>
+
+<Definition id="def-6-4-3" title="Spamicity and the log-odds weight of a word" source="NaiveBayes_Spam_exercise_sol, task 17; weight from der-6-3-8">
+
+The exercise calls $\psi_{j1} = P(x_j = 1 \mid y = 1)$, the fraction of spam emails containing word $j$, the word's "spamicity". The word's **log-odds weight** in the Naive Bayes classifier is
+
+$$w_j = \log\frac{\psi_{j1}(1 - \psi_{j0})}{\psi_{j0}(1 - \psi_{j1})} = \mathrm{logit}(\psi_{j1}) - \mathrm{logit}(\psi_{j0}),$$
+
+the amount by which the presence of word $j$, rather than its absence, moves the log-odds toward spam (der-6-3-8 step 4).
+
+Also written as: `psis[1, j]` for $\psi_{j1}$.
+
+</Definition>
+
+<Intuition>
+
+Two toy words, two classes. Suppose "the" appears in 90% of spam and 90% of ham, and "free" appears in 30% of spam and 3% of ham.
+
+Ranked by spamicity, "the" wins easily: 0.9 against 0.3. But the classifier does not care how common a word is in spam; it cares how much more common it is in spam than in ham. For "the", a present word votes $\log(0.9/0.9) = 0$ and an absent word votes $\log(0.1/0.1) = 0$: it never moves the decision. For "free", presence votes $\log(0.3/0.03) = \log 10 \approx 2.303$ toward spam and absence votes $\log(0.7/0.97) \approx -0.326$, so the swing between the two is $w = 2.303 + 0.326 \approx 2.629$.
+
+That gap, between "frequent in spam" and "evidence of spam", is exactly what task 17 runs into, and der-6-4-2 makes it precise.
+
+</Intuition>
+
+## How to read the walkthrough
+
+The exercise (`NaiveBayes_Spam_exercise.ipynb`) is the hands-on version of L9 pp.12–38 <SlideRef lecture={9} pages="12-38" />, framed by the spam example of L8 pp.36–38 <SlideRef lecture={8} pages="36-38" />. Each task below has four parts: what was **asked**, what the **solution** did, what it **printed**, and the **point** to take away. Code is transcribed from the solution notebook (`NaiveBayes_Spam_exercise_sol.ipynb`) as recorded in our course map, with set-up lines abridged; outputs are the solution's own.
+
+We number classes 0 (ham, not spam) and 1 (spam), as the code does. The math writes $\psi_{jk}$ with the word first; the code stores `psis[k, j]`.
+
+## Part 1: the data (tasks 1–4)
+
+### Task 1: load the dataset
+
+- **Asked.** Load `emails.csv` from Canvas.
+- **Solution.** `pd.read_csv` with `encoding="latin-1"`.
+- **Printed.** A table of 5728 rows and 2 columns: `text` (the emails shown begin "Subject: …") and `spam` in 0/1.
+- **Point.** The encoding argument matters: raw email text contains bytes that are not valid UTF-8, and decoding them as UTF-8, the default, can fail. The data are Enron emails; the vocabulary in task 6 shows this.
+
+```python
+data = pd.read_csv("emails.csv", encoding="latin-1")
+data              # 5728 rows × 2 columns: text, spam
+```
+
+### Task 2: what are $x^{(1)}$ and $y^{(1)}$?
+
+- **Asked.** Identify the first input and label.
+- **Solution.** Answered in prose: $x^{(1)}$ is the first email's text and $y^{(1)} = 1$, its spam label. The solution also prints the class counts.
+- **Printed.** 4360 ham, 1368 spam (23.9% spam).
+- **Point.** Two layers are hiding in "$x^{(1)}$". The raw input is a string of arbitrary length; the model's input is the fixed-length vector $\phi(x^{(1)}) \in \{0,1\}^{1000}$ that task 5 builds. In this lesson, as in the code, $x$ means the binary vector from task 5 on.
+
+### Task 3: split into train and test
+
+- **Asked.** Split the data.
+- **Solution.** `train_test_split(text, Y, test_size=0.33, random_state=42)`.
+- **Printed.** 3837 training emails, 1891 test emails.
+- **Point.** A third of the data is held out, and the fixed `random_state` makes the split reproducible. The split is random but not stratified; task 4 shows the consequence. (See [[train-test-split]].)
+
+### Task 4: check the label balance
+
+- **Asked.** What fraction of each split is spam?
+- **Solution.** `sum(y_train)/len(y_train)` and the same for test.
+- **Printed.** Train 0.2280, test 0.2607; shapes `(5728,)`, `(3837,)`, `(1891,)`.
+- **Point.** The two fractions straddle the overall 23.9% but visibly differ. A random split preserves the balance only on average. Passing `stratify=Y` to `train_test_split` makes both splits match the overall rate, which keeps test metrics comparable across splits.
+
+<Check ids={["q-u6-l4-001", "q-u6-l4-002"]} />
+
+## Part 2: features (tasks 5–9)
+
+### Task 5: bag of words with `CountVectorizer`
+
+- **Asked.** Turn each email into a binary bag-of-words vector.
+- **Solution.** `CountVectorizer(binary=True, max_features=1000)`, fit on the training text only, then applied to the test text.
+- **Printed.** `X_train` shape `(3837, 1000)`, `X_test` shape `(1891, 1000)`.
+- **Point.** This is def-6-4-1 done right. The vocabulary, and the choice of which 1000 words to keep, came from the 3837 training emails alone. Calling `fit_transform` on all 5728 emails would let the test set choose features, a mild leak that makes test metrics optimistic. The same choice has a consequence for task 18: every vocabulary word occurs in at least one training email.
+
+```python
+count_vect = CountVectorizer(binary=True, max_features=1000)
+X_train = count_vect.fit_transform(text_train).toarray()   # (3837, 1000)
+X_test  = count_vect.transform(text_test).toarray()        # (1891, 1000)
+```
+
+### Task 6: print the dictionary
+
+- **Asked.** Show the vocabulary.
+- **Solution.** `count_vect.vocabulary_`, a mapping from word to column index.
+- **Printed.** Entries such as `'subject': 834`, `'re': 706`, `'enron': 310`, `'vince': 943`, `'kaminski': 469`.
+- **Point.** An index is only a column number (lesson 6.2, pitfall *A vocabulary index is a column number, nothing more*). Names like "enron", "vince", and "kaminski" are a warning sign: the ham emails come from one company's mailboxes, so some "ham" words identify the corpus, not the concept of ham. A filter trained here may not transfer to another inbox.
+
+### Task 7: are "," and "and" in the vocabulary?
+
+- **Asked.** Membership of a punctuation mark and a stop-word.
+- **Solution.** `',' in count_vect.vocabulary_` and `'and' in count_vect.vocabulary_`.
+- **Printed.** `False`, `True`.
+- **Point.** The default tokenizer keeps runs of two or more word characters, so punctuation and single-character tokens never become tokens, and it keeps stop-words (lesson 6.2, pitfall *CountVectorizer keeps stop words by default*). Task 17 shows the cost.
+
+### Task 8: look at one feature vector
+
+- **Asked.** Visualize a feature vector.
+- **Solution.** `print(X_train[0])`.
+- **Printed.** A length-1000 vector of 0s and 1s, almost all 0.
+- **Point.** Bag-of-words vectors are sparse ([[sparse-matrix]]); densifying with `.toarray()` is affordable at $3837 \times 1000$, as lesson 6.2's *Why the matrix stays sparse* explains.
+
+### Task 9: shapes
+
+- **Asked.** Record the problem size.
+- **Solution and output.** $n = 3837$, $d = 1000$, $K = 2$.
+- **Point.** By der-6-3-1, Bernoulli Naive Bayes has $Kd + K - 1$ free parameters, linear in $d$, where the full categorical model needs $K\,2^d - 1$.
+
+<Check ids={["q-u6-l4-003", "q-u6-l4-004"]} />
+
+## Part 3: the discriminative baseline (tasks 10–12)
+
+### Task 10: linear or logistic regression?
+
+- **Asked.** Which discriminative model fits a binary label, and why?
+- **Solution.** Logistic regression, because the label is binary and the model outputs a probability. Code: `LogisticRegression(multi_class='ovr', penalty="none", verbose=True)`.
+- **Printed.** The L-BFGS log, 35 iterations.
+- **Point.** `penalty="none"` turns regularization off, so `C` plays no role, and the fit maximizes the conditional likelihood alone. With 1000 binary features and 3837 emails the training data may be nearly separable, in which case the unregularized weights grow until the optimizer stops. (Newer scikit-learn versions spell it `penalty=None`; `multi_class='ovr'` changes nothing for two classes.) Unit 5's regularization is the fix, tuned on a validation split.
+
+### Task 11: accuracy
+
+- **Asked.** Train and test accuracy.
+- **Printed.** Train 0.99974, test 0.97726.
+- **Point.** The model fits the training set almost perfectly and does worse on unseen emails: mild overfitting, consistent with task 10's unregularized fit. Only the test number estimates performance on new mail.
+
+### Task 12: precision, recall, and F1
+
+- **Asked.** Because the classes are imbalanced, report a metric that accuracy hides.
+- **Solution.** The markdown lays out the TP/FP/FN/TN table and def-6-4-2; the code is `metrics.f1_score(y_test, logreg.predict(X_test))`.
+- **Printed.** **0.9564**.
+- **Point.** About three in four test emails are ham, so a filter that never flags anything would already score high accuracy while catching no spam at all. F1 ignores true negatives, so that filter's F1 is 0. `f1_score` treats label 1 (spam) as positive by default, which is the class we care about here.
+
+<Check ids={["q-u6-l4-005", "q-u6-l4-006"]} />
+
+## Part 4: fitting Naive Bayes (tasks 13–17)
+
+### Task 13: one parameter by hand
+
+- **Asked.** Compute $P(x_1 = 1 \mid y = 1)$ as an empirical mean.
+- **Solution.** `np.mean(X_train[y_train==1, 0])`.
+- **Printed.** 0.0811.
+- **Point.** The first vocabulary word (code column 0, our $j = 1$) occurs in 8.11% of the training spam. This is $\hat\psi_{11}$, and it lives at `psis[1, 0]`, not `psis[0, 1]`.
+
+### Tasks 14 and 15: all of $\psi$, then `psis` and `phis`
+
+- **Asked.** Task 14: compute $\psi_j = P(x_j = 1 \mid y = 1)$ for every word. Task 15: build `psis` ($K \times d$, row $k$ holding $P(x_j = 1 \mid y = k)$) and `phis` (length $K$).
+- **Solution.** Task 14: `psi = np.mean(X_train[y_train==1], axis=0)`. Task 15: the loop below, plus a helper cell showing what `axis` means.
+- **Printed.** `phis = [0.77195726 0.22804274]`. Helper: on a $2 \times 3$ array, `np.mean(a, axis=0)` gives the column means `[2.5 3.5 4.5]` and `axis=1` the row means `[2. 5.]`.
+- **Point.** Counting is the whole fit, and der-6-4-1 below shows why. Check the result against task 4: $\hat\phi_1 = 0.22804274$ is the training spam fraction 0.2280, as der-6-3-5 promises.
+
+```python
+psis = np.zeros([K, d]); phis = np.zeros([K])
+for k in range(K):
+    X_k = X_train[y_train == k]
+    psis[k] = X_k.mean(axis=0)
+    phis[k] = X_k.shape[0] / X_train.shape[0]
+phis   # [0.77195726 0.22804274]
+```
+
+<Derivation
+  id="der-6-4-1"
+  title="Column means of the class rows are the maximum-likelihood estimates"
+  goalTex="\texttt{X\_k.mean(axis=0)}[j] \text{ and } \texttt{X\_k.shape[0]}/n \text{ in terms of the data}"
+  resultTex="\texttt{psis}[k, j] = \frac{1}{n_k}\sum_{i:\, y^{(i)} = k} x^{(i)}_j = \frac{s_{jk}}{n_k} = \hat\psi_{jk}, \qquad \texttt{phis}[k] = \frac{n_k}{n} = \hat\phi_k"
+  source="NaiveBayes_Spam_exercise_sol, tasks 14–15; the identification with the MLE is not stated in the notebook (L9 p.36 shows the same code)"
+>
+
+<Chunk title="Select the class rows and average down the columns">
+
+<Step justification="the boolean mask `y_train == k` keeps exactly the rows whose label is $k$; there are $n_k$ of them">
+$$\texttt{X\_k} = \big[\,x^{(i)}\,\big]_{i:\, y^{(i)} = k} \in \{0,1\}^{n_k \times d}$$
+</Step>
+
+<Step justification="`axis=0` averages over rows, leaving one number per column (the helper cell's `[2.5 3.5 4.5]`)">
+$$\texttt{X\_k.mean(axis=0)}[j] = \frac{1}{n_k}\sum_{i:\, y^{(i)} = k} x^{(i)}_j$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Recognize the counts and the estimates">
+
+<Step justification="each $x^{(i)}_j$ is 0 or 1, so their sum counts the class-$k$ emails that contain word $j$" sticky="bernoulli" fadeable>
+$$\sum_{i:\, y^{(i)} = k} x^{(i)}_j = s_{jk}$$
+</Step>
+
+<Step justification="substitute step 3 into step 2; this is the MLE of der-6-3-4" fadeable>
+$$\texttt{psis}[k, j] = \frac{s_{jk}}{n_k} = \hat\psi_{jk}$$
+</Step>
+
+<Step justification="`X_k.shape[0]` is the number of rows kept by the mask in step 1, and `X_train.shape[0]` is $n$; this is the MLE of der-6-3-5" fadeable>
+$$\texttt{phis}[k] = \frac{n_k}{n} = \hat\phi_k$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Nothing in this derivation is specific to spam, and nothing in it is approximate: the column mean is the maximum-likelihood estimate, including when it is exactly 0.
+
+### Task 16: interpret the rows of `psis`
+
+- **Asked.** What does each row mean?
+- **Solution.** Row 0 holds each word's document frequency in ham; row 1 its document frequency in spam.
+- **Point.** Each row is one class's "typical email", written as 1000 independent coin biases. Neither row sums to 1: they are 1000 separate Bernoulli parameters, not a distribution over words (that would be multinomial NB, lesson 6.3).
+
+### Task 17: the top ten "spamicity" words
+
+- **Asked.** Which ten words have the highest $\psi_{j1}$?
+- **Solution.** `np.argsort(psis[1])[-10:]`, then the words at those indices.
+- **Printed.** Ten indices, `[430 454 353 997 996 601 107 868 890 834]`, and ten words, which are, in no particular order: and, for, in, is, of, subject, the, to, you, your.
+- **Point.** All ten are stop-words or email boilerplate. A word that is common in spam may be just as common in ham. Ranking by $\psi_{j1}$ measures frequency, not evidence; the classifier's evidence is $w_j$ (def-6-4-3), and the next derivation shows that a word equally frequent in both classes carries none.
+
+<Derivation
+  id="der-6-4-2"
+  title="A word's evidence is a difference of logits, so equal frequencies carry none"
+  goalTex="\text{the change in the NB log-odds when word } j \text{ goes from absent to present}"
+  resultTex="w_j = \mathrm{logit}(\psi_{j1}) - \mathrm{logit}(\psi_{j0}); \quad w_j = 0 \text{ when } \psi_{j1} = \psi_{j0}; \quad w_j > 0 \iff \psi_{j1} > \psi_{j0}"
+  source="beyond the notebook (task 17 ranks by ψ_j1 alone); builds on der-6-3-8; assumes 0 < ψ_jk < 1, which clipping or smoothing guarantees"
+>
+
+<Chunk title="Isolate one word's term in the log-odds">
+
+<Step justification="der-6-3-8 step 2: the log-odds are a sum of one term per word plus the prior term; keep word $j$'s term" sticky="log-rules">
+$$t_j(x_j) = x_j\log\frac{\psi_{j1}}{\psi_{j0}} + (1 - x_j)\log\frac{1 - \psi_{j1}}{1 - \psi_{j0}}$$
+</Step>
+
+<Step justification="evaluate step 1 at $x_j = 1$ and at $x_j = 0$ and subtract: the swing from absent to present">
+$$t_j(1) - t_j(0) = \log\frac{\psi_{j1}}{\psi_{j0}} - \log\frac{1 - \psi_{j1}}{1 - \psi_{j0}}$$
+</Step>
+
+<Step justification="regroup the four logs by class; $\log\frac{p}{1 - p}$ is the logit, the inverse of the sigmoid" sticky="sigmoid" fadeable>
+$$t_j(1) - t_j(0) = \log\frac{\psi_{j1}}{1 - \psi_{j1}} - \log\frac{\psi_{j0}}{1 - \psi_{j0}} = \mathrm{logit}(\psi_{j1}) - \mathrm{logit}(\psi_{j0}) = w_j$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Read off what a frequent word contributes">
+
+<Step justification="substitute $\psi_{j1} = \psi_{j0} = p$ into step 1">
+$$t_j(x_j) = x_j\log\frac{p}{p} + (1 - x_j)\log\frac{1 - p}{1 - p}$$
+</Step>
+
+<Step justification="$\log 1 = 0$, for either value of $x_j$" fadeable>
+$$t_j(x_j) = 0 \quad \text{and so} \quad w_j = 0$$
+</Step>
+
+<Step justification="the logit is strictly increasing on $(0, 1)$, so the difference in step 3 has the sign of $\psi_{j1} - \psi_{j0}$, whatever the size of $\psi_{j1}$">
+$$w_j > 0 \iff \psi_{j1} > \psi_{j0}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+A better "spamiest words" list sorts by $w_j$, computed from both rows of `psis`. We leave that ranking on this dataset as an exercise (exercise 5), including the question of whether the most frequent token carries any evidence at all.
+
+<Check ids={["q-u6-l4-007", "q-u6-l4-008", "q-u6-l4-009", "q-u6-l4-010", "q-u6-l4-011"]} />
+
+## Part 5: predicting (tasks 18–21)
+
+### Task 18: the decision rule, and the zeros
+
+- **Asked.** Predict with Bayes' rule and the Naive Bayes assumption. The markdown states the rule $\argmax_k \sum_j \log P(x'_j \mid y = k;\ \psi_{jk}) + \log\phi_k$, with $P(x'_j = 1 \mid \cdot) = \psi_{jk}$ and $P(x'_j = 0 \mid \cdot) = 1 - \psi_{jk}$, and a coin analogy.
+- **Solution.** Before predicting, it shows the trap. `np.sum(psis==0)` counts the zero estimates; `np.log(psis)` warns and produces `-inf`. A first `psis.clip(1e-14, 1-1e-14)` is not assigned, so it changes nothing. Then `psis = psis.clip(1e-14, 1-1e-14)`.
+- **Printed.** **34** zero entries; `RuntimeWarning: divide by zero encountered in log`, with one `-inf` visible in the spam row (a word never seen in spam); after the assigned clip, 0 zeros, and that `-inf` becomes −32.236.
+- **Point.** Three lessons in one cell.
+  1. *A zero is a veto.* When the vocabulary is fit on the training emails (task 5), every vocabulary word occurs in at least one training email, so no word can have zero count in both classes; a zero estimate marks a word never seen in one class. Without a fix, its log-probability there is $-\infty$, and one occurrence vetoes that class (the zero-count problem of lesson 6.3).
+  2. *`clip` returns a new array.* NumPy's `clip` does not modify `psis` in place unless you assign the result (or pass `out=psis`). The unassigned call is a silent no-op.
+  3. *The clip is a patch, not a model.* $\log 10^{-14} \approx -32.236$ is set by an arbitrary constant. Laplace smoothing (der-6-3-6) replaces it with a penalty the data determine. The upper clip guards the other end: a word present in every training email of a class would have estimate 1, and $\log(1 - 1) = -\infty$.
+
+The markdown's rule is stated, not derived. Here it is, one move per step, ending in the array expression that task 19 computes with a loop.
+
+<Derivation
+  id="der-6-4-3"
+  title="From Bayes' rule to the spam_predict score, and its matrix form"
+  goalTex="\hat y(x') \text{ as array operations on } \texttt{psis},\ \texttt{phis},\ X"
+  resultTex="\hat y(x') = \argmax_{k}\; \sum_{j=1}^{d}\big[x'_j\log\psi_{jk} + (1 - x'_j)\log(1 - \psi_{jk})\big] + \log\phi_k, \qquad S = X(\log\Psi)^{\top} + (\mathbf{1} - X)\big(\log(\mathbf{1} - \Psi)\big)^{\top} + \mathbf{1}(\log\phi)^{\top}"
+  source="NaiveBayes_Spam_exercise task 18 markdown (rule stated); L9 p.34 (argmax of P(x|y)P(y)); same steps as der-6-3-7 written for the notebook's arrays"
+>
+
+<Chunk title="Start from the Bayes classifier and drop what does not depend on k">
+
+<Step justification="predict the most probable label for the new email $x'$" sticky="argmax">
+$$\hat y(x') = \argmax_{k}\; P(y = k \mid x')$$
+</Step>
+
+<Step justification="Bayes' rule, with the prior written $P(y = k) = \phi_k$ (def-6-3-3)" sticky="bayes-rule">
+$$\hat y(x') = \argmax_{k}\; \frac{P(x' \mid y = k)\,\phi_k}{P(x')}$$
+</Step>
+
+<Step justification="$P(x')$ is positive and the same for every $k$, so dividing by it does not change the argmax (der-6-1-1 step 3)" sticky="argmax" fadeable>
+$$\hat y(x') = \argmax_{k}\; P(x' \mid y = k)\,\phi_k$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Apply the Naive Bayes product, then take logs">
+
+<Step justification="the Naive Bayes assumption, der-6-3-2 step 5" sticky="conditional-independence">
+$$\hat y(x') = \argmax_{k}\; \phi_k\prod_{j=1}^{d} P(x'_j \mid y = k;\ \psi_{jk})$$
+</Step>
+
+<Step justification="$\log$ is strictly increasing, so it keeps the argmax; after the clip every factor is positive" sticky="argmax">
+$$\hat y(x') = \argmax_{k}\; \log\Big[\phi_k\prod_{j=1}^{d} P(x'_j \mid y = k;\ \psi_{jk})\Big]$$
+</Step>
+
+<Step justification="the log of a product is the sum of the logs; this is the rule as the task 18 markdown states it" sticky="log-rules" fadeable>
+$$\hat y(x') = \argmax_{k}\; \sum_{j=1}^{d}\log P(x'_j \mid y = k;\ \psi_{jk}) + \log\phi_k$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Write each factor with ψ, then as arrays">
+
+<Step justification="Bernoulli pmf: the markdown's two cases, $\psi_{jk}$ when $x'_j = 1$ and $1 - \psi_{jk}$ when $x'_j = 0$, combined using $x'_j \in \{0, 1\}$ and the log of a power (der-6-3-3 step 5)" sticky="bernoulli" fadeable>
+$$\log P(x'_j \mid y = k;\ \psi_{jk}) = x'_j\log\psi_{jk} + (1 - x'_j)\log(1 - \psi_{jk})$$
+</Step>
+
+<Step justification="substitute step 7 into step 6 for training or test email $i$; this is the solution's `score[i][k]`">
+$$S_{ik} = \sum_{j=1}^{d}\big[x^{(i)}_j\log\psi_{jk} + (1 - x^{(i)}_j)\log(1 - \psi_{jk})\big] + \log\phi_k$$
+</Step>
+
+<Step justification="with $\Psi$ the $K \times d$ array `psis` and logs taken entrywise, $\sum_j X_{ij}A_{kj}$ is entry $(i, k)$ of $XA^{\top}$; in $\mathbf{1} - X$ the ones form an $n \times d$ matrix, in $\mathbf{1} - \Psi$ a $K \times d$ matrix, and in $\mathbf{1}(\log\phi)^{\top}$ an $n$-vector, which adds $\log\phi_k$ to column $k$ of every row">
+$$S = X(\log\Psi)^{\top} + (\mathbf{1} - X)\big(\log(\mathbf{1} - \Psi)\big)^{\top} + \mathbf{1}(\log\phi)^{\top}$$
+</Step>
+
+<Step justification="the argmax of step 6, applied to every row: the prediction for email $i$ is the column of row $i$ with the largest score, `score.argmax(axis=1)`">
+$$\hat y^{(i)} = \argmax_{k}\; S_{ik}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+<Check ids={["q-u6-l4-012", "q-u6-l4-013"]} />
+
+### Task 19: complete `spam_predict`
+
+- **Asked.** Fill in the scoring function.
+- **Solution.** A double loop over emails and classes that computes der-6-4-3 step 8 entry by entry and returns `score.argmax(axis=1)`.
+- **Point.** Correct, but slow in two ways. The loop runs $nK$ Python iterations where step 9 needs two matrix products. Worse, `np.log(psis)` and `np.log(1-psis)` are recomputed on the whole $K \times d$ array inside every iteration: two full-array logs of 2000 entries each, $nK$ times over. The Lecture 8 companion's `nb_predictions` uses broadcasting instead; the version below follows der-6-4-3 step 9.
+
+```python
+def spam_predict(x, psis, phis, K=2):
+    score = np.zeros([x.shape[0], K])          # set-up lines abridged
+    log_py = np.log(phis)
+    for i in range(x.shape[0]):
+        for k in range(K):
+            score[i][k] = np.sum(np.log(psis)[k]*x[i] + np.log(1-psis)[k]*(1-x[i])) + log_py[k]
+    return score.argmax(axis=1)
+```
+
+```python
+# der-6-4-3 step 9, vectorized (our version; no output shown)
+def spam_predict_vec(X, psis, phis):
+    S = X @ np.log(psis).T + (1 - X) @ np.log(1 - psis).T + np.log(phis)
+    return S.argmax(axis=1)
+```
+
+### Task 20: evaluate
+
+- **Asked.** Accuracy on train and test.
+- **Printed.** First 20 training predictions `[0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 1 0 0 1 0]`; train accuracy **0.9268**; test accuracy **0.9217**.
+- **Point.** Naive Bayes barely overfits (0.9268 against 0.9217), while logistic regression fits the training set almost perfectly (0.99974) and still wins on test (0.97726). That is the L9 p.3 trade-off: with several thousand examples, the discriminative model's flexibility pays, and the generative model's independence assumption costs accuracy (its bias). The comparison is still one split, one vocabulary, and an unsmoothed NB with an arbitrary clip; it is not a verdict on generative models. The solution reports no F1 for Naive Bayes, so the two models are compared on accuracy only.
+
+### Task 21: does any word appear in only one class?
+
+- **Asked.** Check for words seen in only one class.
+- **Solution.** `np.sum(psis[0]==0)` and `np.sum(psis[1]==0)`.
+- **Printed.** 0 and 0.
+- **Point.** The check is right and the order is wrong. `psis` was reassigned to its clipped version in task 18, so no entry can equal 0, and the answer is 0 whatever the data say. Before the clip the answer was 34 (task 18). Run diagnostics on the raw estimates, and keep the raw array: `psis_raw = X_k.mean(...)`, then a separate `psis_clipped`. This resolves the hook: both numbers were computed correctly, on two different arrays with the same name.
+
+<Check ids={["q-u6-l4-014", "q-u6-l4-015", "q-u6-l4-016"]} />
+
+## Part 6: shrinking the vocabulary (tasks 22–24)
+
+### Task 22: remove one stop-word
+
+- **Asked.** Remove "and" from the dictionary.
+- **Solution.** `count_vect.vocabulary_.pop('and')`, then re-transform the training text.
+- **Printed.** `107` (the popped index); new shape `(3837, 999)`.
+- **Point.** Editing `vocabulary_` by hand leaves the other words' indices unchanged, so index 107 is no longer used (an inference about scikit-learn's behavior, not a printed output). A cleaner route is to re-fit: `CountVectorizer(binary=True, max_features=1000, stop_words=...)` builds a contiguous vocabulary and also refills the freed slots with the next most frequent words, so $d$ stays 1000.
+
+### Task 23: remove all NLTK stop-words
+
+- **Asked.** Batch removal with NLTK.
+- **Solution.** `nltk.download('stopwords')`, print the 179-word English list, and pop every one of those words that is in the vocabulary.
+- **Printed.** The 179-word list; new shape `(3837, 886)`.
+- **Point.** Many of the 179 stop-words were among the remaining vocabulary words: function words dominate the most frequent tokens of any English corpus, which is why `max_features=1000` let them in.
+
+### Task 24: stemming
+
+- **Asked.** Merge words that share a root.
+- **Solution.** `PorterStemmer` on each vocabulary word; a new dictionary `new_dict` that gives each distinct stem a fresh index; `count_vect.vocabulary_ = new_dict`; re-transform.
+- **Printed.** 742 unique stems; new shape `(3837, 742)`.
+- **Point.** One caution, then the missing step.
+  1. *The documents were not stemmed* (library behavior, beyond what the notebook prints). With scikit-learn's default tokenizer, assigning `vocabulary_` changes the columns but not the tokenizer, so `transform` still looks up raw tokens. A raw word sets a column only if it is spelled exactly like the stem. Inflected forms whose stem differs from them would no longer match any column, and a stem that is not itself a word (Porter stems often are not) would give a column that is 0 in every email, with $\hat\psi_{jk} = 0$ in both classes: the same zero-count problem task 18's clip papers over. The robust way is to stem inside the analyzer, so that vocabulary and documents pass through the same function.
+  2. *The exercise stops here.* `psis` and `phis` were fit on the 1000-word matrix; they have the wrong shape for the new 742-column matrix and describe different features. Reducing the vocabulary means re-running tasks 15–20.
+
+<Check ids={["q-u6-l4-017", "q-u6-l4-018", "q-u6-l4-019"]} />
+
+## Natural extensions (exercises, no answers)
+
+<Callout type="beyond">
+
+Each of these turns the posted solution into a better experiment. Because HW3 may reuse this dataset, we give the method and the lesson section to use, not the numbers.
+
+1. **Split the 34 by class.** Before clipping, count the zeros in each row of `psis`. Which class has more words it has never seen? (Task 18, task 21.)
+2. **Replace the clip with Laplace smoothing.** Use $\hat\psi_{jk} = (s_{jk} + 1)/(n_k + 2)$ (der-6-3-6), drop the clip, and re-run tasks 19–20. Does test accuracy move? Does any prediction change?
+3. **Compare on the metric the exercise chose.** Compute Naive Bayes's test F1 and compare it with logistic regression's 0.9564 (task 12).
+4. **Re-train on the smaller vocabularies.** Re-fit Naive Bayes on the 886-word and the 742-stem matrices, with a stemming analyzer for the second, and evaluate on test sets transformed the same way.
+5. **Rank words by evidence.** Sort the vocabulary by $w_j$ (def-6-4-3) instead of $\psi_{j1}$ and compare with task 17's list. Check whether the most frequent token carries any evidence.
+6. **Vectorize and verify.** Check that `spam_predict_vec` reproduces task 20's first 20 predictions.
+7. **Stratify.** Re-split with `stratify=Y` and see how much each model's test accuracy depends on the split.
+
+</Callout>
+
+## Explore
+
+<Widget
+  name="bow-nb-scorer"
+  dataset="notes"
+  smoothing={false}
+  challenge="Find a word whose bar has length zero. What are its two ψ values? Then type a report containing a word that one class never saw, and watch that class's score; turn smoothing on and compare."
+/>
+
+{/* example-case: the worked example uses only numbers printed by the spam solution; the NOTES dataset (src/data/notes.json) is not yet generated, and the widget above uses it */}
+
+<Example title="The solution's numbers, read through Unit 6">
+
+Every number below was printed by `NaiveBayes_Spam_exercise_sol.ipynb`; the reading of each comes from a derivation in this unit.
+
+**The prior is the label balance.** `phis = [0.77195726 0.22804274]` (task 15) and the training spam fraction is 0.2280 (task 4). By der-6-4-1 step 5 and der-6-3-5, $\hat\phi_1 = n_1/n$ is that fraction, so the two printouts must agree, and they do.
+
+**A zero marks a word unseen in one class.** When the vocabulary is fit on training emails (task 5), $s_{j0} + s_{j1} \ge 1$ for every word, so at most one of $\hat\psi_{j0}, \hat\psi_{j1}$ can be 0. Each zero entry counted in task 18 is a word that one class never saw.
+
+**The clip's penalty is a constant.** Each of those words, if present in a test email, adds $\log 10^{-14} \approx -32.236$ (task 18) to the score of the class that never saw it, whatever the size of that class. Under Laplace smoothing the penalty would depend on $n_k$ (der-6-3-6 step 8); computing it here is exercise 2.
+
+**The models side by side.**
+
+| | train accuracy | test accuracy | test F1 |
+|---|---|---|---|
+| Logistic regression, no penalty (tasks 10–12) | 0.99974 | 0.97726 | 0.9564 |
+| Bernoulli NB, clipped (task 20) | 0.9268 | 0.9217 | not computed (exercise 3) |
+
+**The vocabulary shrinks, the model does not follow.** $d$ goes 1000 → 999 → 886 → 742 (tasks 22–24), and the fitted `psis` stays $2 \times 1000$ throughout.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u6-l4-020"]} />
+
+## Pitfalls
+
+<Pitfall title="The raw email is not the feature vector" misconception="raw-text-as-feature">
+
+The belief: in task 2, $x^{(1)}$ is the email's text, so that is what the model sees. The fix: the model sees $\phi(x^{(1)}) \in \{0,1\}^{1000}$, built in task 5 from a vocabulary learned on the training set. Two emails with different text can have the same vector, and the vector ignores word order, counts, and every word outside the vocabulary.
+
+</Pitfall>
+
+<Pitfall title="A random split does not preserve the class balance" misconception="random-split-preserves-balance">
+
+The belief: `train_test_split` keeps the spam rate the same in both parts. The fix: it does so only on average. Here the training split is 22.80% spam and the test split 26.07% (task 4). Pass `stratify=Y` when the class balance matters for the metrics you report.
+
+</Pitfall>
+
+<Pitfall title="Fit the vectorizer on the training text only" misconception="fit-vectorizer-on-test">
+
+The belief: fitting the vocabulary on all 5728 emails is harmless. The fix: `max_features=1000` picks words by their frequency in the fitted text, so the test emails would help choose their own features; task 5 does it right (def-6-4-1). The full argument is lesson 6.2's pitfall *Fit the vectorizer on training text only*.
+
+</Pitfall>
+
+<Pitfall title="CountVectorizer keeps stop-words by default" misconception="default-removes-stop-words">
+
+The belief: common words like "and" are dropped automatically. The fix: task 7 prints `False` for "," and `True` for "and"; stop-words go only when you remove them, as tasks 22–23 do. See lesson 6.2's pitfall *CountVectorizer keeps stop words by default*.
+
+</Pitfall>
+
+<Pitfall title="Training accuracy is not performance" misconception="train-accuracy-is-generalization">
+
+The belief: unregularized logistic regression scored 0.99974, so it is nearly perfect. The fix: that is accuracy on the emails it was fit to. On held-out emails it scores 0.97726 (task 11). The test number is the estimate of performance; the gap is a measure of overfitting.
+
+</Pitfall>
+
+<Pitfall title="Accuracy hides what imbalance costs" misconception="accuracy-enough-imbalanced">
+
+The belief: high accuracy on an imbalanced problem means the minority class is handled well. The fix: with roughly three ham emails per spam, a filter that flags nothing is right on most emails and catches no spam. F1 (def-6-4-2) ignores true negatives and drops to 0 for that filter, which is why task 12 asks for it.
+
+</Pitfall>
+
+<Pitfall title="axis=0 averages down the rows" misconception="numpy-axis-confusion">
+
+The belief: `mean(axis=0)` averages along each row. The fix: `axis=0` is the axis that disappears; averaging over the rows leaves one number per column. Task 15's helper prints `[2.5 3.5 4.5]` for `axis=0` and `[2. 5.]` for `axis=1` on a $2 \times 3$ array. With `axis=1`, `X_k.mean` would give each email's fraction of vocabulary words, not each word's frequency (der-6-4-1 step 2).
+
+</Pitfall>
+
+<Pitfall title="High spamicity is not evidence of spam" misconception="high-psi-is-spammy">
+
+The belief: the words with the largest $\psi_{j1}$ are the strongest spam signals. The fix: task 17's top ten are all stop-words or boilerplate, words that can be just as common in ham. Evidence is $w_j = \mathrm{logit}(\psi_{j1}) - \mathrm{logit}(\psi_{j0})$, which is 0 when the two frequencies are equal (der-6-4-2).
+
+</Pitfall>
+
+<Pitfall title="An unassigned clip does nothing" misconception="clip-without-assignment">
+
+The belief: `psis.clip(1e-14, 1-1e-14)` removes the zeros. The fix: `clip` returns a new array and leaves `psis` unchanged. The solution makes this mistake on purpose in task 18 and then writes `psis = psis.clip(1e-14, 1-1e-14)`. The same holds for most NumPy and pandas methods: assign the result, or use an explicit `out=` argument.
+
+</Pitfall>
+
+<Pitfall title="Check for zeros before you clip" misconception="clip-before-check">
+
+The belief: task 21 printed 0 zeros per class, so no word is missing from either class. The fix: `psis` had already been clipped in task 18, so 0 was the only possible answer. Before the clip, `np.sum(psis==0)` was 34 (task 18). Keep the raw estimates under their own name and run diagnostics on them.
+
+</Pitfall>
+
+<Pitfall title="One split does not settle generative versus discriminative" misconception="nb-lower-accuracy-means-useless">
+
+The belief: Naive Bayes scored 0.9217 against logistic regression's 0.97726, so Naive Bayes is the worse method. The fix: on this split, with several thousand training emails and a clipped, unsmoothed NB, the discriminative model is more accurate, as L9 p.3 predicts when data are plentiful. Naive Bayes trains in one counting pass, barely overfits (0.9268 train against 0.9217 test), and tends to need fewer examples to reach its best. The comparison is one data point, and exercises 2–4 change it.
+
+</Pitfall>
+
+<Pitfall title="A new vocabulary needs a new model" misconception="stale-psis-after-vocab-change">
+
+The belief: after tasks 22–24, the classifier now uses the cleaner vocabulary. The fix: nothing was re-fit. `psis` still has 1000 columns describing the original words, while the new matrices have 999, 886, or 742 columns. Any change to the features means re-estimating $\psi$ and $\phi$ (tasks 15–20).
+
+</Pitfall>
+
+<Pitfall title="Assigning stems to vocabulary_ does not stem the emails" misconception="vocab-assign-stems-docs">
+
+The belief: after `count_vect.vocabulary_ = new_dict`, every word in an email is counted under its stem. The fix: the vectorizer's tokenizer is unchanged, so it looks up each raw token as spelled. With scikit-learn's default tokenizer, only tokens identical to a stem set a column; inflected forms are dropped, and a stem that is not a word would give an all-zero column. Stem inside the analyzer so documents and vocabulary go through the same function.
+
+</Pitfall>
+
+<Connections>
+
+- Exercise: <Notebook path="Lectures/NaiveBayes_Spam_exercise.ipynb" cells="all" /> (unsolved) and <Notebook path="Lectures/NaiveBayes_Spam_exercise_sol.ipynb" cells="all" /> (solution), the source of every number in this lesson.
+- Companion: <Notebook path="Code Companions/Lecture 8 Code Companion.ipynb" cells="all" /> runs the same model on 20 Newsgroups with a vectorized `nb_predictions`.
+- Before: 6.2 Text as features (bag of words, `CountVectorizer`, stop-words, stemming); 6.3 Naive Bayes (der-6-3-4 and der-6-3-5 for the estimates, der-6-3-6 for smoothing, der-6-3-7 for log-space scores, der-6-3-8 for the weights).
+- Next: Unit 7, Gaussian discriminant analysis, which keeps the generative recipe and replaces each Bernoulli with a Gaussian.
+- Graph neighbors: [[f1-score]], [[train-test-split]], [[log-sum-exp]] (for turning task 19's scores into probabilities, der-6-3-7).
+
+</Connections>
+
+<HomeworkBridge hw="hw3" skills={["bernoulli-nb-mle", "categorical-prior-mle", "zero-count-problem", "laplace-smoothing", "log-space-prediction", "nb-vectorized-scoring", "fit-preprocessing-on-train", "text-preprocessing"]} />
+
+<Summary>
+
+- **Pipeline:** load (5728 emails, 23.9% spam) → split 3837 / 1891 → fit `CountVectorizer(binary=True, max_features=1000)` on train only → LR baseline → NB by counting → predict in log space → shrink the vocabulary.
+- **Estimates are column means:** `psis[k] = X_k.mean(axis=0)` gives $\hat\psi_{jk} = s_{jk}/n_k$; `phis[k] = X_k.shape[0]/n` gives $\hat\phi_k = n_k/n$ (der-6-4-1).
+- **Decision rule:** $\hat y(x') = \argmax_k \sum_j[x'_j\log\psi_{jk} + (1 - x'_j)\log(1 - \psi_{jk})] + \log\phi_k$; for all emails at once, $S = X(\log\Psi)^\top + (\mathbf{1} - X)(\log(\mathbf{1} - \Psi))^\top + \mathbf{1}(\log\phi)^\top$ (der-6-4-3).
+- **Evidence:** $w_j = \mathrm{logit}(\psi_{j1}) - \mathrm{logit}(\psi_{j0})$; zero when the frequencies match, so frequent stop-words carry none (der-6-4-2).
+- **The 34 zeros:** each marks a word unseen in one class (a vocabulary fit on training text rules out words unseen in both); the clip hides them (−32.236 per occurrence), and a zero check after the clip reports 0.
+- **Recorded results:** LR train 0.99974, test 0.97726, test F1 0.9564; NB train 0.9268, test 0.9217.
+- **Code hygiene:** assign `clip`'s result; diagnose before patching; stem documents and vocabulary with the same analyzer; re-fit after any feature change.
+
+</Summary>

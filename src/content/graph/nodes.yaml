@@ -78,6 +78,7 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: text-as-features
   summary: "A document becomes phi(x) in {0,1}^|V|: entry j is 1 if the document contains vocabulary word j."
+  derivation: der-6-2-2
 
 - id: count-vectorizer
   label: "CountVectorizer"
@@ -86,6 +87,7 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: text-as-features
   summary: "sklearn's bag-of-words builder: fit_transform learns the vocabulary on training text, transform reuses it; binary=True gives 0/1 features."
+  derivation: der-6-2-3
 
 - id: logistic-regression-text-baseline
   label: "Logistic-regression text baseline"
@@ -94,6 +96,7 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: text-as-features
   summary: "Softmax or logistic regression on bag-of-words features: the discriminative baseline on 20 Newsgroups and the spam data."
+  derivation: der-6-2-5
 
 - id: text-preprocessing
   label: "Text preprocessing"
@@ -102,6 +105,39 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: text-as-features
   summary: "Stop-word removal, stemming, and dropping rare words to shrink and clean the vocabulary."
+
+- id: fixed-length-features
+  label: "Fixed-length features"
+  type: concept
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: text-as-features
+  summary: "A linear score theta^T x needs every input in R^p with one fixed p and a fixed meaning per coordinate; variable-length text must first pass through a feature map."
+  derivation: der-6-2-1
+
+- id: vocabulary
+  label: "Vocabulary"
+  type: concept
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: text-as-features
+  summary: "The fixed, ordered set V of words of interest; its size |V| is the length of every bag-of-words vector. CountVectorizer learns it from training text as vocabulary_."
+
+- id: count-features
+  label: "Count features"
+  type: concept
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: text-as-features
+  summary: "phi(x)_j is the number of times word j occurs instead of whether it occurs; the binary bag of words is min(count, 1). The input of multinomial Naive Bayes."
+
+- id: fit-preprocessing-on-train
+  label: "Fit preprocessing on train only"
+  type: concept
+  field: evaluation
+  unit: u6-generative-models-and-naive-bayes
+  lesson: text-as-features
+  summary: "Learned preprocessing (vocabulary, max_features selection, scalers) is fit on the training split and only applied to the test split, so the test set influences nothing that was fit."
 
 - id: full-categorical-class-conditional
   label: "Full categorical class-conditional"
@@ -215,6 +251,23 @@
   unit: u6-generative-models-and-naive-bayes
   lesson: naive-bayes
   summary: "A word never seen in class k gets MLE psi_jk = 0, so log psi_jk = -inf and one word vetoes the class; the spam solution's psis had 34 such zeros."
+
+- id: spam-email-dataset
+  label: "Spam email dataset"
+  type: dataset
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: spam-exercise
+  summary: "emails.csv from the in-class exercise: 5,728 Enron emails (4,360 ham, 1,368 spam), split 3,837 train / 1,891 test, featurized as 1,000 binary bag-of-words columns."
+
+- id: nb-vectorized-scoring
+  label: "Vectorized NB scoring"
+  type: method
+  field: ml
+  unit: u6-generative-models-and-naive-bayes
+  lesson: spam-exercise
+  summary: "All Naive Bayes class scores at once: S = X (log Ψ)^T + (1 − X)(log(1 − Ψ))^T + log φ, then argmax over each row."
+  derivation: der-6-4-3
 
 - id: gaussian-mixture
   label: "Gaussian mixture"

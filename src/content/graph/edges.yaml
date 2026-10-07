@@ -52,3 +52,15 @@
 - { from: lagrange-multipliers, to: categorical-prior-mle, type: uses }
 - { from: categorical-prior-mle, to: multinomial-naive-bayes, type: uses }
 - { from: sigmoid, to: nb-linear-classifier, type: uses }
+
+# Within lesson 6.2 (course map L9 seed edges: fixed-length features and vocabulary -> bag of words -> text baseline)
+- { from: fixed-length-features, to: bag-of-words, type: requires }
+- { from: vocabulary, to: bag-of-words, type: requires }
+- { from: vocabulary, to: count-vectorizer, type: requires }
+- { from: bag-of-words, to: logistic-regression-text-baseline, type: requires }
+- { from: count-vectorizer, to: logistic-regression-text-baseline, type: uses }
+- { from: bag-of-words, to: count-features, type: contrasts }
+- { from: count-features, to: multinomial-naive-bayes, type: uses }
+
+# Within lesson 6.4: scoring test emails needs features built with the train-fit vocabulary
+- { from: fit-preprocessing-on-train, to: nb-vectorized-scoring, type: requires }

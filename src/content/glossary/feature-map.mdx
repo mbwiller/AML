@@ -1,0 +1,12 @@
+---
+id: feature-map
+term: Feature map
+aliases: [featurization, featurizer, phi of x]
+field: ml
+firstUsedIn: u1-linear-regression
+related: [sparse-matrix, softmax, sigmoid]
+---
+
+**What it is.** A function $\phi : \mathcal{X} \to \mathbb{R}^p$ that turns a raw input $x$ (a house, a patient record, a document) into a vector of $p$ numbers; $\phi(x)_j$ is its $j$-th feature. The model then works on $\phi(x)$ instead of $x$. The length $p$ is fixed by the map, whatever the raw input looks like.
+
+**How ML uses it.** A linear model scores $\theta^\top \phi(x)$, which is linear in $\theta$ even when $\phi$ is not linear in $x$; polynomial features ($\phi(x) = (1, x, x^2, \dots)$) are the first example. For text, the bag-of-words map sends a document to a 0/1 vector over a vocabulary. Unit 6 also uses $\phi_k$ for class priors: same letter, unrelated object.

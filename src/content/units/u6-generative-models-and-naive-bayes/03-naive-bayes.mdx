@@ -83,7 +83,7 @@ Suppose an assumption tames that number. A second problem waits. The word "synco
 
 ## The model
 
-Lesson 6.1 left us with the rule $\hat y = \argmax_k p(x \mid y = k)\,p(y = k)$ and a recipe for fitting it: estimate the prior from the labels and each class-conditional from its own class. For text, $x$ is a [[bernoulli|binary]] bag-of-words vector of length $d$ <SlideRef lecture={9} pages="20" />. The open question is the slide's: how do we choose $p_\theta(x \mid y = k)$?
+Lesson 6.1 left us with the rule $\hat y = \argmax_k p(x \mid y = k)\,p(y = k)$ and a recipe for fitting it: estimate the prior from the labels and each class-conditional from its own class. For text, $x$ is a [[bernoulli|binary]] bag-of-words vector $\phi(\text{document})$ of length $d = |V|$ (lesson 6.2) <SlideRef lecture={9} pages="20" />. The open question is the slide's: how do we choose $p_\theta(x \mid y = k)$?
 
 <Definition id="def-6-3-1" title="Full categorical class-conditional" source="L9 p.22">
 

@@ -1,0 +1,654 @@
+---
+title: "Text as features"
+unit: u6-generative-models-and-naive-bayes
+order: 2
+slug: text-as-features
+summary: "Turn variable-length text into fixed-length bag-of-words vectors, see why the resulting matrix must stay sparse, clean the vocabulary, and fit the logistic-regression baseline on 20 Newsgroups."
+lectures:
+  - { lecture: 9, pages: "6-19" }
+concepts:
+  - fixed-length-features
+  - vocabulary
+  - bag-of-words
+  - count-features
+  - count-vectorizer
+  - text-preprocessing
+  - logistic-regression-text-baseline
+  - fit-preprocessing-on-train
+prerequisites:
+  - feature-map
+  - discriminative-model
+  - softmax
+  - sigmoid
+  - argmax
+  - log-rules
+  - sparse-matrix
+homework: [hw3]
+cases: [notes]
+companions:
+  - { notebook: "Code Companions/Lecture 8 Code Companion.ipynb", cells: "all" } # TODO: narrow to the BoW and logistic-regression cells once cell numbers are recorded in the course map
+  - { notebook: "Lectures/NaiveBayes_Spam_exercise_sol.ipynb", cells: "all" } # tasks 5-8 and 22-24; TODO: cell numbers
+estimatedMinutes: 55
+status: review
+authors: [jide]
+---
+
+<Frame
+  data="raw documents (20 Newsgroups posts; later, NOTES reports) with labels $y \in \{0, 1, 2, 3\}$"
+  model="bag of words $\phi(x) \in \{0,1\}^{|V|}$, then softmax regression $p_\theta(y = k \mid x) \propto \exp\big(\theta_k^\top \phi(x) + b_k\big)$"
+  objective="maximize the conditional log-likelihood of the labels, with a very weak L2 penalty ($C = 10^5$)"
+  optimizer="L-BFGS, inside sklearn's LogisticRegression"
+/>
+
+<Objectives>
+
+- Explain why a linear model needs every input as a vector of one fixed length, and why raw text is not.
+- Define a vocabulary and the bag-of-words map $\phi(x) \in \{0,1\}^{|V|}$, and contrast binary features with counts.
+- Derive the shape of the bag-of-words matrix, its fraction of nonzero entries, and the memory cost of storing it densely versus sparsely.
+- Use `CountVectorizer`: `fit_transform` on training text only, `transform` on everything else, and `vocabulary_` to find a word's column.
+- Describe stemming, stop-word removal, and rare-word filtering, and what each does to the vocabulary.
+- Show that softmax regression on bag-of-words features predicts by adding up per-word weights, and read the 20 Newsgroups baseline.
+
+</Objectives>
+
+<Hook>
+
+A pharmacovigilance team receives free-text adverse-event reports in the NOTES case. One reads "Patient developed syncope 3 days after starting the drug; hospitalized." Another is two pages long. The team wants a classifier that flags serious reports.
+
+Every classifier in this course so far computes $\theta^\top x$ for a vector $x$ whose length was fixed before training began. A report is not such a vector: it is a sequence of words, and its length changes from one report to the next. What should $x$ be, so that the first report and the two-page report land in the same space, and so that the word "syncope" means the same coordinate in both?
+
+{/* hook-figure: the bow-vectorizer widget below serves as the hook's explorable */}
+
+</Hook>
+
+## Why raw text does not fit a linear model
+
+L9 opens text classification with the applications (spam filtering, fraud detection, medical-record classification) and one obstacle: the inputs are word sequences of arbitrary length, and the algorithms we have need fixed-dimension column vectors <SlideRef lecture={9} pages="6" />. We make that obstacle precise first, because it fixes what any text representation must deliver.
+
+<Derivation
+  id="der-6-2-1"
+  title="A linear score needs a fixed-length input"
+  goalTex="\theta^\top \phi(x) \text{ defined for every document } x, \text{ whatever its length}"
+  resultTex="\phi : \text{documents} \to \{0,1\}^{|V|}, \qquad \theta \in \mathbb{R}^{|V|}, \qquad \theta^\top \phi(x) = \sum_{j=1}^{|V|} \theta_j\, \phi(x)_j"
+  source="L9 p.6 (stated: algorithms need fixed-dimension vectors), L9 p.12 (the bag-of-words map); the argument is ours"
+>
+
+<Chunk title="See why a raw document does not fit">
+
+<Step justification="the linear score of Units 1 to 3; the length $p$ of $\theta$ is chosen before any input is seen">
+$$f_\theta(x) = \theta^\top x = \sum_{j=1}^{p} \theta_j x_j, \qquad \theta \in \mathbb{R}^p$$
+</Step>
+
+<Step justification="a document is a sequence of words whose length $L$ differs from document to document (L9 p.6)">
+$$x = (w_1, w_2, \dots, w_L), \qquad L \text{ varies with } x$$
+</Step>
+
+<Step justification="the sum in step 1 pairs $\theta_j$ with $x_j$ for $j = 1, \dots, p$; if $L \ne p$, some weight has no partner or some word has no weight">
+$$\theta^\top x \text{ is defined} \iff x \in \mathbb{R}^p$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Fix the length with a feature map">
+
+<Step justification="apply a feature map whose output length $p$ does not depend on the input" sticky="feature-map">
+$$\phi : \text{documents} \to \mathbb{R}^p, \qquad \phi(x) \in \mathbb{R}^p \text{ for every } x$$
+</Step>
+
+<Step justification="the bag-of-words map (def-6-2-2, defined below) has one coordinate per word of the vocabulary $V$ (def-6-2-1, defined below), so $p = |V|$ and each coordinate is 0 or 1" fadeable>
+$$\phi(x) \in \{0,1\}^{|V|}$$
+</Step>
+
+<Step justification="substitute $\phi(x)$ for $x$ in step 1 with $p = |V|$; the score now exists for every document" fadeable>
+$$\theta^\top \phi(x) = \sum_{j=1}^{|V|} \theta_j\, \phi(x)_j$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 3 also hides a second problem. Even two documents of the same length would pair $\theta_3$ with "the third word", which is a different word in each document. A useful $\phi$ must give each coordinate a fixed meaning: coordinate $j$ is about one particular word, in every document.
+
+L9 lists ways to build such a $\phi$ <SlideRef lecture={9} pages="10-11" />. Hand-crafted features answer fixed questions: does the post contain "church"? Does the email originate outside the US? Is the sender's organization a university? Asking the first kind of question once for every word of interest gives the bag of words. (The slide also notes that many modern deep-learning methods read sequences of characters of any length directly; that is a later unit.)
+
+## Vocabulary and bag of words
+
+<Definition id="def-6-2-1" title="Vocabulary" source="L9 p.12">
+
+A fixed, ordered set $V$ of the words of interest, for example $V = \{\text{church}, \text{doctor}, \text{purple}, \text{slow}, \text{apple}, \dots\}$. Its size is $|V|$, and word $j$ is the $j$-th element in the fixed order. <SlideRef lecture={9} pages="12" />
+
+Also written as: the dictionary (the spam exercise), `vocabulary_` (sklearn, a dict from word to column index).
+
+</Definition>
+
+<Definition id="def-6-2-2" title="Bag-of-words representation" source="L9 p.12">
+
+The [[feature-map|feature map]] $\phi$ that sends a document $x$ to a binary vector of length $|V|$,
+
+$$\phi(x) \in \{0,1\}^{|V|}, \qquad \phi(x)_j = \begin{cases} 1 & \text{if } x \text{ contains the } j\text{-th word of } V, \\ 0 & \text{otherwise.} \end{cases}$$
+
+Word order, repetitions, and words outside $V$ are discarded; only presence of each vocabulary word survives. <SlideRef lecture={9} pages="12" />
+
+Also written as: BoW; binary bag of words; a one-hot-per-word "multi-hot" vector (some references).
+
+</Definition>
+
+<Definition id="def-6-2-3" title="Count features" source="L9 p.16">
+
+The variant in which $\phi(x)_j$ is the number of times word $j$ occurs in $x$ rather than whether it occurs. Writing $c_j(x)$ for that count,
+
+$$\phi_{\text{count}}(x)_j = c_j(x) \in \{0, 1, 2, \dots\}, \qquad \phi(x)_j = \min\big(c_j(x), 1\big).$$
+
+The binary map is the count map capped at 1. <SlideRef lecture={9} pages="16" />
+
+Also written as: term frequencies; `CountVectorizer()` with its default `binary=False`.
+
+</Definition>
+
+<Callout type="slide">
+
+**"Dimension V" means dimension $|V|$.** L9 p.12 says the feature vector has "dimension V". $V$ is the vocabulary, a set of words; the dimension is its size, $|V|$, a number. We write $\phi(x) \in \{0,1\}^{|V|}$ throughout. (The sklearn description on L9 p.8 lists "Dimensionality 1" for 20 Newsgroups. That counts raw input fields, one text string per sample, not features; after vectorizing, the dimensionality is $|V|$.)
+
+</Callout>
+
+<Callout type="slide">
+
+**Two different $\phi$'s in one unit.** Here $\phi$ is the bag-of-words feature map, as in the L2 notation $\phi : \mathcal{X} \to \mathbb{R}^p$. In lesson 6.3 the slides reuse the letter for the class prior, $\phi_k = P(y = k)$, and $\boldsymbol\phi = (\phi_1, \dots, \phi_K)$. They are unrelated. We keep both, as the slides do, and tell them apart by form: $\phi(x)$ and $\phi(x)_j$ take a document as an argument, while $\phi_k$ has only a class subscript.
+
+</Callout>
+
+From lesson 6.3 on, $x$ denotes the vector $\phi(\text{document})$ and $d = |V|$ (or `max_features`, when the vocabulary is capped), so the Naive Bayes formulas write $x_j$ where this lesson writes $\phi(x)_j$. In the NOTES case the reports are vectorized over a 2,000-word vocabulary, so there $d = 2000$.
+
+<Intuition>
+
+Take a two-word vocabulary, $V = \{\text{syncope}, \text{mild}\}$. Every report, however long, lands on one of four points: $(0,0)$ uses neither word, $(1,0)$ only "syncope", $(0,1)$ only "mild", $(1,1)$ both. These are the corners of the unit square, and a linear score $\theta_1 \phi(x)_1 + \theta_2 \phi(x)_2 + b$ assigns one number to each corner. A one-line report and a two-page report that mention "syncope" but not "mild" get the same vector, and so the same score.
+
+With $|V|$ words the picture is the same with more corners: every document is a corner of the $|V|$-dimensional unit cube. What is lost is everything that is not "which words appear": order ("not serious" and "serious, not" coincide), repetition (under the binary map), and every word outside $V$.
+
+</Intuition>
+
+<Check ids={["q-u6-l2-020", "q-u6-l2-014", "q-u6-l2-008"]} />
+
+## CountVectorizer and the 20 Newsgroups matrix
+
+L9 uses 20 Newsgroups: about 18,000 posts from 20 online newsgroups, with 18,846 samples in sklearn's table and a train/test split by posting date <SlideRef lecture={9} pages="7-8" />. The Lecture 8 code companion (which implements the L9 slides) loads the training split of four categories, `alt.atheism`, `soc.religion.christian`, `comp.graphics`, and `sci.med`, with `shuffle=True, random_state=42`. That gives 2,257 posts. sklearn sorts `target_names` alphabetically, so label 0 is alt.atheism, 1 comp.graphics, 2 sci.med, and 3 soc.religion.christian. L9 p.9 prints post `data[3]`, a question about the Catholic church's role in Poland after 1989.
+
+sklearn builds the bag of words for us <SlideRef lecture={9} pages="13-15" />. The outputs below are the ones recorded from the companion:
+
+```python
+from sklearn.feature_extraction.text import CountVectorizer
+
+count_vect = CountVectorizer(binary=True)
+X_train = count_vect.fit_transform(twenty_train.data)
+X_train.shape                          # (2257, 35788)
+
+count_vect.vocabulary_.get(u'church')    # 8609
+count_vect.vocabulary_.get(u'computer')  # 9338
+```
+
+No dictionary was given in advance. `fit_transform` does two jobs: it learns the vocabulary from all tokens in the training posts (the fit), and it converts each post to its 0/1 row (the transform). `binary=True` records whether the post contains each word, not how often. `vocabulary_` maps each word to its column, so the entry `X_train[3, 8609]` says whether post 3 contains "church". For post 3 the companion reads off:
+
+| word | column | entry in row 3 |
+|---|---|---|
+| church | 8609 | 1 |
+| computer | 9338 | 0 |
+| doctor | (looked up the same way) | 0 |
+| important | (looked up the same way) | 1 |
+
+The column numbers carry no meaning beyond position. sklearn assigns them in alphabetical order of the learned words, which is why "church" (8609) comes before "computer" (9338).
+
+### Shape and sparsity
+
+How big is this matrix, and how much of it is zero? Write $u_i$ for the number of distinct vocabulary words in document $i$.
+
+<Derivation
+  id="der-6-2-2"
+  title="Shape and sparsity of the bag-of-words matrix"
+  goalTex="X \in \{0,1\}^{n \times |V|} \text{ and its fraction of nonzero entries}"
+  resultTex="X \in \{0,1\}^{n \times |V|}, \qquad \frac{\mathrm{nnz}(X)}{n\,|V|} = \frac{\bar u}{|V|}, \qquad \bar u = \frac{1}{n}\sum_{i=1}^{n} u_i"
+  source="L9 pp.12–13 (the map and the shape (2257, 35788)); the nonzero count is ours"
+>
+
+<Chunk title="Stack the documents into a matrix">
+
+<Step justification="def-6-2-2 applied to training document $i$; rows of a design matrix are examples">
+$$\text{row } i \text{ of } X = \phi(x^{(i)})^\top \in \{0,1\}^{1 \times |V|}$$
+</Step>
+
+<Step justification="stack the $n$ rows">
+$$X = \begin{bmatrix} \phi(x^{(1)})^\top \\ \vdots \\ \phi(x^{(n)})^\top \end{bmatrix} \in \{0,1\}^{n \times |V|}$$
+</Step>
+
+<Step justification="substitute the companion's $n = 2257$ posts and $|V| = 35788$ learned words (L9 p.13)">
+$$X_{\text{train}} \in \{0,1\}^{2257 \times 35788}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Count the nonzeros">
+
+<Step justification="entry $(i, j)$ is 1 exactly when document $i$ contains word $j$, so the row sum counts the distinct vocabulary words in document $i$">
+$$\mathrm{nnz}(\text{row } i) = \sum_{j=1}^{|V|} \phi(x^{(i)})_j = u_i$$
+</Step>
+
+<Step justification="a document of $L_i$ tokens contains at most $L_i$ distinct words, and at most $|V|$ vocabulary words">
+$$u_i \le \min(L_i, |V|)$$
+</Step>
+
+<Step justification="add the row counts over all $n$ rows, and write the sum as $n$ times its average $\bar u$" fadeable>
+$$\mathrm{nnz}(X) = \sum_{i=1}^{n} u_i = n\,\bar u$$
+</Step>
+
+<Step justification="divide by the total number of entries, $n\,|V|$; the $n$ cancels" fadeable>
+$$\frac{\mathrm{nnz}(X)}{n\,|V|} = \frac{\bar u}{|V|}$$
+</Step>
+
+<Step justification="divide step 4 by $|V| = 35788$ to get row $i$'s fraction of nonzero entries, and multiply the 1% condition through by 35788" fadeable>
+$$\frac{u_i}{35788} < 0.01 \iff u_i < 357.88$$
+</Step>
+
+<Step justification="$u_i$ is a whole number, so it is below 357.88 exactly when it is at most 357" fadeable>
+$$u_i < 357.88 \iff u_i \le 357$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The vocabulary was learned from 2,257 posts on four topics, so it holds every word any of them used; a single post uses a small share of it. Any post with at most 357 distinct vocabulary words is more than 99% zeros. Step 7 says the whole matrix is exactly as sparse as the average row.
+
+### Why the matrix stays sparse
+
+`fit_transform` returns a `scipy.sparse` matrix, not a numpy array. A [[sparse-matrix|sparse matrix]] stores only the nonzero entries. To see why that matters, price the dense alternative. sklearn's `CountVectorizer` stores entries as 64-bit integers by default (a library fact, not on the slides).
+
+<Derivation
+  id="der-6-2-3"
+  title="A dense 2257 × 35788 array, in bytes"
+  goalTex="\text{memory of } X_{\text{train}} \text{ stored densely, 8 bytes per entry}"
+  resultTex="2257 \times 35788 \times 8 = 646{,}188{,}128 \text{ bytes} \approx 646 \text{ MB}, \qquad \text{vs. } 2257 \times 1000 \times 8 \approx 18 \text{ MB at } |V| = 1000"
+  source="L9 p.13 (shape), L9 p.35 (max_features=1000, .toarray()); the byte count is ours, and the int64 entry type is sklearn's CountVectorizer default"
+>
+
+<Chunk title="Count the entries">
+
+<Step justification="a dense array stores every entry, zeros included" sticky="sparse-matrix">
+$$\#\text{entries} = n \times |V|$$
+</Step>
+
+<Step justification="substitute $n = 2257$ and $|V| = 35788$ (L9 p.13)">
+$$\#\text{entries} = 2257 \times 35788$$
+</Step>
+
+<Step justification="split $2257 = 2000 + 257$ and distribute">
+$$2257 \times 35788 = 2000 \times 35788 + 257 \times 35788$$
+</Step>
+
+<Step justification="multiply each term: $2000 \times 35788 = 71{,}576{,}000$; $257 \times 35788 = 250 \times 35788 + 7 \times 35788 = 8{,}947{,}000 + 250{,}516$">
+$$2257 \times 35788 = 71{,}576{,}000 + 9{,}197{,}516$$
+</Step>
+
+<Step justification="add" fadeable>
+$$\#\text{entries} = 80{,}773{,}516$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Convert to bytes and compare">
+
+<Step justification="an int64 entry is 64 bits, and a byte is 8 bits">
+$$\text{bytes per entry} = 64 / 8 = 8$$
+</Step>
+
+<Step justification="multiply the entry count of step 5 by step 6" fadeable>
+$$80{,}773{,}516 \times 8 = 646{,}188{,}128 \text{ bytes}$$
+</Step>
+
+<Step justification="divide by $10^6$ bytes per megabyte" fadeable>
+$$646{,}188{,}128 \text{ bytes} \approx 646 \text{ MB}$$
+</Step>
+
+<Step justification="repeat steps 1–7 with max_features = 1000, which keeps only the 1,000 most frequent words, so $|V| = 1000$ (L9 p.35)">
+$$2257 \times 1000 \times 8 = 18{,}056{,}000 \text{ bytes} \approx 18 \text{ MB}$$
+</Step>
+
+<Step justification="all 18,846 posts (L9 p.8) include these 2,257, so their vocabulary contains at least these 35,788 words; repeat steps 1–7 with $n = 18846$ and $|V| \ge 35788$">
+$$\text{bytes} \ge 18846 \times 35788 \times 8 = 5{,}395{,}685{,}184 \approx 5.4 \text{ GB}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Densifying four categories of training posts costs over half a gigabyte, and the bill grows linearly in both $n$ and $|V|$. That is why the companion calls `.toarray()` only after restricting to `max_features=1000` <SlideRef lecture={9} pages="35" />, where 18 MB is harmless. How much does the sparse format save?
+
+<Derivation
+  id="der-6-2-4"
+  title="Sparse storage scales with the nonzeros"
+  goalTex="\frac{\text{CSR bytes}}{\text{dense bytes}} \text{ for } X \in \{0,1\}^{n \times |V|}"
+  resultTex="\frac{\text{CSR bytes}}{\text{dense bytes}} = \frac{3\,\bar u}{2\,|V|} + \frac{n + 1}{2\,n\,|V|} \le \frac{1.5\,\bar u + 1}{|V|}"
+  source="beyond the slides (the course map's sparse-matrix sticky note); CSR layout and index widths are scipy's"
+>
+
+<Chunk title="Price the compressed sparse row format">
+
+<Step justification="CSR keeps one value and one column index per nonzero, plus one row pointer per row and one extra at the end" sticky="sparse-matrix">
+$$\text{CSR} = \big(\underbrace{\text{values}}_{\mathrm{nnz}},\ \underbrace{\text{column indices}}_{\mathrm{nnz}},\ \underbrace{\text{row pointers}}_{n + 1}\big)$$
+</Step>
+
+<Step justification="int64 values take 8 bytes; scipy stores indices and pointers as 4-byte int32 when they fit">
+$$\text{CSR bytes} = 8\,\mathrm{nnz} + 4\,\mathrm{nnz} + 4(n + 1) = 12\,\mathrm{nnz} + 4(n + 1)$$
+</Step>
+
+<Step justification="substitute $\mathrm{nnz} = n\,\bar u$ from der-6-2-2 step 6" fadeable>
+$$\text{CSR bytes} = 12\,n\,\bar u + 4(n + 1)$$
+</Step>
+
+<Step justification="divide by the dense cost $8\,n\,|V|$ of der-6-2-3 steps 1 and 6, term by term" fadeable>
+$$\frac{\text{CSR bytes}}{\text{dense bytes}} = \frac{3\,\bar u}{2\,|V|} + \frac{n + 1}{2\,n\,|V|}$$
+</Step>
+
+<Step justification="$n + 1 \le 2n$ for every $n \ge 1$, so the second term is at most $1/|V|$">
+$$\frac{\text{CSR bytes}}{\text{dense bytes}} \le \frac{1.5\,\bar u + 1}{|V|}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+With $|V| = 35788$, if posts average at most 357 distinct vocabulary words, the bound is $(1.5 \times 357 + 1)/35788 = 536.5/35788 \approx 0.015$, and the sparse matrix needs under 1.5% of the dense memory. `LogisticRegression` accepts the sparse matrix directly, so the baseline below never densifies it.
+
+### Fit on training text, transform everything else
+
+`fit_transform` learns the vocabulary; `transform` only applies it. Every later batch of text (validation posts, test posts, the two new sentences of L9 p.18 <SlideRef lecture={9} pages="18" />) goes through `transform` with the vocabulary learned from the training set. In the spam exercise, task 5 does exactly this: `fit_transform` on the training emails, `transform` on the test emails (NaiveBayes_Spam_exercise_sol, task 5).
+
+Two consequences follow. First, the test set has the same $|V|$ columns in the same order as the training set, so $\theta$ applies to it. Second, a word that never appeared in training has no column, and `transform` silently drops it. Fitting the vectorizer on test text would let the test set choose the features, a form of leakage: the model's input space would be shaped by data it is supposed to be evaluated on.
+
+<Check ids={["q-u6-l2-001", "q-u6-l2-013", "q-u6-l2-005", "q-u6-l2-012"]} />
+
+## Cleaning the vocabulary
+
+The raw vocabulary is large and noisy. L9 p.16 lists three practical fixes <SlideRef lecture={9} pages="16" />.
+
+<Definition id="def-6-2-4" title="Text preprocessing: stemming, stop words, rare words" source="L9 p.16">
+
+- **Stemming** maps related word forms to one root: "slowly" and "slowness" both become "slow". Distinct forms share one column.
+- **Stop-word filtering** removes very common function words such as "the", "a", and "and", which appear in nearly every document of every class.
+- **Rare-word exclusion** drops words that occur in very few documents (typos, names, one-off strings), which give each column almost no training evidence.
+
+Each shrinks $|V|$. <SlideRef lecture={9} pages="16" />
+
+Also written as: normalization (stemming; lemmatization is a dictionary-based relative), `stop_words='english'`, `min_df` (the sklearn options for the last two).
+
+</Definition>
+
+The sklearn defaults do none of this. `CountVectorizer` lowercases and keeps runs of two or more word characters, so punctuation and single-character tokens such as "a" never become tokens, but it keeps stop words. The spam exercise checks this in task 7: `','` is not in `vocabulary_`, and `'and'` is. Task 17 then finds that the ten words most frequent in spam are dominated by stop words ("you", "the", "and", ...), which is the motivation for tasks 22–24: pop stop words from the dictionary, first by hand and then with NLTK's English list, and finally merge words that share a Porter stem. Lesson 6.4 walks through those tasks.
+
+<Callout type="beyond">
+
+A standard stop-word list removes "no", "not", and "without". In a medical report, "no prior chemotherapy" and "prior chemotherapy" then become the same vector. Removing stop words is a modeling choice, not a cleanup that is always safe: check the list against the words your labels depend on, and keep negations when they matter.
+
+</Callout>
+
+<Check ids={["q-u6-l2-007", "q-u6-l2-006", "q-u6-l2-017"]} />
+
+## The logistic-regression baseline
+
+Once text is a fixed-length vector, any supervised method applies <SlideRef lecture={9} pages="19" />. L9 fits the discriminative baseline first <SlideRef lecture={9} pages="17-18" />:
+
+```python
+from sklearn.linear_model import LogisticRegression
+
+logreg = LogisticRegression(C=1e5, multi_class='multinomial', verbose=True)
+logreg.fit(X_train, twenty_train.target)
+
+docs_new = ['God is love', 'OpenGL on the GPU is fast']
+X_new = count_vect.transform(docs_new)
+logreg.predict(X_new)
+# 'God is love'               => soc.religion.christian
+# 'OpenGL on the GPU is fast' => comp.graphics
+```
+
+`multi_class='multinomial'` asks for [[softmax]] regression: one weight vector and one intercept per class. It predicts the [[argmax]] of the class probabilities, and the [[log-rules]] turn its probability ratios into sums. What does that model compute on a 0/1 vector? Write $W(x) = \{j : \phi(x)_j = 1\}$ for the set of vocabulary words in document $x$.
+
+<Derivation
+  id="der-6-2-5"
+  title="Softmax regression on bag of words adds up word weights"
+  goalTex="\hat y = \argmax_k p_\theta(y = k \mid x) \text{ for } \phi(x) \in \{0,1\}^{|V|}"
+  resultTex="\hat y = \argmax_k \Big(b_k + \sum_{j \in W(x)} \theta_{kj}\Big), \qquad \log\frac{p_\theta(y = k \mid x)}{p_\theta(y = l \mid x)} = \sum_{j=1}^{|V|} (\theta_{kj} - \theta_{lj})\,\phi(x)_j + (b_k - b_l)"
+  source="L9 p.17 (the model is fit in code; the score form is not written on the slide); softmax regression from Unit 3"
+>
+
+<Chunk title="Write the class scores">
+
+<Step justification="softmax regression with class scores $z_k$ (the multinomial model of L9 p.17)" sticky="softmax">
+$$p_\theta(y = k \mid x) = \frac{e^{z_k}}{\sum_{l=1}^{K} e^{z_l}}, \qquad z_k = \theta_k^\top \phi(x) + b_k$$
+</Step>
+
+<Step justification="expand the inner product coordinate by coordinate">
+$$z_k = b_k + \sum_{j=1}^{|V|} \theta_{kj}\, \phi(x)_j$$
+</Step>
+
+<Step justification="each $\phi(x)_j$ is 0 or 1: terms with $\phi(x)_j = 0$ vanish, and terms with $\phi(x)_j = 1$ contribute $\theta_{kj}$" fadeable>
+$$z_k = b_k + \sum_{j \in W(x)} \theta_{kj}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Predict with the largest score">
+
+<Step justification="predict the most probable class" sticky="argmax">
+$$\hat y = \argmax_k p_\theta(y = k \mid x)$$
+</Step>
+
+<Step justification="substitute the softmax of step 1">
+$$\hat y = \argmax_k \frac{e^{z_k}}{\sum_{l=1}^{K} e^{z_l}}$$
+</Step>
+
+<Step justification="the denominator is the same positive number for every $k$, so dropping it does not change the argmax" fadeable>
+$$\hat y = \argmax_k e^{z_k}$$
+</Step>
+
+<Step justification="the exponential is strictly increasing, so it does not change the argmax" fadeable>
+$$\hat y = \argmax_k z_k$$
+</Step>
+
+<Step justification="substitute step 3">
+$$\hat y = \argmax_k \Big(b_k + \sum_{j \in W(x)} \theta_{kj}\Big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Read off the log-odds between two classes">
+
+<Step justification="divide the posteriors of classes $k$ and $l$ from step 1; the shared denominator cancels">
+$$\frac{p_\theta(y = k \mid x)}{p_\theta(y = l \mid x)} = \frac{e^{z_k}}{e^{z_l}}$$
+</Step>
+
+<Step justification="take logs; the log of a quotient is the difference of the logs, and $\log e^{z} = z$" sticky="log-rules">
+$$\log\frac{p_\theta(y = k \mid x)}{p_\theta(y = l \mid x)} = z_k - z_l$$
+</Step>
+
+<Step justification="substitute step 2 for $z_k$ and $z_l$ and pair the terms with the same $\phi(x)_j$" fadeable>
+$$\log\frac{p_\theta(y = k \mid x)}{p_\theta(y = l \mid x)} = \sum_{j=1}^{|V|} (\theta_{kj} - \theta_{lj})\,\phi(x)_j + (b_k - b_l)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+So each vocabulary word carries one weight per class, and a document's score for class $k$ is the class's intercept plus the weights of the words it contains. "OpenGL on the GPU is fast" goes to comp.graphics because the comp.graphics weights of its vocabulary words (after lowercasing: "opengl", "on", "the", "gpu", "is", "fast", where present in $V$) sum higher than any other class's. With two classes, step 11 is the logit of a [[sigmoid]] model, and the log-odds are affine in the word indicators. Lesson 6.3 shows that Naive Bayes produces log-odds of exactly this form, with weights computed from word frequencies instead of fit by maximum likelihood on $p(y \mid x)$.
+
+How many weights is that?
+
+<Derivation
+  id="der-6-2-6"
+  title="The baseline has far more parameters than training posts"
+  goalTex="\#\text{parameters of softmax regression on } X_{\text{train}} \in \{0,1\}^{2257 \times 35788},\ K = 4"
+  resultTex="K(|V| + 1) = 143{,}156 \approx 63.4\,n, \qquad \text{identifiable by the likelihood: } (K - 1)(|V| + 1) = 107{,}367 \approx 47.6\,n"
+  source="L9 p.17 (the fit); the count is ours, and sklearn stores coef_ of shape (K, |V|) and intercept_ of shape (K,)"
+>
+
+<Chunk title="Count weights and intercepts">
+
+<Step justification="one weight per (class, word) pair and one intercept per class (der-6-2-5 step 2)">
+$$\#\text{parameters} = K\,|V| + K = K(|V| + 1)$$
+</Step>
+
+<Step justification="substitute $K = 4$ categories and $|V| = 35788$">
+$$K(|V| + 1) = 4 \times 35789 = 143{,}156$$
+</Step>
+
+<Step justification="divide by the $n = 2257$ training posts" fadeable>
+$$\frac{143{,}156}{2257} \approx 63.4$$
+</Step>
+
+<Step justification="adding the same vector to every $(\theta_k, b_k)$ adds the same constant to every $z_k$ and leaves the softmax unchanged, so the likelihood identifies only $(K - 1)(|V| + 1)$ parameters (a finite-$C$ L2 penalty still picks a unique optimum, and sklearn stores all $K(|V| + 1)$)" sticky="softmax">
+$$\#\text{identifiable parameters of the likelihood} = (K - 1)(|V| + 1) = 3 \times 35789 = 107{,}367$$
+</Step>
+
+<Step justification="divide by $n$ again" fadeable>
+$$\frac{107{,}367}{2257} \approx 47.6$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+About 48 free numbers per training post is plenty to fit the training labels almost perfectly. The penalty does not stop it: sklearn's `C` is $1/\lambda$, so $C = 10^5$ means $\lambda = 10^{-5}$, essentially no regularization. The companion's L-BFGS log agrees: it stops after 17 iterations at a training loss of $5.0 \times 10^{-4}$, an essentially separable fit. Two correct predictions on hand-written sentences show that the pipeline runs, not how well it generalizes; that needs held-out posts. L9 p.19 sums up: the bag of words is the standard representation, any off-the-shelf supervised method can use it, "some work better than others", and the next step is a generative approach <SlideRef lecture={9} pages="19" />.
+
+<Callout type="note">
+
+`multi_class` is deprecated since scikit-learn 1.5 and removed in later releases; omit it (the companion shows the deprecation warning). With the default L-BFGS solver and more than two classes, the multinomial model is already the default, so `LogisticRegression(C=1e5)` fits the same model.
+
+</Callout>
+
+<Check ids={["q-u6-l2-016", "q-u6-l2-009", "q-u6-l2-011", "q-u6-l2-018"]} />
+
+## Explore
+
+<Widget
+  name="bow-vectorizer"
+  dataset="notes"
+  binary={true}
+  removeStopWords={false}
+  stem={false}
+  challenge="Fit the vocabulary on the training reports, then type a new report that uses a word the training reports never contained. Which column does it get? Now switch binary off and repeat a word three times: which entry changes?"
+/>
+
+{/* example-case: NOTES pending src/data/notes.json; the toy reports below are illustrative text built from the case's template, and the 20 Newsgroups numbers are the Lecture 8 companion's */}
+
+<Example title="Fit, transform, and lose a word">
+
+**A toy fit.** Fit `CountVectorizer(binary=True)` on two training reports written in the NOTES template: "Patient hospitalized after syncope" and "Mild headache resolved". After lowercasing and tokenizing, the vocabulary is the seven distinct words, indexed in alphabetical order:
+
+$$V = (\text{after}_0,\ \text{headache}_1,\ \text{hospitalized}_2,\ \text{mild}_3,\ \text{patient}_4,\ \text{resolved}_5,\ \text{syncope}_6), \qquad |V| = 7.$$
+
+The training matrix is $2 \times 7$:
+
+$$X_{\text{train}} = \begin{bmatrix} 1 & 0 & 1 & 0 & 1 & 0 & 1 \\ 0 & 1 & 0 & 1 & 0 & 1 & 0 \end{bmatrix}.$$
+
+**A new report.** Transform "Patient developed syncope and arrhythmia". Its tokens are patient, developed, syncope, and, arrhythmia. Only "patient" (column 4) and "syncope" (column 6) are in $V$, so
+
+$$\phi(x_{\text{new}}) = (0, 0, 0, 0, 1, 0, 1).$$
+
+"Developed", "and", and "arrhythmia" are dropped silently. "Arrhythmia" is a strong sign of a serious report, and this model can never use it: the vocabulary was fixed when the vectorizer was fit. Only training reports that contain the word can fix this. Refitting the vectorizer on the new report would not: it would renumber the columns, and the fitted weights would no longer line up with them.
+
+**The same steps at scale.** On 20 Newsgroups the companion's fit gives $X_{\text{train}} \in \{0,1\}^{2257 \times 35788}$ (der-6-2-2 step 3), "church" in column 8609 and "computer" in column 9338, with post 3 containing the first and not the second. Stored densely it would take about 646 MB (der-6-2-3); the softmax baseline fits $143{,}156$ numbers to it (der-6-2-6) and labels "God is love" as soc.religion.christian and "OpenGL on the GPU is fast" as comp.graphics.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u6-l2-002", "q-u6-l2-019", "q-u6-l2-003", "q-u6-l2-004", "q-u6-l2-010", "q-u6-l2-015"]} />
+
+## Pitfalls
+
+<Pitfall title="Spot the notation: 'dimension V' means |V|" misconception="dimension-v-vs-size">
+
+L9 p.12 says the bag-of-words vector has "dimension V". $V$ is a set of words and cannot be a dimension; the dimension is the number of words, $|V|$. On 20 Newsgroups $|V| = 35788$, the second number in `X_train.shape`. Likewise "Dimensionality 1" on L9 p.8 counts raw text fields, not features.
+
+</Pitfall>
+
+<Pitfall title="φ(x) is a feature vector; φ_k is a class prior" misconception="phi-feature-map-vs-prior">
+
+The belief: $\phi_3$ in lesson 6.3 is the third bag-of-words entry. The fix: in this unit $\phi(x)_j$ (with a document argument) is feature $j$ of $x$, while $\phi_k$ (a class subscript, no argument) is $P(y = k)$, the prior of class $k$. The slides reuse the letter for both; read the form, not the letter.
+
+</Pitfall>
+
+<Pitfall title="Fit the vectorizer on training text only" misconception="fit-vectorizer-on-test">
+
+The belief: calling `fit_transform` on the test set (or on train and test together) is harmless, since it only builds a dictionary. The fix: the vocabulary is part of the model; it decides which columns exist. Fitting it on test text lets the evaluation data choose the features, and fitting separately on train and test gives two matrices whose column $j$ means different words. Fit once on training text; `transform` everything else.
+
+</Pitfall>
+
+<Pitfall title="Unseen words do not get a column at test time" misconception="oov-words-kept">
+
+The belief: `transform` adds new words it meets to the vocabulary. The fix: `transform` uses the fitted `vocabulary_` and silently drops every other word, as "arrhythmia" was dropped in the worked example. A test document made entirely of unseen words becomes the zero vector, and the model predicts from the intercepts alone.
+
+</Pitfall>
+
+<Pitfall title="Densifying a bag-of-words matrix is not free" misconception="toarray-is-free">
+
+The belief: `.toarray()` is a harmless conversion. The fix: it stores every zero. For the full 20 Newsgroups training matrix that is about 646 MB (der-6-2-3), against under 1.5% of that in sparse form when posts average at most 357 distinct vocabulary words (der-6-2-4). Densify only after shrinking $|V|$, as the companion does with `max_features=1000`.
+
+</Pitfall>
+
+<Pitfall title="CountVectorizer keeps stop words by default" misconception="default-removes-stop-words">
+
+The belief: `CountVectorizer` cleans the text, so "and" and "the" are already gone. The fix: by default it lowercases and keeps runs of two or more word characters, so punctuation and single-character tokens such as "a" never become tokens; it keeps stop words and does no stemming; spam exercise task 7 finds `'and'` in the vocabulary and `','` not. Stop words must be removed on purpose, with `stop_words=` or by editing the vocabulary (tasks 22–23).
+
+</Pitfall>
+
+<Pitfall title="Removing stop words is not always safe" misconception="stop-words-always-safe">
+
+The belief: stop words carry no information, so removing them can only help. The fix: standard lists contain "no", "not", and "without". Removing them makes "no prior chemotherapy" and "prior chemotherapy" identical. Stop-word removal is a modeling choice to check against what the label depends on.
+
+</Pitfall>
+
+<Pitfall title="Binary features are not counts" misconception="binary-equals-counts">
+
+The belief: `binary=True` and the default produce the same matrix. The fix: the default stores how many times each word occurs; `binary=True` stores $\min(c_j, 1)$. A report that says "ICU" three times has a 3 in that column under counts and a 1 under binary features. L9 uses binary features, and Bernoulli Naive Bayes (lesson 6.3) requires them.
+
+</Pitfall>
+
+<Pitfall title="Large C means weak regularization" misconception="large-c-strong-regularization">
+
+The belief: $C = 10^5$ is a strong penalty because the number is large. The fix: sklearn's `C` is the inverse of the penalty weight, $\lambda = 1/C = 10^{-5}$. L9's baseline is essentially unregularized, and with 143,156 parameters for 2,257 posts (der-6-2-6) it fits the training set almost exactly.
+
+</Pitfall>
+
+<Pitfall title="Two correct predictions are not an evaluation" misconception="two-predictions-as-evaluation">
+
+The belief: since the baseline labels "God is love" and "OpenGL on the GPU is fast" correctly, it is accurate. The fix: two hand-picked sentences show the pipeline runs end to end. Accuracy has to be measured on many held-out documents that played no part in fitting the vectorizer or the model.
+
+</Pitfall>
+
+<Pitfall title="A vocabulary index is a column number, nothing more" misconception="vocab-index-meaning">
+
+The belief: "church" at index 8609 means something about its frequency or importance. The fix: `vocabulary_` maps words to columns in alphabetical order of the learned words. The index only tells you where to look in `X_train`; how often the word occurs, or how much it matters to a class, is in the data and in the fitted weights.
+
+</Pitfall>
+
+<Connections>
+
+- Companion: <Notebook path="Code Companions/Lecture 8 Code Companion.ipynb" cells="all" /> builds the 20 Newsgroups matrix, looks up "church" and "computer", and fits the softmax baseline (the numbers in this lesson).
+- Exercise: <Notebook path="Lectures/NaiveBayes_Spam_exercise_sol.ipynb" cells="all" /> tasks 5–8 vectorize the spam data (fit on train, transform test) and tasks 22–24 remove stop words and stem; lesson 6.4 walks through all 24 tasks.
+- Before: 6.1 Generative vs discriminative. The baseline here is the discriminative model of def-6-1-2.
+- Next: 6.3 Naive Bayes models $p(\phi(x) \mid y)$ for these binary vectors, a generative alternative whose log-odds have the same affine form as der-6-2-5 step 11.
+- Earlier homework: HW2 Part 2, binary classification of clinical-trial text, used the same pipeline.
+- Graph neighbors: [[feature-map]], [[sparse-matrix]], [[softmax]].
+
+</Connections>
+
+<HomeworkBridge hw="hw3" skills={["bag-of-words", "count-vectorizer", "text-preprocessing", "logistic-regression-text-baseline"]} />
+
+<Summary>
+
+- **Why:** a linear score $\theta^\top x$ needs every input in $\mathbb{R}^p$ with one fixed $p$ and a fixed meaning per coordinate; raw text has neither.
+- **Bag of words:** $\phi(x) \in \{0,1\}^{|V|}$, $\phi(x)_j = 1$ if $x$ contains vocabulary word $j$. Counts replace the indicator by $c_j(x)$; binary is $\min(c_j, 1)$.
+- **Matrix:** $X \in \{0,1\}^{n \times |V|}$; fraction nonzero $= \bar u / |V|$. On 20 Newsgroups, $X_{\text{train}}$ is $2257 \times 35788$; dense int64 storage is about 646 MB, sparse CSR under $(1.5\,\bar u + 1)/|V|$ of that.
+- **CountVectorizer:** `fit_transform` on training text learns `vocabulary_` and vectorizes; `transform` reuses it on all other text and drops unseen words.
+- **Preprocessing:** stemming merges word forms, stop-word filtering drops common words, rare-word exclusion drops near-empty columns; none is on by default.
+- **Baseline:** softmax regression predicts $\argmax_k \big(b_k + \sum_{j \in W(x)} \theta_{kj}\big)$; its log-odds are affine in the word indicators. With $C = 10^5$ ($\lambda = 10^{-5}$) and $143{,}156$ parameters for 2,257 posts, it fits the training set almost exactly.
+
+</Summary>
