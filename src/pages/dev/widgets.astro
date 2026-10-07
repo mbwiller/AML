@@ -1,0 +1,107 @@
+---
+/**
+ * The widget demo page (VISION.md §9.3; STYLE_GUIDE.md §7 point 2): every
+ * registered widget with its manifest (title, challenge, usedIn, params with
+ * defaults and ranges from the Zod schema) rendered with default params.
+ * Playwright drives the first widget here (tests/e2e/widgets.spec.ts).
+ */
+import { z } from 'zod';
+
+import Widget from '@/components/mdx/Widget.astro';
+import { manifests } from '@/components/widgets/manifests';
+import Base from '@/layouts/Base.astro';
+
+interface ParamRow {
+  key: string;
+  type: string;
+  range: string;
+  defaultValue: string;
+  description: string;
+}
+
+function describeParams(schema: z.ZodObject<z.ZodRawShape>): ParamRow[] {
+  const json = z.toJSONSchema(schema, { io: 'output', unrepresentable: 'any' });
+  const defaults = schema.parse({}) as Record<string, unknown>;
+  const props = (json.properties ?? {}) as Record<string, Record<string, unknown>>;
+  return Object.entries(props).map(([key, p]) => {
+    const parts: string[] = [];
+    if (typeof p.minimum === 'number') parts.push(`min ${p.minimum}`);
+    if (typeof p.maximum === 'number') parts.push(`max ${p.maximum}`);
+    if (Array.isArray(p.enum)) parts.push(p.enum.map(String).join(' | '));
+    return {
+      key,
+      type: typeof p.type === 'string' ? p.type : 'unknown',
+      range: parts.join(', ') || '—',
+      defaultValue: JSON.stringify(defaults[key]),
+      description: typeof p.description === 'string' ? p.description : '',
+    };
+  });
+}
+
+const entries = Object.values(manifests).map((m) => ({
+  manifest: m,
+  params: describeParams(m.params),
+}));
+---
+
+<Base title="Widgets">
+  <main id="main" class="mx-auto max-w-5xl px-4 py-10 font-sans">
+    <h1 class="text-h1 font-bold tracking-tight">Widgets</h1>
+    <p class="mt-2 max-w-measure text-muted break-words">
+      Every widget in <code>src/components/widgets/registry.ts</code>, rendered with its manifest
+      defaults. The contract is STYLE_GUIDE.md §7; how to add one is in
+      <code>src/components/widgets/README.md</code>.
+    </p>
+
+    {entries.length === 0 && (
+      <p class="mt-8 rounded-card border border-border bg-surface-2 p-4 text-ui text-muted">
+        No widgets registered yet.
+      </p>
+    )}
+
+    {entries.map(({ manifest, params }) => (
+      <section class="mt-10" id={manifest.name} data-widget-demo={manifest.name}>
+        <h2 class="text-h2 font-semibold">
+          {manifest.title} <code class="text-ui text-muted">{manifest.name}</code>
+        </h2>
+        <dl class="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-ui">
+          <dt class="text-muted">Used in</dt>
+          <dd>{manifest.usedIn.length ? manifest.usedIn.join(', ') : '—'}</dd>
+          <dt class="text-muted">Challenge</dt>
+          <dd>{manifest.challenge}</dd>
+          <dt class="text-muted">Height</dt>
+          <dd>{manifest.height}px</dd>
+          <dt class="text-muted">Fallback</dt>
+          <dd>{manifest.fallback ? 'static SVG from the manifest' : 'none'}</dd>
+        </dl>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full border-collapse text-ui">
+            <thead>
+              <tr class="border-b border-border text-left text-ui-xs tracking-caps text-muted uppercase">
+                <th class="py-1 pr-3">Param</th>
+                <th class="py-1 pr-3">Type</th>
+                <th class="py-1 pr-3">Range</th>
+                <th class="py-1 pr-3">Default</th>
+                <th class="py-1">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {params.map((p) => (
+                <tr class="border-b border-border align-top">
+                  <td class="py-1 pr-3 font-mono">{p.key}</td>
+                  <td class="py-1 pr-3">{p.type}</td>
+                  <td class="py-1 pr-3">{p.range}</td>
+                  <td class="py-1 pr-3 font-mono">{p.defaultValue}</td>
+                  <td class="py-1 text-muted">{p.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <Widget name={manifest.name} />
+      </section>
+    ))}
+  </main>
+</Base>

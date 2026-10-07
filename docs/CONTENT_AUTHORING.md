@@ -162,7 +162,7 @@ Sticky-note popover for a glossary id. The first use in a lesson is emphasized; 
 Inline citation chip; links to the PDF page in `/materials`.
 
 ### `<Widget name="bow-nb-scorer" dataset="notes" smoothing={false} challenge="Turn smoothing off and type a word the training set never saw." />`
-Props beyond `name` are validated against the widget's manifest. If the widget does not exist yet, the build shows a placeholder with the name and params (content can be written before the widget ships).
+Props beyond `name` and `challenge` are validated at build time against the widget's manifest (`src/components/widgets/<name>/manifest.ts`, a Zod schema in which every param has a default): an unknown prop or an out-of-range value fails the build with the offending prop named, so `<Widget name="…" />` alone is always valid. `challenge` overrides the manifest's default challenge line. The registered widgets, their params, ranges, and defaults are listed on `/dev/widgets`. If the widget does not exist yet, the build shows a placeholder with the name and params (content can be written before the widget ships). Reader state: the "copy state link" button in the frame puts the current params in the URL hash (`#w=<name>:<base64url>`), which the widget restores on load; a `<Step figureState>` reveal reaches the nearest preceding widget as its `figureState` prop.
 
 ### `<Figure src="…" alt="…" caption="…" source="L10 p.14" />`
 Static figure (SVG/PNG under `src/assets/figures/`). Use only when interactivity adds nothing.

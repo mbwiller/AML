@@ -13,6 +13,10 @@
 @import './katex.css';
 @import './prose.css';
 
+/* Widgets: Mafs variables → tokens, then the frame, Param, and fallback styles */
+@import './mafs.css';
+@import './widgets.css';
+
 @layer base {
   html {
     background: var(--bg);
