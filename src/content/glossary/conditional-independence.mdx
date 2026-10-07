@@ -1,0 +1,12 @@
+---
+id: conditional-independence
+term: Conditional independence
+aliases: [conditionally independent]
+field: probability
+firstUsedIn: u6-generative-models-and-naive-bayes
+related: [chain-rule-probability, conditional-probability, iid]
+---
+
+**What it is.** $X_1$ and $X_2$ are conditionally independent given $Y$, written $X_1 \perp X_2 \mid Y$, when $p(x_1, x_2 \mid y) = p(x_1 \mid y)\,p(x_2 \mid y)$ for every $y$. Equivalently, $p(x_1 \mid x_2, y) = p(x_1 \mid y)$: once you know $Y$, $X_2$ tells you nothing more about $X_1$. It neither implies nor is implied by ordinary (marginal) independence.
+
+**How ML uses it.** It is the Naive Bayes assumption: given the label, the features are conditionally independent, so $p(x \mid y) = \prod_j p(x_j \mid y)$ and the parameter count drops from exponential in $d$ to $Kd$. Words such as "chest" and "pain" co-occur within a class, so the assumption rarely holds. Naive Bayes still classifies well, but its probabilities are often overconfident because correlated evidence is counted twice.

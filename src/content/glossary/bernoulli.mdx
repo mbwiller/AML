@@ -1,0 +1,16 @@
+---
+id: bernoulli
+term: Bernoulli distribution
+aliases: [coin flip]
+field: probability
+firstUsedIn: u3-logistic-regression-and-mle
+related: [categorical, likelihood-vs-probability, log-likelihood, beta-prior]
+---
+
+**What it is.** A distribution over $x \in \{0, 1\}$ with one parameter $\psi = P(x = 1)$:
+
+$$P(x; \psi) = \psi^{x}(1 - \psi)^{1 - x}.$$
+
+Its mean is $\psi$ and its variance $\psi(1 - \psi)$. Given $n$ draws containing $s$ ones, the MLE is the sample proportion $\hat\psi = s/n$. The slides sometimes write $x\psi + (1 - x)(1 - \psi)$, which agrees on $\{0, 1\}$; we use the product form because its log, $x \log\psi + (1 - x)\log(1 - \psi)$, is the expression you differentiate.
+
+**How ML uses it.** Logistic regression models each label as Bernoulli with $\psi = \sigma(\theta^\top x)$. Bernoulli Naive Bayes models each binary bag-of-words feature as Bernoulli with $\psi_{jk} = P(x_j = 1 \mid y = k)$, the probability that a class-$k$ document contains word $j$; its MLE is the fraction of class-$k$ documents that contain the word.

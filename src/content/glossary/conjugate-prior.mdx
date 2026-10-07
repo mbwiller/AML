@@ -1,0 +1,12 @@
+---
+id: conjugate-prior
+term: Conjugate prior
+aliases: [conjugacy, Dirichlet prior]
+field: statistics
+firstUsedIn: u6-generative-models-and-naive-bayes
+related: [beta-prior, prior-likelihood-posterior, bernoulli, categorical]
+---
+
+**What it is.** A prior is conjugate to a likelihood when the posterior lands in the same family as the prior. Updating on data then only changes the family's parameters, usually by adding counts. Standard pairs: a Beta prior with a Bernoulli or binomial likelihood; a Dirichlet prior (the $K$-outcome Beta) with a categorical or multinomial likelihood; a Gaussian prior on the mean with a Gaussian likelihood of known variance.
+
+**How ML uses it.** Conjugacy gives closed-form MAP and posterior estimates, so smoothing becomes "add pseudo-counts". With $s_{jk}$ the number of class-$k$ documents containing word $j$, a Beta prior gives $\hat\psi_{jk} = (s_{jk} + \alpha - 1)/(n_k + \alpha + \beta - 2)$; for multinomial Naive Bayes a Dirichlet($\alpha$) prior adds $\alpha - 1$ to every word count, so $\alpha = 2$ is add-one. Thompson sampling keeps a Beta posterior per bandit arm for the same reason.

@@ -1,0 +1,18 @@
+---
+id: matrix-calculus-identities
+term: Matrix calculus identities
+aliases: [matrix derivatives, vector calculus identities]
+field: calculus
+firstUsedIn: u1-linear-regression
+related: [quadratic-form, trace, determinant, first-order-condition]
+---
+
+**What it is.** Gradients of common scalar functions with respect to a vector or matrix, written so the gradient has the same shape as the variable. For symmetric $A$, $\Sigma$, and $S$:
+
+$$\nabla_\theta\, b^\top \theta = b, \qquad \nabla_\theta\, \theta^\top A \theta = 2A\theta, \qquad \nabla_\mu\, (x - \mu)^\top A (x - \mu) = -2A(x - \mu),$$
+
+$$\nabla_\Sigma \log|\Sigma| = \Sigma^{-1}, \qquad \nabla_\Sigma\, \mathrm{tr}(\Sigma^{-1} S) = -\Sigma^{-1} S\, \Sigma^{-1}.$$
+
+Each can be checked entry by entry with ordinary partial derivatives.
+
+**How ML uses it.** They reduce "differentiate and set to zero" to one line for vector and matrix parameters. The first two give the normal equations. The third gives the GDA mean $\hat\mu_k$ as the class average. The last two give the GDA covariance $\hat\Sigma_k$ as the class sample covariance.

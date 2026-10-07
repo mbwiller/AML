@@ -1,0 +1,12 @@
+---
+id: determinant
+term: Determinant
+aliases: [det]
+field: linear-algebra
+firstUsedIn: u7-gaussian-discriminant-analysis
+related: [matrix-inverse, eigenvectors, multivariate-gaussian]
+---
+
+**What it is.** For a square matrix $A$, $\det A$ (also written $|A|$) is the factor by which the linear map $x \mapsto Ax$ scales volume, with a sign for orientation. For a $2 \times 2$ matrix, $\det \begin{bmatrix} p & q \\ r & s \end{bmatrix} = ps - qr$. It equals the product of the eigenvalues, satisfies $\det(AB) = \det A \det B$ and $\det(A^{-1}) = 1 / \det A$, and is zero exactly when $A$ is singular.
+
+**How ML uses it.** In the multivariate Gaussian, the factor $|\Sigma|^{1/2}$ in the normalizer accounts for spread: a wider cloud spreads the same probability over more volume, so its peak is lower. In the log-likelihood it appears as $-\tfrac12 \log|\Sigma|$, and the GDA covariance MLE uses the identity $\nabla_\Sigma \log|\Sigma| = \Sigma^{-1}$.

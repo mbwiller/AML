@@ -1,0 +1,14 @@
+---
+id: trace
+term: Trace
+aliases: [tr, trace trick]
+field: linear-algebra
+firstUsedIn: u7-gaussian-discriminant-analysis
+related: [quadratic-form, matrix-calculus-identities, eigenvectors]
+---
+
+**What it is.** The trace of a square matrix is the sum of its diagonal entries, $\mathrm{tr}(A) = \sum_j A_{jj}$, and equals the sum of its eigenvalues. It is linear, $\mathrm{tr}(A^\top) = \mathrm{tr}(A)$, and it is unchanged by cyclic shifts: $\mathrm{tr}(ABC) = \mathrm{tr}(CAB) = \mathrm{tr}(BCA)$ whenever the products are defined. A scalar is its own trace, which gives the trace trick:
+
+$$x^\top A x = \mathrm{tr}(x^\top A x) = \mathrm{tr}(A\, xx^\top).$$
+
+**How ML uses it.** The trick is the key move in the GDA covariance MLE: a sum of quadratic forms $\sum_i (x^{(i)} - \mu)^\top \Sigma^{-1} (x^{(i)} - \mu)$ becomes $\mathrm{tr}(\Sigma^{-1} S)$, with $S$ the sum of outer products, which can be differentiated with respect to $\Sigma$. In PCA, the trace of the covariance matrix is the total variance.

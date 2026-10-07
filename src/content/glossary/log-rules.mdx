@@ -1,0 +1,16 @@
+---
+id: log-rules
+term: Logarithm rules
+aliases: [log rules, properties of the logarithm, natural log]
+field: calculus
+firstUsedIn: u3-logistic-regression-and-mle
+related: [log-likelihood, log-sum-exp, argmax]
+---
+
+**What it is.** For positive $a, b$ and the natural log,
+
+$$\log(ab) = \log a + \log b, \quad \log\frac{a}{b} = \log a - \log b, \quad \log a^c = c \log a, \quad \log e^z = z.$$
+
+The log is strictly increasing and concave, with derivative $1/x$. Also $\log 1 = 0$, and $\log x \to -\infty$ as $x \to 0^+$.
+
+**How ML uses it.** These rules turn a likelihood, a product of powers, into a sum of weighted logs: $\log[\psi^{x}(1 - \psi)^{1 - x}] = x \log\psi + (1 - x)\log(1 - \psi)$. Monotonicity is why taking logs does not move an argmax. The limit at 0 is the Naive Bayes failure: a word never seen in class $k$ gets $\hat\psi_{jk} = 0$, and $\log 0 = -\infty$ vetoes that class for every document containing the word.

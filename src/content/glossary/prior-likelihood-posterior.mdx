@@ -1,0 +1,12 @@
+---
+id: prior-likelihood-posterior
+term: Prior, likelihood, posterior
+aliases: [prior, posterior, evidence]
+field: probability
+firstUsedIn: u6-generative-models-and-naive-bayes
+related: [bayes-rule, likelihood-vs-probability, beta-prior, conjugate-prior]
+---
+
+**What it is.** The four factors of Bayes' rule have names. In $p(y \mid x) = p(x \mid y)\,p(y) / p(x)$, the **prior** $p(y)$ is your belief before seeing $x$; the **likelihood** $p(x \mid y)$ is how well $y$ explains the observation; the **posterior** $p(y \mid x)$ is the updated belief; the **evidence** $p(x)$ normalizes. In short, posterior $\propto$ likelihood $\times$ prior.
+
+**How ML uses it.** In classification the unknown is a label: Naive Bayes and GDA multiply a class-conditional likelihood by the class prior $\phi_k$, and a strong prior can overturn a larger likelihood (the L8 p.37 poll). In estimation the unknown is a parameter: $p(\theta \mid \mathcal{D}) \propto p(\mathcal{D} \mid \theta)\,p(\theta)$, and its maximizer is the MAP estimate. Laplace smoothing is a MAP estimate under a Beta prior.

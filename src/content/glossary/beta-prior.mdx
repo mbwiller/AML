@@ -1,0 +1,18 @@
+---
+id: beta-prior
+term: Beta prior
+aliases: [Beta distribution]
+field: probability
+firstUsedIn: u6-generative-models-and-naive-bayes
+related: [conjugate-prior, bernoulli, prior-likelihood-posterior]
+---
+
+**What it is.** The Beta distribution is a density on $\psi \in [0, 1]$:
+
+$$p(\psi; \alpha, \beta) \propto \psi^{\alpha - 1}(1 - \psi)^{\beta - 1}, \qquad \alpha, \beta > 0.$$
+
+$\alpha = \beta = 1$ is uniform. Read $\alpha - 1$ and $\beta - 1$ as imaginary ones and zeros seen before the data. After $s$ ones in $n$ Bernoulli draws the posterior is $\mathrm{Beta}(\alpha + s,\ \beta + n - s)$, and for $\alpha, \beta > 1$ its mode, the MAP estimate, is
+
+$$\hat\psi_{\mathrm{MAP}} = \frac{s + \alpha - 1}{n + \alpha + \beta - 2}.$$
+
+**How ML uses it.** With $\alpha = \beta = 2$ this is $(s + 1)/(n + 2)$: Laplace (add-one) smoothing for Bernoulli Naive Bayes. A word never seen in class $k$ gets a small positive $\hat\psi_{jk}$ instead of 0, which avoids $\log 0$, and the prior's pull fades as $n = n_k$ grows.

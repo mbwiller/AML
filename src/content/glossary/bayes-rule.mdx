@@ -1,0 +1,16 @@
+---
+id: bayes-rule
+term: Bayes' rule
+aliases: [Bayes' theorem, Bayes theorem]
+field: probability
+firstUsedIn: u6-generative-models-and-naive-bayes
+related: [prior-likelihood-posterior, conditional-probability, argmax]
+---
+
+**What it is.** For random variables with $p(x) > 0$,
+
+$$p(y \mid x) = \frac{p(x \mid y)\,p(y)}{p(x)}, \qquad p(x) = \sum_{y'} p(x \mid y')\,p(y').$$
+
+It follows from writing the joint two ways: $p(x, y) = p(y \mid x)\,p(x) = p(x \mid y)\,p(y)$. It turns a question you can model ("how would $x$ look in class $y$?") into the one you want answered ("which class produced this $x$?").
+
+**How ML uses it.** Every generative classifier predicts with it. Naive Bayes and GDA fit $p(x \mid y)$ and $p(y)$, then pick $\hat y = \argmax_y p(x \mid y)\,p(y)$. The denominator $p(x)$ is the same for every class, so it does not change the argmax; you need it only when you want the posterior probabilities themselves.

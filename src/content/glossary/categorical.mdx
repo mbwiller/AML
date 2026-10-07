@@ -1,0 +1,12 @@
+---
+id: categorical
+term: Categorical distribution
+aliases: [discrete distribution, multinoulli]
+field: probability
+firstUsedIn: u6-generative-models-and-naive-bayes
+related: [bernoulli, multinomial, lagrange-multipliers]
+---
+
+**What it is.** A distribution over $K$ outcomes $a \in \{1, \dots, K\}$ with $P(a = k) = \phi_k$, where $\phi_k \ge 0$ and $\sum_k \phi_k = 1$ (the probability simplex). It is one roll of a $K$-sided die; with $K = 2$ it is the Bernoulli. Given $n$ draws with counts $n_k$, the MLE is $\hat\phi_k = n_k / n$, found with a Lagrange multiplier on the sum-to-one constraint.
+
+**How ML uses it.** The class prior in Naive Bayes and GDA is categorical, so $\hat\phi_k$ is the fraction of training examples in class $k$. Softmax regression outputs a categorical distribution over labels. The "first attempt" text model on L9 p.22 is a categorical over all $2^d$ binary vectors, which needs $2^d - 1$ parameters per class.

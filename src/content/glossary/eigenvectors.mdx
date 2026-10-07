@@ -1,0 +1,12 @@
+---
+id: eigenvectors
+term: Eigenvalues and eigenvectors
+aliases: [eigenvector, eigenvalue, eigendecomposition, spectral theorem]
+field: linear-algebra
+firstUsedIn: u2-risk-and-gradient-descent
+related: [positive-semidefinite, covariance-matrix, multivariate-gaussian, determinant, trace]
+---
+
+**What it is.** A nonzero vector $v$ is an eigenvector of a square matrix $A$, with eigenvalue $\lambda$, when $Av = \lambda v$: the map only stretches $v$, by the factor $\lambda$. A symmetric matrix has real eigenvalues and an orthonormal basis of eigenvectors, so $A = V \Lambda V^\top$ (the spectral theorem). The eigenvalues multiply to $\det A$ and sum to $\mathrm{tr}(A)$.
+
+**How ML uses it.** For a Gaussian with covariance $\Sigma$, the eigenvectors of $\Sigma$ are the axes of its elliptical contours and $\sqrt{\lambda}$ sets the length of each axis, so the eigenvector with the largest eigenvalue points along the direction of greatest spread. That is the picture behind "match the matrix to the cloud", behind PCA, and behind the condition number of a loss's Hessian, $\lambda_{\max} / \lambda_{\min}$, that slows gradient descent.

@@ -1,0 +1,12 @@
+---
+id: first-order-condition
+term: First-order condition
+aliases: [stationary point, set the derivative to zero, FOC]
+field: calculus
+firstUsedIn: u1-linear-regression
+related: [second-order-condition, lagrange-multipliers, argmax, matrix-calculus-identities]
+---
+
+**What it is.** If a differentiable function $f$ has a maximum or minimum at an interior point $\theta^\star$, its gradient vanishes there: $\nabla f(\theta^\star) = 0$ (in one dimension, $f'(\theta^\star) = 0$). Points where this holds are stationary points. The condition is necessary, not sufficient: saddle points and extrema of the wrong kind also satisfy it, and it says nothing about points on a boundary.
+
+**How ML uses it.** "Differentiate, set to zero, solve" is how every closed-form estimator in the course is found: the normal equations, the coin-flip and Bernoulli Naive Bayes MLE $\hat\psi_{jk}$, and the GDA means $\hat\mu_k$ and covariances $\hat\Sigma_k$. When the problem has an equality constraint, such as class priors that must sum to 1, the condition is applied to the Lagrangian instead.

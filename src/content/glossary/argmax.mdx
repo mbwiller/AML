@@ -1,0 +1,12 @@
+---
+id: argmax
+term: argmax
+aliases: [arg max, argmin, arg min]
+field: calculus
+firstUsedIn: u3-logistic-regression-and-mle
+related: [log-rules, bayes-rule, log-likelihood]
+---
+
+**What it is.** $\argmax_y f(y)$ is the input at which $f$ is largest; $\max_y f(y)$ is that largest value. The argmax does not change when you apply a strictly increasing function to $f$ (such as $\log$), add a term that does not depend on $y$, or multiply by a positive factor that does not depend on $y$. When several inputs tie, the argmax is a set, and code returns the first index.
+
+**How ML uses it.** Prediction is an argmax over classes, $\hat y = \argmax_y p(y \mid x)$, and estimation is an argmax over parameters, $\hat\theta = \argmax_\theta L(\theta)$. The invariances do the work: the Bayes classifier drops $p(x)$ because dividing by it is multiplying by a positive factor that does not depend on $y$, and MLE takes logs because $\log$ is increasing. `np.argmax(scores, axis=0)` in the Naive Bayes code is the same operation.

@@ -1,0 +1,12 @@
+---
+id: second-order-condition
+term: Second-order condition
+aliases: [second-derivative test, Hessian test]
+field: calculus
+firstUsedIn: u2-risk-and-gradient-descent
+related: [first-order-condition, positive-semidefinite]
+---
+
+**What it is.** At a stationary point, curvature decides the kind. In one dimension, $f''(\theta^\star) < 0$ gives a local maximum and $f''(\theta^\star) > 0$ a local minimum. In $d$ dimensions use the Hessian $\nabla^2 f(\theta^\star)$: negative definite gives a local maximum, positive definite a local minimum, and eigenvalues of both signs a saddle. If $f$ is concave everywhere (Hessian negative semi-definite at every $\theta$), every stationary point is a global maximum.
+
+**How ML uses it.** It certifies that the solution of "set the derivative to zero" is the maximum you wanted. For the Bernoulli log-likelihood, $\ell''(\psi) = -s/\psi^2 - (n - s)/(1 - \psi)^2 < 0$, so $\hat\psi = s/n$ is the global maximizer. The same check, with a positive semi-definite Hessian, proves that MSE and the logistic NLL are convex.

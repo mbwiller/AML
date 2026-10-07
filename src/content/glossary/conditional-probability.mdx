@@ -1,0 +1,12 @@
+---
+id: conditional-probability
+term: Conditional probability
+aliases: [conditional distribution, conditioning, marginalization]
+field: probability
+firstUsedIn: u2-risk-and-gradient-descent
+related: [bayes-rule, chain-rule-probability, conditional-independence]
+---
+
+**What it is.** For $p(x) > 0$, $p(y \mid x) = p(x, y) / p(x)$: the distribution of $y$ restricted to the cases where $x$ happened, rescaled to sum to 1. Rearranged, it is the product rule $p(x, y) = p(y \mid x)\,p(x)$. Summing the joint over one variable gives the other's marginal, $p(x) = \sum_y p(x, y)$. For each fixed $x$, $p(\cdot \mid x)$ is a distribution over $y$.
+
+**How ML uses it.** A discriminative classifier models $p_\theta(y \mid x)$; a generative one models $p_\theta(x \mid y)$. These are different objects: $p(x \mid y = 0)$ and $p(x \mid y = 1)$ are each a distribution over $x$, so their values at one $x$ need not sum to 1 (the L8 p.37 poll). Risk, too, is an expectation under the joint, computed by conditioning on $x$.

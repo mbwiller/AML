@@ -1,0 +1,16 @@
+---
+id: gaussian
+term: Gaussian distribution
+aliases: [normal distribution, bell curve]
+field: probability
+firstUsedIn: u2-risk-and-gradient-descent
+related: [multivariate-gaussian, z-score]
+---
+
+**What it is.** The density on $\mathbb{R}$ with mean $\mu$ and variance $\sigma^2$:
+
+$$\mathcal{N}(x; \mu, \sigma^2) = \frac{1}{\sigma\sqrt{2\pi}} \exp\Big(-\frac{(x - \mu)^2}{2\sigma^2}\Big).$$
+
+$\mu$ sets the center and $\sigma$ the width; about 95% of the mass lies within $\mu \pm 1.96\sigma$. Its log is quadratic in $x$: $-\tfrac12 \log(2\pi\sigma^2) - (x - \mu)^2 / (2\sigma^2)$. We always write the second argument as a variance; the slides write $N(u, \sigma^2)$ with $u$ for the mean.
+
+**How ML uses it.** Gaussian noise makes least squares the maximum-likelihood fit, because the log turns the density into a squared error. Mixtures of Gaussians model bumpy densities, and one Gaussian per class gives Gaussian discriminant analysis. The MLE of $\mu$ is the sample mean, and the MLE of $\sigma^2$ is the average squared deviation, with $1/n$ rather than $1/(n - 1)$.

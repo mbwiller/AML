@@ -1,0 +1,16 @@
+---
+id: chain-rule-probability
+term: Chain rule of probability
+aliases: [probability chain rule, chain rule of probability]
+field: probability
+firstUsedIn: u6-generative-models-and-naive-bayes
+related: [conditional-probability, conditional-independence]
+---
+
+**What it is.** Any joint distribution factors into a product of conditionals:
+
+$$p(x_1, \dots, x_d) = p(x_1)\,p(x_2 \mid x_1) \cdots p(x_d \mid x_1, \dots, x_{d-1}) = \prod_{j=1}^{d} p(x_j \mid x_1, \dots, x_{j-1}).$$
+
+It is the product rule applied $d - 1$ times, holds for any ordering of the variables, and assumes nothing. Conditioning every factor on $y$ gives the same identity for $p(x \mid y)$.
+
+**How ML uses it.** It is the first step of Naive Bayes: write $p(x \mid y)$ exactly with the chain rule, then assume each factor $p(x_j \mid x_1, \dots, x_{j-1}, y)$ drops its dependence on the earlier features. Over binary features the last factor alone needs $2^{d-1}$ parameters per class, and all factors together need $2^d - 1$ (the count L9 p.23 misprints as $2^{d-1}$), which is why the exact model is hopeless. Autoregressive language models use the same factorization over tokens.

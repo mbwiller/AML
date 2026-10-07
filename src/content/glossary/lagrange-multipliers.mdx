@@ -1,0 +1,12 @@
+---
+id: lagrange-multipliers
+term: Lagrange multipliers
+aliases: [Lagrangian, constrained optimization]
+field: calculus
+firstUsedIn: u5-overfitting-and-regularization
+related: [first-order-condition, categorical]
+---
+
+**What it is.** To maximize $f(\theta)$ subject to an equality constraint $g(\theta) = 0$, form the Lagrangian $\mathcal{L}(\theta, \lambda) = f(\theta) - \lambda\, g(\theta)$ and set all of its partial derivatives to zero. At a constrained optimum $\nabla f = \lambda \nabla g$: you cannot increase $f$ without leaving the constraint surface. The multiplier $\lambda$ is solved for along with $\theta$.
+
+**How ML uses it.** The class-prior MLE needs it. Maximize $\sum_k n_k \log \phi_k$ subject to $\sum_k \phi_k = 1$. Setting $\partial \mathcal{L} / \partial \phi_k = n_k / \phi_k - \lambda = 0$ gives $\phi_k = n_k / \lambda$, and the constraint forces $\lambda = n$, so $\hat\phi_k = n_k / n$. The constrained form of ridge and lasso (L8 p.6) is linked to the penalized form by the same idea, with an inequality constraint.

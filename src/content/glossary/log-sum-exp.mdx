@@ -1,0 +1,16 @@
+---
+id: log-sum-exp
+term: Log-sum-exp
+aliases: [LSE, logsumexp]
+field: calculus
+firstUsedIn: u6-generative-models-and-naive-bayes
+related: [log-rules, bayes-rule]
+---
+
+**What it is.** $\mathrm{LSE}(z_1, \dots, z_K) = \log \sum_k e^{z_k}$. Computed directly, it overflows when some $z_k$ is large and becomes $\log 0$ when every $z_k$ is very negative. Factor out $m = \max_k z_k$:
+
+$$\log \sum_{k} e^{z_k} = m + \log \sum_{k} e^{z_k - m}.$$
+
+Every exponent is now at most 0 and one equals 0, so the sum lies between 1 and $K$.
+
+**How ML uses it.** Naive Bayes computes class scores in log space, $s_k = \log p(x \mid y = k) + \log \phi_k$, and these are often in the hundreds below zero. The argmax needs only the scores, but posterior probabilities need normalizing: $P(y = k \mid x) = \exp\big(s_k - \mathrm{LSE}(s)\big)$. Softmax and the cross-entropy loss use the same trick (`scipy.special.logsumexp`).

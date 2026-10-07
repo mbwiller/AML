@@ -1,0 +1,12 @@
+---
+id: likelihood-vs-probability
+term: Likelihood vs probability
+aliases: [likelihood function]
+field: statistics
+firstUsedIn: u3-logistic-regression-and-mle
+related: [log-likelihood, iid, prior-likelihood-posterior]
+---
+
+**What it is.** $P(\mathcal{D}; \theta)$ is one formula read two ways. Fix $\theta$ and vary the data: it is a **probability**, and it sums to 1 over possible datasets. Fix the observed data and vary $\theta$: it is the **likelihood** $L(\theta) = P(\mathcal{D}; \theta)$, a function of the parameters that need not sum or integrate to 1 over $\theta$. For a coin with 7 heads in 10 flips, $L(\psi) = \psi^7 (1 - \psi)^3$ is a curve over $\psi \in [0, 1]$ whose area is far from 1.
+
+**How ML uses it.** Maximum likelihood estimation picks $\hat\theta = \argmax_\theta L(\theta)$: the parameters under which the data you saw were most probable. That is not the same as the most probable parameters given the data; that question needs a prior and leads to the MAP estimate.

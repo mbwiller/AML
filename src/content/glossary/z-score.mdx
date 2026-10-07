@@ -1,0 +1,16 @@
+---
+id: z-score
+term: z-score
+aliases: [standardization, standard score, feature standardization]
+field: statistics
+firstUsedIn: u8-unsupervised-learning-and-kmeans
+related: [euclidean-distance, gaussian]
+---
+
+**What it is.** The z-score of a value is its distance from the mean in units of standard deviation:
+
+$$z = \frac{x - \bar x}{s},$$
+
+where $\bar x$ and $s$ are the sample mean and standard deviation of that feature. Standardizing a feature this way gives it mean 0 and standard deviation 1 and removes its units. If $x \sim \mathcal{N}(\mu, \sigma^2)$, then $(x - \mu)/\sigma \sim \mathcal{N}(0, 1)$.
+
+**How ML uses it.** Distance-based methods need it: k-means on age in years and income in dollars clusters by income alone until both are z-scored (the point of the L10 p.45 poll; standardization is on p.46). Gradient descent also converges faster on standardized features, because the loss contours become rounder. Compute $\bar x$ and $s$ on the training set only, then apply the same transformation to the test set (sklearn's `StandardScaler`).

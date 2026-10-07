@@ -1,0 +1,16 @@
+---
+id: covariance-matrix
+term: Covariance matrix
+aliases: [variance-covariance matrix, Σ]
+field: probability
+firstUsedIn: u7-gaussian-discriminant-analysis
+related: [covariance, multivariate-gaussian, positive-semidefinite, eigenvectors]
+---
+
+**What it is.** For a random vector $x \in \mathbb{R}^d$ with mean $\mu$,
+
+$$\Sigma = \mathbb{E}\big[(x - \mu)(x - \mu)^\top\big], \qquad \Sigma_{jl} = \mathrm{Cov}(x_j, x_l).$$
+
+The diagonal holds the variances; the off-diagonal entries hold the covariances, whose signs give the direction of each pairwise association. $\Sigma$ is symmetric and positive semi-definite, because $v^\top \Sigma v = \mathrm{Var}(v^\top x) \ge 0$ for every $v$.
+
+**How ML uses it.** It sets the shape of a Gaussian cloud. A positive off-diagonal entry tilts the ellipse toward a positive slope (exactly along $y = x$ when the two variances are equal), a negative one toward a negative slope, and unequal diagonal entries stretch it along one axis (the quartet on L10 p.14). GDA estimates one per class, $\hat\Sigma_k = \frac{1}{n_k} \sum_{i : y^{(i)} = k} (x^{(i)} - \hat\mu_k)(x^{(i)} - \hat\mu_k)^\top$. If $n_k \le d$, this estimate is singular and cannot be inverted.

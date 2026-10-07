@@ -1,0 +1,16 @@
+---
+id: euclidean-distance
+term: Euclidean distance
+aliases: [L2 distance, straight-line distance]
+field: linear-algebra
+firstUsedIn: u8-unsupervised-learning-and-kmeans
+related: [z-score, quadratic-form]
+---
+
+**What it is.** The straight-line distance between $a, b \in \mathbb{R}^d$:
+
+$$\lVert a - b \rVert_2 = \sqrt{\textstyle\sum_{j=1}^{d} (a_j - b_j)^2},$$
+
+which is Pythagoras applied coordinate by coordinate. The squared distance $\lVert a - b \rVert_2^2 = (a - b)^\top (a - b)$ drops the square root and is easier to differentiate. The mean of a set of points is the point that minimizes the sum of squared distances to them.
+
+**How ML uses it.** k-means assigns each point to its nearest centroid in Euclidean distance and then moves each centroid to the mean of its points. Every feature enters the sum on the same footing, so a feature measured in large units dominates the distance; standardize first. A Gaussian with $\Sigma = \sigma^2 I$ depends on $x$ only through $\lVert x - \mu \rVert_2$.

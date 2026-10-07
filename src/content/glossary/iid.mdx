@@ -1,0 +1,14 @@
+---
+id: iid
+term: "Independent and identically distributed (i.i.d.)"
+aliases: [i.i.d., independent and identically distributed]
+field: probability
+firstUsedIn: u2-risk-and-gradient-descent
+related: [likelihood-vs-probability, log-likelihood, conditional-independence]
+---
+
+**What it is.** Samples $(x^{(1)}, y^{(1)}), \dots, (x^{(n)}, y^{(n)})$ are i.i.d. when each is drawn from the same distribution $P$ and no draw influences another. Independence lets the probability of the whole dataset factor into a product:
+
+$$P(\mathcal{D}) = \prod_{i=1}^{n} P(x^{(i)}, y^{(i)}).$$
+
+**How ML uses it.** Every likelihood in this course starts here; taking logs turns the product into the sum that MLE maximizes. It also justifies estimating future error on a held-out set. Clinical data often break it: repeated visits from one patient are correlated, so cross-validation must split by patient, not by row. Do not confuse i.i.d. samples (independence across rows) with conditionally independent features (across columns, the Naive Bayes assumption).

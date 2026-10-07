@@ -1,0 +1,12 @@
+---
+id: positive-semidefinite
+term: Positive semi-definite matrix
+aliases: [PSD, positive definite, positive semidefinite]
+field: linear-algebra
+firstUsedIn: u2-risk-and-gradient-descent
+related: [quadratic-form, eigenvectors, covariance-matrix, second-order-condition]
+---
+
+**What it is.** A symmetric matrix $A$ is positive semi-definite (PSD), written $A \succeq 0$, when $v^\top A v \ge 0$ for every vector $v$. It is positive definite when $v^\top A v > 0$ for every $v \ne 0$. An equivalent test is that all eigenvalues are nonnegative (respectively, strictly positive). Any matrix of the form $B^\top B$ is PSD, because $v^\top B^\top B v = \lVert Bv \rVert_2^2$.
+
+**How ML uses it.** Covariance matrices are always PSD, since $v^\top \Sigma v$ is the variance of $v^\top x$; the Gaussian density needs the strict version so that $\Sigma^{-1}$ exists. A function whose Hessian is PSD everywhere is convex. That is how we prove that MSE, whose Hessian is $\frac{2}{n} X^\top X$, and the logistic NLL have no spurious local minima.

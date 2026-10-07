@@ -1,0 +1,16 @@
+---
+id: log-likelihood
+term: Log-likelihood
+aliases: [log likelihood, NLL, negative log-likelihood]
+field: statistics
+firstUsedIn: u3-logistic-regression-and-mle
+related: [likelihood-vs-probability, log-rules, iid, argmax]
+---
+
+**What it is.** $\ell(\theta) = \log L(\theta)$. For i.i.d. data the product of probabilities becomes a sum:
+
+$$\ell(\theta) = \sum_{i=1}^{n} \log P(x^{(i)}, y^{(i)}; \theta).$$
+
+Because $\log$ is strictly increasing, $\ell$ and $L$ have the same maximizer. Minimizing the negative log-likelihood (NLL) is the same problem written as a loss.
+
+**How ML uses it.** Sums are easier to differentiate than products, and they do not underflow: the product of a thousand word probabilities is far below the smallest positive double, while the sum of their logs is an ordinary number. For generative models the log-likelihood splits into a part that depends only on the class-conditional parameters and a part that depends only on the prior, so each is maximized separately. The slides use $\ell$ both for a loss to minimize (L8) and for a log-likelihood to maximize (L9–L10).

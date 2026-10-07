@@ -1,0 +1,16 @@
+---
+id: multinomial
+term: Multinomial distribution
+aliases: [binomial]
+field: probability
+firstUsedIn: u6-generative-models-and-naive-bayes
+related: [categorical, bernoulli, conjugate-prior]
+---
+
+**What it is.** The distribution of the counts $(c_1, \dots, c_K)$ from $m$ independent draws (here $m$ counts words in a document, not features) of a categorical with parameters $\phi$:
+
+$$P(c_1, \dots, c_K) = \frac{m!}{c_1! \cdots c_K!} \prod_{k=1}^{K} \phi_k^{c_k}, \qquad \sum_k c_k = m.$$
+
+With $m = 1$ it is the categorical; with $K = 2$ it is the binomial. Some sources, including the L9 p.39 poll, say "multinomial" when they mean the categorical.
+
+**How ML uses it.** Multinomial Naive Bayes treats a document as $m$ words drawn from a class-specific categorical over the vocabulary, so its features are word counts rather than presence bits. Its MLE for word $j$ in class $k$ is the share of all class-$k$ word tokens that are word $j$. Bernoulli Naive Bayes, the course's model, asks only whether each word appears, and it also scores the words that are absent.

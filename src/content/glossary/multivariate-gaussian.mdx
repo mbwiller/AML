@@ -1,0 +1,16 @@
+---
+id: multivariate-gaussian
+term: Multivariate Gaussian
+aliases: [multivariate normal, MVN]
+field: probability
+firstUsedIn: u7-gaussian-discriminant-analysis
+related: [gaussian, covariance-matrix, determinant, matrix-inverse, quadratic-form, eigenvectors]
+---
+
+**What it is.** For $x \in \mathbb{R}^d$ with mean $\mu$ and covariance matrix $\Sigma$ (symmetric, positive definite):
+
+$$\mathcal{N}(x; \mu, \Sigma) = \frac{1}{(2\pi)^{d/2} |\Sigma|^{1/2}} \exp\Big(-\tfrac12 (x - \mu)^\top \Sigma^{-1} (x - \mu)\Big).$$
+
+The exponent is a quadratic form, so the contours are ellipsoids centered at $\mu$ with axes along the eigenvectors of $\Sigma$. The determinant $|\Sigma|$ normalizes for volume. With $d = 1$ it reduces to the univariate Gaussian.
+
+**How ML uses it.** GDA models each class as $\mathcal{N}(\mu_k, \Sigma_k)$, and its MLE is the class sample mean and sample covariance. A diagonal $\Sigma_k$ makes the features conditionally independent, which is Gaussian Naive Bayes. A covariance shared across classes makes the decision boundary linear. The slides never write this density.

@@ -1,0 +1,12 @@
+---
+id: quadratic-form
+term: Quadratic form
+aliases: [Mahalanobis distance]
+field: linear-algebra
+firstUsedIn: u1-linear-regression
+related: [positive-semidefinite, matrix-calculus-identities, multivariate-gaussian]
+---
+
+**What it is.** For $x \in \mathbb{R}^d$ and a $d \times d$ matrix $A$, the quadratic form is the scalar $x^\top A x = \sum_{j, l} A_{jl} x_j x_l$. Only the symmetric part of $A$ contributes, so we take $A$ symmetric; then its gradient is $\nabla_{x}\, x^\top A x = 2Ax$. The sign of the form over all $x$ defines definiteness: positive for every nonzero $x$ means $A$ is positive definite.
+
+**How ML uses it.** The least-squares objective $\lVert X\theta - y \rVert_2^2$ is a quadratic form in $\theta$ plus linear and constant terms, which is why its minimizer has a closed form. In the multivariate Gaussian the exponent contains $(x - \mu)^\top \Sigma^{-1} (x - \mu)$, the squared Mahalanobis distance: Euclidean distance after rescaling by the covariance. Its level sets are the density's elliptical contours.

@@ -1,0 +1,12 @@
+---
+id: covariance
+term: Covariance
+aliases: [cov, correlation]
+field: probability
+firstUsedIn: u7-gaussian-discriminant-analysis
+related: [covariance-matrix, z-score]
+---
+
+**What it is.** $\mathrm{Cov}(X, Y) = \mathbb{E}\big[(X - \mathbb{E}X)(Y - \mathbb{E}Y)\big] = \mathbb{E}[XY] - \mathbb{E}X\,\mathbb{E}Y$: the average product of deviations from the means. It is positive when $X$ and $Y$ tend to be above their means together, negative when one tends to be above while the other is below, and zero when they are uncorrelated. $\mathrm{Cov}(X, X) = \mathrm{Var}(X)$. Dividing by both standard deviations gives the correlation $\rho \in [-1, 1]$, which has no units. Independence implies zero covariance; the converse fails.
+
+**How ML uses it.** Covariance measures linear association between two features, such as two lab values that rise together. The sample version $\frac1n \sum_i (x^{(i)} - \bar x)(y^{(i)} - \bar y)$ is what GDA estimates for every pair of features; collecting all pairs gives the covariance matrix.
