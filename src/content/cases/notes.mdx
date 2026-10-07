@@ -1,0 +1,35 @@
+---
+id: notes
+title: "NOTES: adverse-event narratives"
+tagline: "6,000 short pharmacovigilance reports, labeled serious or non-serious, generated from a Naive Bayes model."
+variables:
+  - { name: report, symbol: "x", description: "a short free-text report, e.g. \"Patient developed [symptom] [n] days after starting [drug]\"" }
+  - { name: bag of words, symbol: "\\phi(x)", description: "presence (or count) of each word in a 2,000-word vocabulary" }
+  - { name: serious, symbol: "y", description: "1 if the report describes a serious event, 0 otherwise" }
+generativeModel:
+  tex: "y \\sim \\mathrm{Bernoulli}(\\phi_1), \\qquad \\text{words} \\mid y = k \\ \\text{drawn from a class-specific distribution over } |V| = 2000 \\text{ words}, \\qquad \\text{length} \\sim \\mathrm{Poisson}(25)"
+  parameters:
+    n: 6000
+    vocabulary: 2000
+    priors: "30/70"
+    serious_upweighted: [hospitalized, syncope, arrhythmia, ICU, discontinued]
+    non_serious_upweighted: [mild, headache, resolved, nausea]
+    versions: "v1 generated from the Naive Bayes model itself; v2 adds word dependencies (bigrams) so the Naive Bayes assumption fails"
+seed: 57856
+usedIn:
+  - text-as-features
+  - naive-bayes
+  - spam-exercise
+---
+
+{/* spec: docs/reference/pedagogy-and-curriculum.md Part C, C6. The data sample is added once scripts/gen-datasets writes src/data/notes.json. */}
+
+When a patient has a reaction to a drug, a clinician or the patient files a short report: "Patient developed syncope 3 days after starting the new medication; hospitalized overnight." Safety teams receive thousands of these and must triage them quickly. The first question is whether a report describes a serious event.
+
+NOTES is a synthetic collection of 6,000 such reports over a 2,000-word vocabulary. Serious reports use words like *hospitalized*, *syncope*, *arrhythmia*, *ICU*, and *discontinued* more often; non-serious reports lean on *mild*, *headache*, *resolved*, and *nausea*. Report length varies around 25 words.
+
+The first version of the data is generated from a Naive Bayes model, so Naive Bayes is exactly right for it: its maximum-likelihood estimates provably recover the true word probabilities as the number of reports grows. A second version adds dependencies between neighboring words, so the Naive Bayes assumption fails and you can watch what that costs.
+
+**Where it appears.** Lesson 6.2 (turning reports into bag-of-words vectors), lesson 6.3 (fitting and smoothing Bernoulli Naive Bayes), lesson 6.4 (the same pipeline as the spam exercise), and later the evaluation and transformer units.
+
+**The data.** A sample of reports appears here once the dataset is generated.

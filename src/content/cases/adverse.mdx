@@ -1,0 +1,36 @@
+---
+id: adverse
+title: "ADVERSE: serious adverse events after a new antihypertensive"
+tagline: "A post-marketing cohort of 5,000 patients; who develops hyperkalemia within 90 days?"
+variables:
+  - { name: age, symbol: "\\text{age}", description: "years" }
+  - { name: eGFR, symbol: "\\text{eGFR}", description: "estimated glomerular filtration rate (kidney function), mL/min/1.73 m²" }
+  - { name: potassium, symbol: "K", description: "baseline serum potassium, mmol/L" }
+  - { name: NSAID, description: "concomitant NSAID use (0/1)" }
+  - { name: dose, symbol: "D", description: "daily dose in mg, from the VASCO dose arms" }
+  - { name: diabetes, description: "diabetes flag (0/1)" }
+  - { name: event, symbol: "y", description: "1 if a hyperkalemia event occurs within 90 days" }
+generativeModel:
+  tex: "P(y = 1 \\mid x) = \\sigma\\big(-4.5 + 0.03(\\text{age} - 60) - 0.04(\\text{eGFR} - 70) + 1.2\\,\\text{NSAID} + 0.6\\,\\ind{K > 5.0} + 0.05\\,D\\big)"
+  parameters:
+    n: 5000
+    prevalence: "about 0.06"
+    nonlinearity: "risk rises sharply below eGFR 30 (so trees can beat logistic regression later)"
+seed: 57852
+usedIn:
+  - generative-vs-discriminative
+  - multivariate-gaussian-and-covariance
+  - gaussian-discriminant-analysis
+---
+
+{/* spec: docs/reference/pedagogy-and-curriculum.md Part C, C2. The data sample is added once scripts/gen-datasets writes src/data/adverse.json. */}
+
+A drug that lowers blood pressure has just reached the market. Like many antihypertensives, it can raise serum potassium, and in a small fraction of patients that becomes hyperkalemia, a serious adverse event. The safety team follows 5,000 new users for 90 days and records who has an event. About 6% do.
+
+The question is the one every classifier in this course asks: given a patient's age, kidney function, potassium, other medications, and dose, how likely is an event? Older patients, patients with low eGFR, patients already on an NSAID, and patients with high baseline potassium are at higher risk, and risk rises sharply once eGFR falls below 30.
+
+Because we generate the cohort ourselves, the true model is known. The log-odds of an event are a linear function of the features (the model above), plus one deliberate kink at eGFR 30. That makes ADVERSE the course's classification backbone: logistic regression recovers the coefficients, evaluation at 6% prevalence shows why accuracy misleads, and Gaussian discriminant analysis on (age, eGFR) can be compared directly with logistic regression on the same patients.
+
+**Where it appears.** Lesson 6.1 (a generative and a discriminative view of the same event), lessons 7.1 and 7.2 (Gaussian class-conditionals and GDA on age and eGFR), and later the evaluation, regularization, and tree units.
+
+**The data.** A sample of patient records appears here once the dataset is generated.

@@ -1,0 +1,34 @@
+---
+id: tropo
+title: "TROPO: troponin and myocardial infarction"
+tagline: "2,000 emergency-department patients; one blood test, two overlapping distributions."
+variables:
+  - { name: troponin, symbol: "T", description: "high-sensitivity troponin, ng/L (log-normal within each class)" }
+  - { name: MI, symbol: "y", description: "1 if the patient is having a myocardial infarction" }
+  - { name: sex }
+  - { name: time since symptom onset, description: "hours" }
+generativeModel:
+  tex: "\\log T \\mid y = 0 \\sim \\Normal(\\log 8,\\ 0.6^2), \\qquad \\log T \\mid y = 1 \\sim \\Normal(\\log 60,\\ 0.9^2), \\qquad P(y = 1) = 0.15"
+  parameters:
+    n: 2000
+    prevalence_ed: 0.15
+    prevalence_primary_care: 0.02
+    rule_out_threshold_ng_per_L: 5
+    rule_in_threshold_ng_per_L: 52
+seed: 57853
+usedIn:
+  - multivariate-gaussian-and-covariance
+  - shared-covariance-and-logistic-regression
+---
+
+{/* spec: docs/reference/pedagogy-and-curriculum.md Part C, C3. The data sample is added once scripts/gen-datasets writes src/data/tropo.json. */}
+
+A patient arrives in the emergency department with chest pain. Is it a heart attack? Damaged heart muscle releases troponin into the blood, so a high-sensitivity troponin test is the first measurement. Most patients without a myocardial infarction (MI) have low troponin, most with an MI have high troponin, and the two groups overlap.
+
+TROPO models 2,000 such patients. On the log scale, troponin is Gaussian within each class: centered at $\log 8$ with standard deviation 0.6 for patients without an MI, and at $\log 60$ with standard deviation 0.9 for patients with one. In the emergency department 15% of patients are having an MI; in primary care the rate is closer to 2%, which changes what a positive test means.
+
+Because the class-conditional distributions are known exactly, every quantity in the evaluation and GDA lessons can be computed from the model rather than estimated: the sensitivity and specificity of a rule-out threshold (5 ng/L) and a rule-in threshold (52 ng/L), the ROC curve, and the posterior probability of an MI at any troponin level. With one Gaussian per class, GDA in one dimension gives that posterior directly, and its shape depends on whether the two variances are equal.
+
+**Where it appears.** Lessons 7.1 and 7.3 (one-dimensional Gaussian class-conditionals, and why unequal variances give a quadratic boundary), and later the evaluation and density-estimation units.
+
+**The data.** A sample of patients appears here once the dataset is generated.
