@@ -1,0 +1,334 @@
+---
+/**
+ * /glossary (VISION.md §7): every sticky-note term, grouped by field in the
+ * style-guide order, with a field filter row (`?field=`), a text filter on
+ * term + aliases, and one card per term (`id=<term id>`, so `/glossary#id`
+ * from a sticky card or a prerequisite chip lands on it). "First used in"
+ * links the unit; "Used by" lists the navigable lessons whose prerequisites
+ * include the term; "Related" links other entries. Static page, one small
+ * vanilla script for the filters and the `#id` highlight.
+ */
+import { getCollection, render } from 'astro:content';
+
+import Base from '@/layouts/Base.astro';
+import { lessonHref, lessonNumber, unitHref } from '@/lib/lessons';
+import {
+  FIELD_LABELS,
+  FIELD_ORDER,
+  groupByField,
+  knownRelated,
+  searchText,
+  usedBy,
+} from '@/lib/glossary';
+import { getCourseLessons } from '@/lib/site';
+
+const [{ units, lessons }, glossary] = await Promise.all([
+  getCourseLessons(),
+  getCollection('glossary'),
+]);
+
+const known = new Set(glossary.map((g) => g.data.id));
+const unitTitle = new Map(units.map((u) => [u.id, u.title]));
+const byId = new Map(glossary.map((g) => [g.data.id, g.data]));
+
+const entries = await Promise.all(
+  glossary.map(async (entry) => ({
+    ...entry.data,
+    Content: (await render(entry)).Content,
+    search: searchText(entry.data),
+    usedBy: usedBy(lessons, entry.data.id),
+    related: knownRelated(entry.data.related, known).filter((id) => id !== entry.data.id),
+  })),
+);
+const groups = groupByField(entries);
+const total = entries.length;
+---
+
+<Base
+  title="Glossary"
+  description="Every prerequisite the course leans on, in one place, grouped by field."
+>
+  <main id="main" class="mx-auto max-w-3xl px-4 py-10">
+    <h1 class="font-sans text-h1 leading-tight font-bold tracking-tight">Glossary</h1>
+    <p class="mt-2 max-w-measure text-muted">
+      The sticky notes, as a reference. Each one says what the idea is and how machine learning uses
+      it; the same note opens in place wherever a lesson underlines the term.
+    </p>
+
+    <form
+      class="mt-8 flex flex-col gap-3 font-sans"
+      role="search"
+      data-glossary-filters
+      onsubmit="return false"
+    >
+      <label class="flex flex-col gap-1 text-ui-sm text-muted">
+        <span>Filter terms</span>
+        <input
+          type="search"
+          name="q"
+          autocomplete="off"
+          placeholder="Term or alias, e.g. “theorem” or “Σ”"
+          class="h-11 w-full rounded-control border border-border bg-surface px-3 text-ui-lg text-fg placeholder:text-muted"
+          data-glossary-query
+        />
+      </label>
+      <div class="flex flex-wrap gap-1.5" role="group" aria-label="Field">
+        <button type="button" class="filter-chip" data-field-filter="all" aria-pressed="true">
+          All
+        </button>
+        {FIELD_ORDER.filter((f) => groups.some((g) => g.field === f)).map((field) => (
+          <button
+            type="button"
+            class="filter-chip"
+            data-field-filter={field}
+            data-field={field}
+            aria-pressed="false"
+          >
+            <span class="filter-dot" aria-hidden="true" />
+            {FIELD_LABELS[field]}
+          </button>
+        ))}
+      </div>
+      <p class="m-0 text-ui-sm text-muted" aria-live="polite">
+        <span data-glossary-count>{total}</span> of {total} terms
+      </p>
+    </form>
+
+    <p
+      class="mt-8 hidden rounded-card border border-border bg-surface-2 p-4 font-sans text-ui text-muted"
+      data-glossary-empty
+    >
+      No term matches. Try an alias, or clear the field filter.
+    </p>
+
+    {groups.map((group) => (
+      <section class="mt-10" data-field-group={group.field} data-field={group.field}>
+        <h2 class="group-heading font-sans text-h2 font-semibold tracking-tight">
+          <span class="filter-dot" aria-hidden="true" />
+          {group.label}
+          <span class="ml-2 text-ui-sm font-normal text-muted tabular-nums">
+            {group.terms.length}
+          </span>
+        </h2>
+        <ol class="m-0 mt-4 grid list-none gap-4 p-0">
+          {group.terms.map((t) => (
+            <li class="m-0">
+              <article
+                id={t.id}
+                class="glossary-entry rounded-card border border-border bg-surface p-5"
+                data-field={t.field}
+                data-search={t.search}
+              >
+                <header class="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-sans">
+                  <h3 class="m-0 text-h3 font-semibold">
+                    <a href={`#${t.id}`} class="text-fg no-underline hover:underline">
+                      {t.term}
+                    </a>
+                  </h3>
+                  {t.aliases.length > 0 && (
+                    <span class="text-ui-sm text-muted">{t.aliases.join(' · ')}</span>
+                  )}
+                  <span class="field-chip ml-auto" data-field={t.field}>
+                    {FIELD_LABELS[t.field]}
+                  </span>
+                </header>
+                <div class="prose glossary-body mt-3">
+                  <t.Content />
+                </div>
+                <dl class="entry-meta mt-4 grid gap-x-4 gap-y-1 border-t border-border pt-3 font-sans text-ui-sm">
+                  {t.firstUsedIn && (
+                    <div class="entry-row" data-glossary-first-used>
+                      <dt class="text-muted">First used in</dt>
+                      <dd class="m-0">
+                        <a href={unitHref(t.firstUsedIn)}>
+                          {unitTitle.get(t.firstUsedIn) ?? t.firstUsedIn}
+                        </a>
+                      </dd>
+                    </div>
+                  )}
+                  {t.usedBy.length > 0 && (
+                    <div class="entry-row" data-glossary-used-by>
+                      <dt class="text-muted">Used by</dt>
+                      <dd class="m-0 flex flex-wrap gap-x-3 gap-y-1">
+                        {t.usedBy.map((l) => (
+                          <a href={lessonHref(l.data.unit, l.data.slug)}>
+                            <span class="tabular-nums">
+                              {lessonNumber(l.data.unit, l.data.order)}
+                            </span>{' '}
+                            {l.data.title}
+                          </a>
+                        ))}
+                      </dd>
+                    </div>
+                  )}
+                  {t.related.length > 0 && (
+                    <div class="entry-row" data-glossary-related>
+                      <dt class="text-muted">Related</dt>
+                      <dd class="m-0 flex flex-wrap gap-x-3 gap-y-1">
+                        {t.related.map((id) => (
+                          <a href={`#${id}`}>{byId.get(id)?.term ?? id}</a>
+                        ))}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              </article>
+            </li>
+          ))}
+        </ol>
+      </section>
+    ))}
+  </main>
+</Base>
+
+<style>
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.75rem; /* 44px touch target (STYLE_GUIDE §5) */
+    padding: 0.25rem 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    transition:
+      color var(--duration-micro) var(--ease-standard),
+      background-color var(--duration-micro) var(--ease-standard),
+      border-color var(--duration-micro) var(--ease-standard);
+  }
+  .filter-chip:hover {
+    color: var(--fg);
+    background: var(--surface-2);
+  }
+  .filter-chip[aria-pressed='true'] {
+    color: var(--fg);
+    border-color: var(--fg);
+  }
+  .filter-dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: var(--radius-full);
+    background: var(--field-color, var(--muted));
+  }
+  .group-heading .filter-dot {
+    width: 0.625rem;
+    height: 0.625rem;
+    margin-inline-end: 0.5rem;
+    vertical-align: 0.05em;
+  }
+  .glossary-entry {
+    scroll-margin-top: 1.5rem;
+    transition:
+      background-color var(--duration-reveal) var(--ease-standard),
+      border-color var(--duration-reveal) var(--ease-standard);
+  }
+  .glossary-entry:target,
+  .glossary-entry[data-highlight] {
+    border-color: var(--accent);
+    background: var(--math-hl);
+  }
+  .glossary-entry[hidden],
+  [data-field-group][hidden] {
+    display: none;
+  }
+  .glossary-body {
+    font-size: var(--text-prose);
+  }
+  .entry-meta {
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+  .entry-row {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+  }
+  .entry-meta a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .entry-meta a:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<script>
+  import { normalizeSearch } from '@/lib/search-text';
+
+  const form = document.querySelector<HTMLFormElement>('[data-glossary-filters]');
+  const input = document.querySelector<HTMLInputElement>('[data-glossary-query]');
+  const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-field-filter]'));
+  const groups = Array.from(document.querySelectorAll<HTMLElement>('[data-field-group]'));
+  const entries = Array.from(document.querySelectorAll<HTMLElement>('.glossary-entry'));
+  const count = document.querySelector<HTMLElement>('[data-glossary-count]');
+  const empty = document.querySelector<HTMLElement>('[data-glossary-empty]');
+
+  if (form && input && count && empty) {
+    let field = 'all';
+    const known = new Set(chips.map((c) => c.dataset['fieldFilter']));
+
+    const apply = (): void => {
+      const q = normalizeSearch(input.value);
+      let shown = 0;
+      for (const entry of entries) {
+        const fieldOk = field === 'all' || entry.dataset['field'] === field;
+        const textOk = q === '' || (entry.dataset['search'] ?? '').includes(q);
+        const visible = fieldOk && textOk;
+        entry.hidden = !visible;
+        if (visible) shown += 1;
+      }
+      for (const group of groups) {
+        group.hidden = !Array.from(group.querySelectorAll<HTMLElement>('.glossary-entry')).some(
+          (e) => !e.hidden,
+        );
+      }
+      for (const chip of chips) {
+        chip.setAttribute('aria-pressed', chip.dataset['fieldFilter'] === field ? 'true' : 'false');
+      }
+      count.textContent = String(shown);
+      empty.classList.toggle('hidden', shown > 0);
+    };
+
+    const setField = (next: string, push: boolean): void => {
+      field = known.has(next) ? next : 'all';
+      if (push) {
+        const url = new URL(location.href);
+        if (field === 'all') url.searchParams.delete('field');
+        else url.searchParams.set('field', field);
+        history.replaceState(null, '', url);
+      }
+      apply();
+    };
+
+    for (const chip of chips) {
+      chip.addEventListener('click', () => setField(chip.dataset['fieldFilter'] ?? 'all', true));
+    }
+    input.addEventListener('input', apply);
+
+    // `#id`: make sure the entry is visible, then highlight it briefly.
+    let highlightTimer: number | undefined;
+    const highlight = (): void => {
+      const id = decodeURIComponent(location.hash.slice(1));
+      const target = id ? document.getElementById(id) : null;
+      if (!target?.classList.contains('glossary-entry')) return;
+      if (target.hidden) {
+        input.value = '';
+        setField('all', true);
+      }
+      target.scrollIntoView({ block: 'start' });
+      target.dataset['highlight'] = '';
+      window.clearTimeout(highlightTimer);
+      highlightTimer = window.setTimeout(() => {
+        delete target.dataset['highlight'];
+      }, 2000);
+    };
+
+    setField(new URL(location.href).searchParams.get('field') ?? 'all', false);
+    highlight();
+    window.addEventListener('hashchange', highlight);
+  }
+</script>
