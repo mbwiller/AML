@@ -1,0 +1,832 @@
+# Quiz bank: Unit 7, Gaussian discriminant analysis.
+# Format: docs/CONTENT_AUTHORING.md §7. Poll items carry source "L<n> p.<k> poll" and the
+# course map's suggested key (docs/course-map/04-lectures-L8-L10.md). Every numeric value is a
+# toy value or a case-spec population parameter; none comes from HW3.
+
+# ---------- Lesson 7.1: multivariate-gaussian-and-covariance ----------
+# L9 pp.41-46 and L10 pp.6-14 contain no Poll Everywhere questions, so every item here is original.
+# The quartet matrices are our choice, not slide numbers.
+
+- id: q-u7-l1-001
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [covariance-quartet]
+  type: mc
+  difficulty: 1
+  source: "original (L10 p.14 quartet; matrices are our choice)"
+  prompt: |
+    Match the matrix to the cloud. A scatter of samples from $\mathcal{N}(0, \Sigma)$ is elongated along the line $y = -x$: as $x_1$ goes up, $x_2$ tends to go down. Which $\Sigma$ produced it?
+  options:
+    - { text: '$\begin{bmatrix} 4 & -3 \\ -3 & 4 \end{bmatrix}$', correct: true }
+    - { text: '$\begin{bmatrix} 4 & 3 \\ 3 & 4 \end{bmatrix}$' }
+    - { text: '$\begin{bmatrix} 4 & 0 \\ 0 & 1 \end{bmatrix}$' }
+    - { text: '$\begin{bmatrix} 1 & 0 \\ 0 & 4 \end{bmatrix}$' }
+  explanation: |
+    A negative off-diagonal entry means negative covariance, so the long axis tilts down. With equal variances the eigenvector of the larger eigenvalue, 7, is $\tfrac{1}{\sqrt2}(1, -1)$ (der-7-1-5 step 7). The positive-covariance matrix gives the mirror image along $y = x$; the diagonal ones give axis-aligned ellipses.
+  discriminates: [covariance-quartet, covariance-ellipse-geometry]
+
+- id: q-u7-l1-002
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [covariance-quartet]
+  type: mc
+  difficulty: 1
+  source: "original (L10 p.14 quartet; matrices are our choice)"
+  prompt: |
+    Match the matrix to the cloud. The bottom-right panel of L10 p.14 is an axis-aligned cloud that is taller than it is wide. Which $\Sigma$ fits it?
+  options:
+    - { text: '$\begin{bmatrix} 1 & 0 \\ 0 & 4 \end{bmatrix}$', correct: true }
+    - { text: '$\begin{bmatrix} 4 & 0 \\ 0 & 1 \end{bmatrix}$' }
+    - { text: '$\begin{bmatrix} 4 & 3 \\ 3 & 4 \end{bmatrix}$' }
+    - { text: '$\begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}$' }
+  explanation: |
+    No tilt means zero covariance, so $\Sigma$ is diagonal. Taller than wide means $\Var(x_2) > \Var(x_1)$: the entry 4 belongs in the bottom-right. Its contours have semi-axes $r$ along $x$ and $2r$ along $y$ (der-7-1-5 step 10). $\diag(4, 1)$ is the same ellipse lying on its side, and the identity gives circles.
+
+- id: q-u7-l1-003
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [covariance-ellipse-geometry]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Compute the determinant of $\Sigma = \begin{bmatrix} 5 & 3 \\ 3 & 5 \end{bmatrix}$.
+  answer: 16
+  tolerance: 0
+  seeded: { a: [4, 5, 6, 7], b: [1, 2, 3] }
+  formula: "a * a - b * b"
+  explanation: |
+    For $\begin{bmatrix} a & b \\ b & a \end{bmatrix}$ the determinant is $a^2 - b^2$. It equals the product of the eigenvalues $a + b$ and $a - b$, and it sets both the normalizer $|\Sigma|^{1/2}$ of the density and the area $\pi r^2 |\Sigma|^{1/2}$ inside a contour (der-7-1-4 step 10).
+
+- id: q-u7-l1-004
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [covariance-ellipse-geometry, covariance-quartet]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Find the largest eigenvalue of $\Sigma = \begin{bmatrix} 6 & 2 \\ 2 & 6 \end{bmatrix}$.
+  answer: 8
+  tolerance: 0
+  seeded: { a: [4, 5, 6, 7], b: [1, 2, 3] }
+  formula: "a + b"
+  explanation: |
+    The characteristic equation is $(a - \lambda)^2 - b^2 = 0$, so $\lambda = a \pm b$ (der-7-1-5 steps 1–3): $a + b$ along $\tfrac{1}{\sqrt2}(1, 1)$ and $a - b$ along $\tfrac{1}{\sqrt2}(1, -1)$; with $b > 0$ the largest is $a + b$. Check: the eigenvalues sum to the trace $2a$ and multiply to the determinant $a^2 - b^2$.
+
+- id: q-u7-l1-005
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [covariance-ellipse-geometry]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    For $\Sigma = \begin{bmatrix} 4 & 3 \\ 3 & 4 \end{bmatrix}$, what are the semi-axes of the contour $(x - \mu)^\top \Sigma^{-1}(x - \mu) = 1$?
+  options:
+    - { text: '$\sqrt7$ along $y = x$ and $1$ along $y = -x$', correct: true }
+    - { text: '$2$ along $x$ and $2$ along $y$: a circle', misconception: axes-from-diagonal }
+    - { text: '$7$ along $y = x$ and $1$ along $y = -x$', misconception: halflength-is-eigenvalue }
+    - { text: '$\sqrt7$ along $x$ and $1$ along $y$' }
+  explanation: |
+    The eigenvalues are 7 and 1 with eigenvectors $\tfrac{1}{\sqrt2}(1, \pm 1)$ (der-7-1-5), and the semi-axes are $r\sqrt{\lambda_j}$ along the eigenvectors (der-7-1-4 step 7). Reading $\sqrt4 = 2$ off the diagonal ignores the covariance; using $\lambda$ instead of $\sqrt\lambda$ confuses a variance with a length.
+  discriminates: [covariance-ellipse-geometry, covariance-matrix-properties]
+
+- id: q-u7-l1-006
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [covariance-matrix-properties]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Can $\begin{bmatrix} 1 & 2 \\ 2 & 1 \end{bmatrix}$ be the covariance matrix of a random vector $(x_1, x_2)$?
+  options:
+    - { text: 'No: it would give $x_1 - x_2$ a negative variance', correct: true }
+    - { text: "Yes: it is symmetric and its diagonal entries are positive", misconception: any-symmetric-is-covariance }
+    - { text: 'Yes: covariances can be any real number, so any off-diagonal value is allowed', misconception: any-symmetric-is-covariance }
+    - { text: "No: covariance matrices must be diagonal" }
+  explanation: |
+    By der-7-1-1 step 11, $\Var(v^\top x) = v^\top \Sigma v$. With $v = (1, -1)$ this is $1 - 2 - 2 + 1 = -2 < 0$, impossible for a variance. Equivalently, the eigenvalues are $3$ and $-1$, or $|\rho| = 2 > 1$. Covariance matrices need not be diagonal ($\Sigma_A$ is not), but they must be positive semi-definite.
+
+- id: q-u7-l1-007
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [mvn-density]
+  type: mc
+  difficulty: 1
+  source: "original (L10 p.9 labels)"
+  prompt: |
+    L10 p.9 labels one mixture component $N(2, 2)$. Reading the second argument as we always do, what is that component's standard deviation?
+  options:
+    - { text: '$\sqrt2 \approx 1.41$', correct: true }
+    - { text: "2", misconception: gaussian-second-arg-sd }
+    - { text: "4" }
+    - { text: "1" }
+  explanation: |
+    We write $\mathcal{N}(\mu, \sigma^2)$ with a variance second, as L9 p.44 does with $N(x; \mu_k, \sigma_k^2)$. So $\sigma^2 = 2$ and $\sigma = \sqrt2$. The slide itself does not say which convention its labels use; if they were standard deviations, the variance would be 4.
+
+- id: q-u7-l1-008
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [gaussian-mixture]
+  type: mc
+  difficulty: 1
+  source: "original (L9 p.44 wording)"
+  prompt: |
+    In the mixture $p(x) = \sum_k \pi_k\,\mathcal{N}(x; \mu_k, \sigma_k^2)$, what is the weight $\pi_k$ (the slides' $P(k)$)?
+  options:
+    - { text: "The probability that a point is drawn from component $k$, before the point is observed", correct: true }
+    - { text: "The likelihood of component $k$ given the observed point", misconception: mixture-weight-is-likelihood }
+    - { text: 'The height of component $k$ at its mean' }
+    - { text: 'The probability that a particular observed $x$ came from component $k$', misconception: mixture-weight-is-likelihood }
+  explanation: |
+    $\pi_k$ is a prior: in a generative classifier it is $P(Y = k) = \phi_k$ (der-7-1-6). The probability that an observed $x$ came from component $k$ is the posterior $\pi_k\,\mathcal{N}(x; \mu_k, \sigma_k^2)/p(x)$, which depends on $x$. L9 p.44 calls the weights "likelihood", which is not the statistical meaning of that word.
+  discriminates: [gaussian-mixture, class-prior]
+
+- id: q-u7-l1-009
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [gaussian-mixture]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Is the density $p(x) = \tfrac12\,\mathcal{N}(x; -2, 1) + \tfrac12\,\mathcal{N}(x; 2, 1)$ a Gaussian density?
+  options:
+    - { text: "No: it has two peaks, at about $-2$ and $2$", correct: true }
+    - { text: 'Yes: a sum of Gaussians is Gaussian, here $\mathcal{N}(0, 0.5)$', misconception: mixture-sum-of-rvs }
+    - { text: 'Yes: $\mathcal{N}(0, 2)$, adding the variances' , misconception: mixture-sum-of-rvs }
+    - { text: "No: it does not integrate to 1" }
+  explanation: |
+    A mixture adds densities, not random variables. Each half contributes a bump, and the bumps are 4 standard deviations apart, so $p$ is bimodal. It integrates to $\tfrac12 + \tfrac12 = 1$ (der-7-1-6 step 4). $\mathcal{N}(0, 0.5)$ is the distribution of $\tfrac12 X_1 + \tfrac12 X_2$ for independent $X_1, X_2$: a different object.
+
+- id: q-u7-l1-010
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [covariance-matrix-properties, mvn-density]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    Let $x_1 \sim \mathcal{N}(0, 1)$ and $x_2 = x_1^2$. Then $\Cov(x_1, x_2) = \E[x_1^3] - \E[x_1]\E[x_1^2] = 0$. Which statement is correct?
+  options:
+    - { text: '$x_1$ and $x_2$ are uncorrelated but not independent; the vector $(x_1, x_2)$ is not jointly Gaussian', correct: true }
+    - { text: '$x_1$ and $x_2$ are independent, because their covariance is zero', misconception: uncorrelated-implies-independent }
+    - { text: '$(x_1, x_2)$ is Gaussian with $\Sigma = \diag(1, 2)$, so its density factorizes', misconception: uncorrelated-implies-independent }
+    - { text: 'The covariance cannot be zero, because $x_2$ is a function of $x_1$' }
+  explanation: |
+    Knowing $x_1$ fixes $x_2$, so they are dependent, yet the covariance is zero. Zero covariance implies independence only for a jointly Gaussian vector, where a diagonal $\Sigma$ makes the density a product (der-7-1-2). Here $x_2 \ge 0$ always, so it is not Gaussian at all.
+
+- id: q-u7-l1-011
+  lesson: multivariate-gaussian-and-covariance
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-7-1-3
+  corrupt: { step: 9, replaceTex: '\big|\det \Sigma^{-1/2}\big| = |\Sigma|^{1/2}', explanation: 'The determinant of an inverse is the reciprocal, so $|\det\Sigma^{-1/2}| = 1/|\Sigma|^{1/2}$. With $|\Sigma|^{1/2}$ in the numerator, a wider cloud would have a higher peak and the density would no longer integrate to 1.' }
+
+- id: q-u7-l1-012
+  lesson: multivariate-gaussian-and-covariance
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-7-1-1
+  corrupt: { step: 7, replaceTex: '\Sigma = \E[xx^\top] + \mu\mu^\top', explanation: 'The coefficients of the three $\mu\mu^\top$ terms in step 6 are $-1$, $-1$, and $+1$, which sum to $-1$. The one-dimensional version is $\Var(X) = \E[X^2] - (\E X)^2$, with a minus sign.' }
+
+- id: q-u7-l1-013
+  lesson: multivariate-gaussian-and-covariance
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-7-1-4
+  corrupt: { step: 7, replaceTex: '\sum_{j=1}^{d} \frac{u_j^2}{(r\lambda_j)^2} = 1', explanation: 'Dividing $\sum_j u_j^2/\lambda_j = r^2$ by $r^2$ gives denominators $r^2\lambda_j = (r\sqrt{\lambda_j})^2$, so the semi-axes are $r\sqrt{\lambda_j}$, not $r\lambda_j$. Eigenvalues of $\Sigma$ are variances; lengths scale like standard deviations.' }
+
+- id: q-u7-l1-014
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [mvn-density]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of the change-of-variables derivation of the multivariate Gaussian density (der-7-1-3) in order.
+  items:
+    - 'Write the density of $z \sim \mathcal{N}(0, I)$, a product of $d$ standard normals.'
+    - 'Build the symmetric square root $\Sigma^{1/2} = V\Lambda^{1/2}V^\top$ from the eigendecomposition.'
+    - 'Set $x = \mu + \Sigma^{1/2}z$ and invert it: $z = \Sigma^{-1/2}(x - \mu)$.'
+    - 'Check that $\E[x] = \mu$ and $\Cov(x) = \Sigma$.'
+    - 'Apply the change-of-variables rule with Jacobian $\Sigma^{-1/2}$.'
+    - 'Simplify $|\det\Sigma^{-1/2}| = |\Sigma|^{-1/2}$ and $z^\top z = (x - \mu)^\top\Sigma^{-1}(x - \mu)$.'
+    - 'Check that $d = 1$ gives $\mathcal{N}(\mu, \sigma^2)$.'
+  explanation: |
+    Build $x$ from standard normals, confirm that the parameters mean what their names say, transform the density, simplify the determinant and the exponent, and check the one-dimensional case against L9 p.43.
+
+- id: q-u7-l1-015
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [mvn-density, covariance-ellipse-geometry]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Under $\mathcal{N}(0, \Sigma)$ with $\Sigma = \diag(100, 1)$, which point has the higher density: $a = (5, 0)$ or $b = (0, 5)$?
+  options:
+    - { text: '$a = (5, 0)$: its squared Mahalanobis distance is $0.25$, against $25$ for $b$', correct: true }
+    - { text: '$b = (0, 5)$: it lies along the direction of smaller variance', misconception: sigma-not-inverted }
+    - { text: "Equal: both are 5 units from the mean" }
+    - { text: "It depends on the normalizing constant" }
+  explanation: |
+    The exponent uses $\Sigma^{-1} = \diag(0.01, 1)$: $a$ gives $25 \times 0.01 = 0.25$ and $b$ gives $25 \times 1 = 25$. Five units is half a standard deviation along $x_1$ but five standard deviations along $x_2$. The normalizer is the same for both points, so it cannot change the comparison.
+
+- id: q-u7-l1-016
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [covariance-ellipse-geometry]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    The contours of $\mathcal{N}\Big(0, \begin{bmatrix} 9 & 2 \\ 2 & 1 \end{bmatrix}\Big)$ are ellipses. Their long axis is closest to which direction?
+  options:
+    - { text: "A shallow upward slope of about 0.24, nearly horizontal", correct: true }
+    - { text: "Exactly along $y = x$, because the covariance is positive", misconception: cov-sets-slope }
+    - { text: "A slope of 2, the covariance", misconception: cov-sets-slope }
+    - { text: "Nearly vertical" }
+  explanation: |
+    The eigenvalues are $5 \pm \sqrt{20} \approx 9.47$ and $0.53$. For $\lambda_1 \approx 9.47$, the first row of $(\Sigma - \lambda_1 I)v = 0$ gives $-0.47\,v_1 + 2v_2 = 0$, so $v \propto (0.973, 0.230)$: slope $\approx 0.24$. The positive covariance tilts the axis upward, and the much larger variance of $x_1$ keeps it close to horizontal. Only with equal variances is the tilt exactly $45°$.
+
+- id: q-u7-l1-017
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [covariance-matrix-properties]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A vector $x = (x_1, x_2)$ has covariance $\Sigma = \begin{bmatrix} 4 & 3 \\ 3 & 4 \end{bmatrix}$. Compute $\Var(x_1 + x_2)$.
+  answer: 14
+  tolerance: 0
+  seeded: { a: [4, 5, 6], b: [1, 2, 3] }
+  formula: "2 * a + 2 * b"
+  explanation: |
+    With $v = (1, 1)$, $\Var(v^\top x) = v^\top \Sigma v$ (der-7-1-1 step 11) adds all four entries: $a + b + b + a = 2a + 2b$. Equivalently, $\Var(x_1) + \Var(x_2) + 2\Cov(x_1, x_2)$.
+
+- id: q-u7-l1-018
+  lesson: multivariate-gaussian-and-covariance
+  concepts: [mvn-density]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    For $x \sim \mathcal{N}(\mu, \Sigma)$ with $\Sigma = \diag(\sigma_1^2, \sigma_2^2)$, the density $\mathcal{N}(x; \mu, \Sigma)$ equals
+  options:
+    - { text: '$\mathcal{N}(x_1; \mu_1, \sigma_1^2)\,\mathcal{N}(x_2; \mu_2, \sigma_2^2)$', correct: true }
+    - { text: '$\mathcal{N}(x_1; \mu_1, \sigma_1^2) + \mathcal{N}(x_2; \mu_2, \sigma_2^2)$' }
+    - { text: '$\mathcal{N}(x_1 + x_2; \mu_1 + \mu_2, \sigma_1^2 + \sigma_2^2)$' }
+    - { text: '$\mathcal{N}(x_1; \mu_1, \sigma_1)\,\mathcal{N}(x_2; \mu_2, \sigma_2)$', misconception: gaussian-second-arg-sd }
+  explanation: |
+    With a diagonal $\Sigma$, $|\Sigma| = \sigma_1^2\sigma_2^2$ and the quadratic form has no cross term, so the density is the product of the two univariate densities (der-7-1-2), each with a variance as its second argument.
+
+# ---------- Lesson 7.2: gaussian-discriminant-analysis ----------
+# Poll items: L10 p.21 (a)-(c). Poll (d) belongs to lesson 7.3, which discusses it.
+
+- id: q-u7-l2-001
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-model]
+  type: mc
+  difficulty: 1
+  source: "L10 p.21 poll"
+  prompt: |
+    True or false: in classification, a GMM assumes that the conditional distribution of the features given the label is Gaussian.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The professor's key is True. Each class-conditional is one mixture component, $x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma_k)$ (def-7-2-2). The marginal $p(x)$ is then a mixture of Gaussians (der-7-1-6), and is generally not itself Gaussian.
+  discriminates: [gda-model, gaussian-mixture]
+
+- id: q-u7-l2-002
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-model, gda-mle-mean, gda-mle-covariance]
+  type: mc
+  difficulty: 1
+  source: "L10 p.21 poll"
+  prompt: |
+    True or false: when a GMM is used for classification, the number of mixture components equals the number of label classes, and the best-fit parameters are found by maximum likelihood in closed form.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The professor's key is True. One component per class (L10 p.11), and because the labels say which component produced each point, the log-likelihood splits by class (der-7-2-2) and each piece has a closed-form maximizer: class proportions, class means, class covariances (thm-7-2-1). Fitting a mixture *without* labels is the problem that needs EM.
+
+- id: q-u7-l2-003
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-log-likelihood-decomposition]
+  type: mc
+  difficulty: 1
+  source: "L10 p.17 (slide notation)"
+  prompt: |
+    L10 p.17 says "the optimal $\phi_K$ is the proportion of data points with class $k$." What does $\phi_K$ mean here?
+  options:
+    - { text: "The prior of class $k$, $\\phi_k = P(y = k)$; the capital subscript is a typo", correct: true }
+    - { text: "The prior of the last class, $K$", misconception: phi-capital-k }
+    - { text: "The sum of all the priors, which equals $K$", misconception: phi-capital-k }
+    - { text: "The mean of class $k$", misconception: u-for-mu }
+  explanation: |
+    Read $\phi_K$ as $\phi_k$. Its MLE is $\hat\phi_k = n_k/n$ (der-7-2-3). Taken literally, $\phi_K$ is one number, the last class's prior, and could not equal every class's proportion.
+
+- id: q-u7-l2-004
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-log-likelihood-decomposition]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Why can $\mu_2$ and $\Sigma_2$ be fit using only the class-2 training examples?
+  options:
+    - { text: "In the joint log-likelihood, $\\mu_2$ and $\\Sigma_2$ appear only in the sum over examples with $y^{(i)} = 2$; every other term is constant in them", correct: true }
+    - { text: "Because the features are conditionally independent given the class", misconception: class-split-reason }
+    - { text: "Because the classes are assumed to have the same covariance", misconception: class-split-reason }
+    - { text: "It is an approximation that ignores how class 2 overlaps the other classes" }
+  explanation: |
+    der-7-2-2 steps 4–6: regroup the class-conditional sum by label; $\mu_k, \Sigma_k$ live only in $\ell_k$. This is exact and needs no independence between features, which full-covariance GDA does not assume. It does need the labels: without them every point would involve every component.
+
+- id: q-u7-l2-005
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-mle-mean]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    The maximum-likelihood estimate of the class-$k$ mean in GDA is
+  options:
+    - { text: "$\\frac{1}{n_k}\\sum_{i:\\,y^{(i)} = k} x^{(i)}$", correct: true }
+    - { text: "$\\frac{1}{n}\\sum_{i:\\,y^{(i)} = k} x^{(i)}$", misconception: mean-divide-by-n }
+    - { text: "$\\frac{1}{n}\\sum_{i=1}^{n} x^{(i)}$, the overall mean", misconception: mean-divide-by-n }
+    - { text: "$\\Sigma_k^{-1}\\frac{1}{n_k}\\sum_{i:\\,y^{(i)} = k} x^{(i)}$, whitened by the covariance" }
+  explanation: |
+    der-7-2-4: the gradient is $\Sigma_k^{-1}\sum_{i:\,y^{(i)} = k}(x^{(i)} - \mu_k)$; setting it to zero and multiplying by $\Sigma_k$ removes the covariance entirely, leaving the class average. Dividing by $n$ instead of $n_k$ shrinks it by the factor $\hat\phi_k$.
+
+- id: q-u7-l2-006
+  lesson: gaussian-discriminant-analysis
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-7-2-4
+  corrupt: { step: 7, replaceTex: '\hat\mu_k = \frac{1}{n}\sum_{i:\,y^{(i)} = k}x^{(i)}', explanation: "Step 6 is $\\sum_{i:\\,y^{(i)} = k}x^{(i)} = n_k\\mu_k$: the mean was subtracted once per class-$k$ example, $n_k$ times. Divide by $n_k$, not by the total $n$." }
+
+- id: q-u7-l2-007
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-mle-covariance]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Toy numbers, one feature ($d = 1$): class $k$ has $n_k = 5$ training examples, and the sum of their squared deviations from the class mean is $\sum_{i:\,y^{(i)} = k}(x^{(i)} - \hat\mu_k)^2 = 20$. What is the GDA maximum-likelihood estimate $\hat\Sigma_k = \hat\sigma_k^2$?
+  answer: 4
+  tolerance: 0.005
+  seeded: { n_k: [4, 5, 8, 10], SS: [12, 20, 40] }
+  formula: "SS / n_k"
+  explanation: |
+    In one dimension $S_k$ is the sum of squared deviations, and $\hat\Sigma_k = S_k/n_k = 20/5 = 4$ (der-7-2-5 step 11). The unbiased estimate $20/4 = 5$ is not the MLE.
+
+- id: q-u7-l2-008
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-mle-covariance]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Toy numbers: class $k$ has three training points in $\mathbb{R}^2$: $(0, 0)$, $(2, 2)$, and $(1, 4)$. Compute the off-diagonal entry $(\hat\Sigma_k)_{12}$ of the GDA maximum-likelihood covariance. Give three decimals.
+  answer: 0.667
+  tolerance: 0.002
+  formula: "((-1)*(-2) + 1*0 + 0*2) / 3"
+  explanation: |
+    $\hat\mu_k = (1, 2)$. Residuals: $(-1, -2)$, $(1, 0)$, $(0, 2)$. The products of their two coordinates are $2$, $0$, $0$, summing to $2$; divide by $n_k = 3$: $(\hat\Sigma_k)_{12} = 2/3 \approx 0.667$ (der-7-2-5 step 11). The full estimate is $\hat\Sigma_k = \begin{bmatrix} 2/3 & 2/3 \\ 2/3 & 8/3 \end{bmatrix}$. Three points in $d = 2$ is just enough: $n_k = d + 1$.
+
+- id: q-u7-l2-009
+  lesson: gaussian-discriminant-analysis
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-7-2-5
+  corrupt: { step: 11, replaceTex: '\hat\Sigma_k = \frac{S_k}{n_k - 1}', explanation: "Step 10 says $n_k\\Sigma_k = S_k$, so the stationary point is $S_k/n_k$. Dividing by $n_k - 1$ gives the unbiased estimator of der-7-2-8 step 10, which is a different estimator, not the solution of this first-order condition." }
+
+- id: q-u7-l2-010
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-mle-covariance]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of the derivation of $\hat\Sigma_k$ in order.
+  items:
+    - 'Substitute $\hat\mu_k$ and keep the terms of $\ell_k$ that involve $\Sigma_k$.'
+    - 'Write each quadratic form as a trace and cycle it: $r^\top\Sigma_k^{-1}r = \mathrm{tr}(\Sigma_k^{-1}rr^\top)$.'
+    - 'Move the sum inside the trace: $\mathrm{tr}(\Sigma_k^{-1}S_k)$.'
+    - 'Differentiate with $\nabla\log|\Sigma| = \Sigma^{-1}$ and $\nabla\,\mathrm{tr}(\Sigma^{-1}S) = -\Sigma^{-1}S\Sigma^{-1}$, and set the gradient to zero.'
+    - 'Multiply by $\Sigma_k$ on both sides and solve: $\hat\Sigma_k = S_k/n_k$.'
+    - 'Compare any $\Sigma$ with $\hat\Sigma_k$ through the eigenvalues of $\Sigma^{-1}\hat\Sigma_k$ to prove a global maximum.'
+  explanation: |
+    der-7-2-5 (profile out the mean, trace trick, differentiate, solve), then der-7-2-6 (global maximum via $\log\lambda \le \lambda - 1$).
+
+- id: q-u7-l2-011
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-prediction]
+  type: mc
+  difficulty: 1
+  source: "L10 p.21 poll"
+  prompt: |
+    True or false: to predict with a GDA model we apply Bayes' rule, choosing the class $y$ that maximizes $P_\theta(\mathbf{x} \mid y)\,P_\theta(y)$.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False", misconception: ignore-prior }
+  explanation: |
+    The professor's key is True. This is the Bayes classifier of lesson 6.1 with Gaussian class-conditionals; in logs it is $\hat y = \argmax_k \delta_k(x)$ (der-7-2-7). The prior $P_\theta(y)$ stays in: dropping it would ignore that one class may be much rarer.
+
+- id: q-u7-l2-012
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-prediction]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    In the GDA score $\log\phi_k - \tfrac{d}{2}\log 2\pi - \tfrac12\log|\Sigma_k| - \tfrac12(x - \mu_k)^\top\Sigma_k^{-1}(x - \mu_k)$, which terms can be dropped without changing $\argmax_k$?
+  options:
+    - { text: "Only $-\\tfrac{d}{2}\\log 2\\pi$", correct: true }
+    - { text: "$-\\tfrac{d}{2}\\log 2\\pi$ and $-\\tfrac12\\log|\\Sigma_k|$, since both are normalizing constants", misconception: drop-logdet }
+    - { text: "$-\\tfrac{d}{2}\\log 2\\pi$ and $\\log\\phi_k$, since neither depends on $x$", misconception: ignore-prior }
+    - { text: "None: every term depends on $k$", misconception: drop-logdet }
+  explanation: |
+    A term can go only if it is the same for every class. $-\tfrac{d}{2}\log 2\pi$ is; $\log|\Sigma_k|$ and $\log\phi_k$ are constant in $x$ but differ across $k$ (der-7-2-7 step 4). With a shared covariance, $\log|\Sigma|$ would also cancel (lesson 7.3).
+
+- id: q-u7-l2-013
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-covariance-bias]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Toy setting, one feature: class $k$ is drawn from a Gaussian with true variance $\sigma_k^2 = 4$, and the training set always contains $n_k = 5$ class-$k$ examples. What is the expected value of the GDA maximum-likelihood variance $\hat\sigma_k^2$?
+  answer: 3.2
+  tolerance: 0.005
+  seeded: { n_k: [2, 5, 10, 20], s2: [1, 4, 9] }
+  formula: "(n_k - 1) / n_k * s2"
+  explanation: |
+    $\E[\hat\Sigma_k] = \frac{n_k - 1}{n_k}\Sigma_k = \frac{4}{5} \times 4 = 3.2$ (der-7-2-8 step 9). Measuring spread around the fitted mean loses the spread of the mean itself.
+
+- id: q-u7-l2-014
+  lesson: gaussian-discriminant-analysis
+  type: which-step
+  difficulty: 3
+  source: "original"
+  derivation: der-7-2-8
+  corrupt: { step: 7, replaceTex: '\E\big[(\bar x - \mu)(\bar x - \mu)^\top\big] = \Sigma', explanation: "Only the $m$ terms with $i = l$ survive, and each carries the factor $1/m^2$, so the covariance of the mean is $\\Sigma/m$. With $\\Sigma$ here, step 8 would give $\\E[S_k] = m\\Sigma - m\\Sigma = 0$, an absurd result for a sum of outer products." }
+
+- id: q-u7-l2-015
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-covariance-singularity]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Toy setting: a rare class has $n_k = 4$ training examples in $d = 6$ features. What can you say about $\hat\Sigma_k$?
+  options:
+    - { text: "Its rank is at most 3, so it is singular and the class's Gaussian density cannot be evaluated", correct: true }
+    - { text: "Its rank is at most 4, so it is invertible if the four points are in general position", misconception: class-cov-singular }
+    - { text: "It is invertible but has a large bias factor $3/4$, which can be corrected by dividing by $n_k - 1$", misconception: class-cov-singular }
+    - { text: "It is singular, but the maximum-likelihood fit is still well defined", misconception: class-cov-singular }
+  explanation: |
+    The residuals sum to zero, so they span at most $n_k - 1 = 3$ dimensions, and $\mathrm{rank}\,\hat\Sigma_k \le 3 < 6$ (der-7-2-9 steps 1–4). Dividing by $n_k - 1$ rescales but cannot raise the rank. The likelihood is unbounded (steps 7–8), so no MLE exists; share, diagonalize, or shrink the covariance.
+
+- id: q-u7-l2-016
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-model]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Toy setting: GDA with a separate full covariance per class, $K = 2$ classes, $d = 2$ features. How many free parameters does the model have, counting the prior? (A symmetric $d \times d$ matrix has $d(d+1)/2$ free entries.)
+  answer: 11
+  tolerance: 0
+  seeded: { K: [2, 3, 4], d: [2, 5, 10] }
+  formula: "K * d + K * d * (d + 1) / 2 + K - 1"
+  explanation: |
+    Means: $Kd = 4$. Covariances: $K\,d(d+1)/2 = 6$. Prior: $K - 1 = 1$, because the priors sum to 1. Total $11$. The covariance count grows like $d^2$, which is why lesson 7.3's shared and diagonal variants matter.
+
+- id: q-u7-l2-017
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-mle-covariance]
+  type: mc
+  difficulty: 2
+  source: "L10 p.15 (slide wording)"
+  prompt: |
+    L10 p.15 says GDA fits $\mu_k, \Sigma_k$ "to be empirical means and variances of each label class". What exactly is the maximum-likelihood $\hat\Sigma_k$?
+  options:
+    - { text: "The full class-$k$ covariance matrix, including off-diagonal covariances, divided by $n_k$", correct: true }
+    - { text: "A diagonal matrix of the class-$k$ variances of each feature", misconception: gda-variances-only }
+    - { text: "The full class-$k$ covariance matrix divided by $n_k - 1$, because the MLE is unbiased", misconception: mle-always-unbiased }
+    - { text: "The covariance of all $n$ training points around the overall mean", misconception: mean-divide-by-n }
+  explanation: |
+    der-7-2-5 gives $\hat\Sigma_k = \frac{1}{n_k}\sum_{i:\,y^{(i)} = k}(x^{(i)} - \hat\mu_k)(x^{(i)} - \hat\mu_k)^\top$, as L10 p.20 states. A diagonal $\Sigma_k$ is Gaussian Naive Bayes (lesson 7.3), and the $n_k - 1$ version is the unbiased estimator, not the MLE (der-7-2-8).
+
+- id: q-u7-l2-018
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-mle-mean, gda-mle-covariance]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    You accidentally duplicate every class-$k$ training example, so class $k$ now has $2n_k$ examples (every other class is unchanged). What happens to $\hat\mu_k$ and $\hat\Sigma_k$?
+  options:
+    - { text: "Both are unchanged; only $\\hat\\phi_k$ changes", correct: true }
+    - { text: "$\\hat\\mu_k$ is unchanged and $\\hat\\Sigma_k$ halves, because it divides by twice as many examples", misconception: mean-divide-by-n }
+    - { text: "$\\hat\\mu_k$ is unchanged and $\\hat\\Sigma_k$ doubles, because the scatter matrix doubles", misconception: mean-divide-by-n }
+    - { text: "Both change, because the class now has more evidence", misconception: mle-always-unbiased }
+  explanation: |
+    The class sum and $S_k$ both double, and so does the divisor $n_k$, so $\hat\mu_k$ and $\hat\Sigma_k = S_k/n_k$ are unchanged. The prior $\hat\phi_k = n_k/n$ does change, because class $k$'s share of the data grows. (The unbiased $S_k/(n_k - 1)$ would change slightly, which is one sign that it is not the MLE.)
+
+- id: q-u7-l2-019
+  lesson: gaussian-discriminant-analysis
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-7-2-7
+  corrupt: { step: 4, replaceTex: '\hat y = \argmax_k\;\Big[\log\phi_k - \tfrac12(x - \mu_k)^\top\Sigma_k^{-1}(x - \mu_k)\Big]', explanation: "Only $-\\tfrac{d}{2}\\log 2\\pi$ is the same for every class. The term $-\\tfrac12\\log|\\Sigma_k|$ differs between classes and must stay; dropping it favors classes with large covariances." }
+
+- id: q-u7-l2-020
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-prediction]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    With a separate covariance $\Sigma_k$ per class, as on L10 p.15, what shape is the GDA decision boundary between two classes, in general?
+  options:
+    - { text: "A quadric (in 2-D an ellipse, parabola, or hyperbola), because the quadratic terms $-\\tfrac12 x^\\top\\Sigma_k^{-1}x$ differ between the classes", correct: true }
+    - { text: "A hyperplane, as in logistic regression", misconception: gda-is-linear }
+    - { text: "A hyperplane through the midpoint of the two means", misconception: gda-is-linear }
+    - { text: "It has no closed form and must be traced numerically" }
+  explanation: |
+    The boundary is $\delta_0(x) = \delta_1(x)$, and each score is quadratic in $x$ (der-7-2-7). The quadratic parts cancel only when $\Sigma_0 = \Sigma_1$, which is lesson 7.3's shared-covariance case (der-7-3-4).
+
+- id: q-u7-l2-021
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-model]
+  type: mc
+  difficulty: 1
+  source: "L10 p.12 (slide notation)"
+  prompt: |
+    L10 p.12 writes the multivariate Gaussian as $N(\mathbf{u}, \Sigma)$, with $\mathbf{u}$ "a vector of length $d$". What is $\mathbf{u}$?
+  options:
+    - { text: "The mean vector, written $\\mu$ in this course", correct: true }
+    - { text: "A unit vector giving the direction of the ellipse's long axis", misconception: u-for-mu }
+    - { text: "The vector of feature variances (the diagonal of $\\Sigma$)", misconception: gda-variances-only }
+    - { text: "The vector of class priors", misconception: phi-capital-k }
+  explanation: |
+    $\mathbf{u}$ is the mean; L10 switches to $\mu_k$ from p.15 on. The ellipse's axes are eigenvectors of $\Sigma$ (lesson 7.1), and the variances are on $\Sigma$'s diagonal.
+
+- id: q-u7-l2-022
+  lesson: gaussian-discriminant-analysis
+  concepts: [gda-log-likelihood-decomposition]
+  type: mc
+  difficulty: 2
+  source: "L10 p.17 (slide wording)"
+  prompt: |
+    L10 p.17 says the optimization of the priors $\phi_k$ "can be carried out independently for each label class". Which statement is accurate?
+  options:
+    - { text: 'The $\phi_k$ are coupled by $\sum_k\phi_k = 1$ and are solved jointly; the solution $\hat\phi_k = n_k/n$ happens to depend only on $n_k$ and $n$', correct: true }
+    - { text: 'Each $\phi_k$ can be maximized on its own, because $n_k\log\phi_k$ involves only $\phi_k$', misconception: prior-independent-fit }
+    - { text: 'Each $\phi_k$ is fit from the class-$k$ examples alone, exactly like $\mu_k$ and $\Sigma_k$', misconception: prior-independent-fit }
+    - { text: 'The priors cannot be estimated by maximum likelihood and must be set by hand' }
+  explanation: |
+    Maximized one at a time, each term $n_k\log\phi_k$ would push its $\phi_k$ to 1. The simplex constraint ties the priors together, and the Lagrange multiplier of der-7-2-3 (der-6-3-5) solves for all of them at once. The means and covariances, by contrast, do separate by class (der-7-2-2 step 6).
+
+# ---------- Lesson 7.3: shared-covariance-and-logistic-regression ----------
+# Poll item: L10 p.21 (d), with the course map's key and caveat.
+
+- id: q-u7-l3-001
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [shared-covariance-gda, gda-model, gaussian-naive-bayes]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Which covariance assumption defines linear discriminant analysis (LDA)?
+  options:
+    - { text: 'One full covariance $\Sigma$ shared by all classes', correct: true }
+    - { text: 'A full covariance $\Sigma_k$ for each class' }
+    - { text: 'A diagonal covariance $\Sigma_k$ for each class' }
+    - { text: 'No covariance at all: LDA models word counts with Dirichlet distributions', misconception: lda-latent-dirichlet }
+  explanation: |
+    LDA is GDA with $x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma)$ for every $k$ (def-7-3-1). A full $\Sigma_k$ per class is QDA, the slides' GDA (def-7-2-2); a diagonal $\Sigma_k$ per class is Gaussian Naive Bayes (def-7-3-3). Dirichlet distributions belong to latent Dirichlet allocation, an unrelated topic model.
+  discriminates: [shared-covariance-gda, gda-model, gaussian-naive-bayes]
+
+- id: q-u7-l3-002
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [shared-covariance-gda]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    You want to fit this lesson's LDA in sklearn. Which class do you use?
+  options:
+    - { text: '`sklearn.discriminant_analysis.LinearDiscriminantAnalysis`', correct: true }
+    - { text: '`sklearn.decomposition.LatentDirichletAllocation`', misconception: lda-latent-dirichlet }
+    - { text: '`sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis`' }
+    - { text: '`sklearn.naive_bayes.GaussianNB`', misconception: full-gda-cond-indep }
+  explanation: |
+    `LinearDiscriminantAnalysis` fits Gaussian class-conditionals with one shared covariance. `LatentDirichletAllocation` is an unsupervised topic model that happens to share the acronym. `QuadraticDiscriminantAnalysis` fits a covariance per class (QDA), and `GaussianNB` a diagonal covariance per class.
+
+- id: q-u7-l3-003
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [gda-linear-boundary]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    In der-7-3-1, why are the GDA log-odds affine in $x$ when the covariance is shared?
+  options:
+    - { text: 'Each class contributes $-\tfrac12 x^\top\Sigma^{-1}x$ with the same $\Sigma$, so the quadratic terms cancel in the difference', correct: true }
+    - { text: 'Because $\Sigma^{-1}$ is symmetric, every quadratic form $x^\top\Sigma^{-1}x$ is zero' }
+    - { text: 'Because the prior term $\log(\phi_1/\phi_0)$ is linear in $x$' }
+    - { text: 'Because the features are assumed independent given the class', misconception: full-gda-cond-indep }
+  explanation: |
+    Step 7 of der-7-3-1: the $x^\top\Sigma^{-1}x$ terms enter with $-\tfrac12$ and $+\tfrac12$ and cancel; what is left is linear in $x$ plus a constant. Symmetry of $\Sigma^{-1}$ is used only to merge the cross terms (step 5). No independence is assumed: $\Sigma$ can be any full covariance.
+  discriminates: [gda-linear-boundary, qda-quadratic-boundary]
+
+- id: q-u7-l3-004
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [gda-linear-boundary]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Toy numbers. Two features, shared covariance $\Sigma = \begin{pmatrix} 1 & \rho \\ \rho & 1 \end{pmatrix}$ with $\rho = 0.8$, and means $\mu_0 = (0, 0)$, $\mu_1 = (1, 0)$: the classes differ only in feature 1. Compute the LDA weight on feature 2, $w_2$, where $w = \Sigma^{-1}(\mu_1 - \mu_0)$. Give two decimals.
+  answer: -2.22
+  tolerance: 0.01
+  seeded: { rho: [0.2, 0.5, 0.6, 0.8] }
+  formula: "-rho / (1 - rho**2)"
+  explanation: |
+    $\Sigma^{-1} = \frac{1}{1 - \rho^2}\begin{pmatrix} 1 & -\rho \\ -\rho & 1 \end{pmatrix}$, so $w = \Sigma^{-1}(1, 0)^\top = \frac{1}{1 - \rho^2}(1, -\rho)$ and $w_2 = -0.8/0.36 \approx -2.22$. Feature 2 has no mean difference, yet it gets a large negative weight: it measures the noise that feature 1 shares with it, and subtracting it cleans up feature 1. This is why $w$ is not $\mu_1 - \mu_0$.
+
+- id: q-u7-l3-005
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [gda-linear-boundary, gda-sigmoid-posterior]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Toy numbers. One feature, shared variance $\sigma^2 = 1$, means $\mu_0 = 0$ and $\mu_1 = 2$, and log prior ratio $\log(\phi_1/\phi_0) = -1.386$. Where is the LDA decision boundary $x^\star$ (the point where $p(y = 1 \mid x) = \tfrac12$)? Give two decimals.
+  answer: 1.69
+  tolerance: 0.01
+  seeded: { mu1: [1, 2, 3], sigma2: [0.5, 1, 2], lp: [-2.197, -1.386, 0, 1.386] }
+  formula: "mu1 / 2 - sigma2 * lp / mu1"
+  explanation: |
+    In one dimension, with $\mu_0 = 0$, der-7-3-1 gives $w = \mu_1/\sigma^2$ and $b = -\frac{\mu_1^2}{2\sigma^2} + \log\frac{\phi_1}{\phi_0}$. The boundary is $w x + b = 0$ (der-7-3-2 step 5), so $x^\star = \frac{\mu_1}{2} - \frac{\sigma^2\log(\phi_1/\phi_0)}{\mu_1}$. For example, with $\mu_1 = 2$, $\sigma^2 = 1$, and log prior ratio $-1.386$: $w = 2$, $b = -2 - 1.386 = -3.386$, and $x^\star \approx 1.69$. The first term is the midpoint of the means. A negative log prior ratio (class 1 rarer) pushes the boundary toward $\mu_1$, a positive one toward $\mu_0$, and equal priors leave it at the midpoint.
+
+- id: q-u7-l3-006
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [pooled-covariance-mle]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    In the pooled-covariance MLE $\hat\Sigma = \frac{1}{n}\sum_i r^{(i)} r^{(i)\top}$, what is the residual $r^{(i)}$?
+  options:
+    - { text: '$x^{(i)} - \hat\mu_{y^{(i)}}$, the deviation from the mean of its own class', correct: true }
+    - { text: '$x^{(i)} - \bar x$, the deviation from the mean of all examples', misconception: pooled-cov-global-mean }
+    - { text: '$\hat\mu_1 - \hat\mu_0$ for every example', misconception: pooled-cov-global-mean }
+    - { text: '$x^{(i)} - \hat\mu_{1 - y^{(i)}}$, the deviation from the other class mean' }
+  explanation: |
+    der-7-3-3 step 6 defines $r^{(i)} = x^{(i)} - \hat\mu_{y^{(i)}}$, because each example's Gaussian is centered at its own class mean. Centering at the overall mean adds the between-class spread along $\hat\mu_1 - \hat\mu_0$, inflating $\hat\Sigma$ in exactly the direction that separates the classes.
+  discriminates: [pooled-covariance-mle, covariance-matrix]
+
+- id: q-u7-l3-007
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [pooled-covariance-mle]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Toy numbers, one feature. Class 0 has $n_0 = 30$ examples with MLE variance $\hat\sigma_0^2 = 1.0$; class 1 has $n_1 = 10$ examples with $\hat\sigma_1^2 = 3.0$. What is the pooled MLE variance $\hat\sigma^2$?
+  answer: 1.5
+  tolerance: 0.005
+  seeded: { n0: [20, 30, 60], n1: [10, 20, 40], s0: [0.5, 1.0, 2.0], s1: [1.0, 3.0, 4.0] }
+  formula: "(n0 * s0 + n1 * s1) / (n0 + n1)"
+  explanation: |
+    der-7-3-3 step 13: $\hat\sigma^2 = \sum_k \frac{n_k}{n}\hat\sigma_k^2 = \frac{n_0\hat\sigma_0^2 + n_1\hat\sigma_1^2}{n_0 + n_1}$, an average weighted by the class proportions. For example, with $n_0 = 30$, $\hat\sigma_0^2 = 1.0$, $n_1 = 10$, $\hat\sigma_1^2 = 3.0$: $(30 \times 1.0 + 10 \times 3.0)/40 = 1.5$, while the plain average would be 2.0. The plain average $\tfrac12(\hat\sigma_0^2 + \hat\sigma_1^2)$ agrees with the MLE only when $n_0 = n_1$.
+
+- id: q-u7-l3-008
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [qda-quadratic-boundary]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-7-3-4
+  corrupt: { step: 2, replaceTex: '= -\tfrac12(x - \mu_1)^\top\Sigma_1^{-1}(x - \mu_1) + \tfrac12(x - \mu_0)^\top\Sigma_0^{-1}(x - \mu_0) + \log\frac{\phi_1}{\phi_0}', explanation: 'The $-\tfrac{d}{2}\log 2\pi$ terms cancel, but $-\tfrac12\log|\Sigma_1|$ and $-\tfrac12\log|\Sigma_0|$ differ when the covariances differ; they leave $-\tfrac12\log(|\Sigma_1|/|\Sigma_0|)$ in the constant $c$.' }
+
+- id: q-u7-l3-009
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [pooled-covariance-mle, gda-covariance-singularity]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    Toy setting: $d = 50$ features, a rare class with $n_0 = 40$ examples and a common class with $n_1 = 500$. Which statement about the covariance estimates is true?
+  options:
+    - { text: '$\hat\Sigma_0$ is singular (rank at most 39), so QDA cannot invert it, but the pooled $\hat\Sigma$ can reach full rank 50, since $n - K = 538 \ge d$, and LDA can be fit', correct: true }
+    - { text: 'Both can be inverted: a sample covariance matrix is always invertible', misconception: pooled-cov-singular }
+    - { text: 'The pooled $\hat\Sigma$ is singular too, because it contains $\hat\Sigma_0$ as one of its terms' }
+    - { text: 'Neither is a problem as long as $n = 540 > d$', misconception: pooled-cov-singular }
+  explanation: |
+    A per-class $\hat\Sigma_k$ is built from $n_k$ residuals that sum to zero, so its rank is at most $n_k - 1 = 39 < 50$: singular. The pooled $S$ adds the 500 class-1 residuals; its rank is at most $\min(d, n - K) = \min(50, 538) = 50$, and with continuous data it reaches 50, so LDA works where QDA fails. With $d > n - K$ even the pooled estimate is singular; then use shrinkage or a diagonal covariance.
+
+- id: q-u7-l3-010
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [gaussian-naive-bayes]
+  type: mc
+  difficulty: 1
+  source: "L10 p.21 poll"
+  prompt: |
+    True or false: GDA is the equivalent of Naive Bayes but for continuous data.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The intended key is True, in spirit: both are generative classifiers that fit class-conditionals and a prior by closed-form MLE and predict with Bayes' rule. The caveat from the course map: strictly, GDA with a full $\Sigma_k$ does not assume conditional independence of the features. Only a diagonal $\Sigma_k$ makes the Gaussian factorize (der-7-3-5), and that special case is Gaussian Naive Bayes.
+  discriminates: [gaussian-naive-bayes, gda-model]
+
+- id: q-u7-l3-011
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [gaussian-naive-bayes]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Which Gaussian class-conditional makes the Naive Bayes assumption, $p(x \mid y = k) = \prod_j p(x_j \mid y = k)$?
+  options:
+    - { text: 'A diagonal covariance $\Sigma_k$ for each class', correct: true }
+    - { text: 'A full covariance $\Sigma_k$ for each class, as in the slides'' GDA', misconception: full-gda-cond-indep }
+    - { text: 'One full covariance $\Sigma$ shared by all classes', misconception: full-gda-cond-indep }
+    - { text: 'Any Gaussian, because every multivariate Gaussian factorizes over its coordinates', misconception: full-gda-cond-indep }
+  explanation: |
+    der-7-3-5: with $\Sigma_k$ diagonal the quadratic form has no cross terms (step 3), so the density splits into one 1-D Gaussian per feature (step 6). A full covariance, shared or not, keeps the off-diagonal entries that couple the features within a class.
+  discriminates: [gaussian-naive-bayes, conditional-independence]
+
+- id: q-u7-l3-012
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [gda-linear-boundary]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-7-3-1
+  corrupt: { step: 7, replaceTex: '\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = -x^\top\Sigma^{-1}x + (\mu_1 - \mu_0)^\top\Sigma^{-1}x - \tfrac12\mu_1^\top\Sigma^{-1}\mu_1 + \tfrac12\mu_0^\top\Sigma^{-1}\mu_0 + \log\frac{\phi_1}{\phi_0}', explanation: 'In step 6 the two $x^\top\Sigma^{-1}x$ terms carry $-\tfrac12$ and $+\tfrac12$. They cancel; they do not add up to $-x^\top\Sigma^{-1}x$. The surviving log-odds are affine.' }
+
+- id: q-u7-l3-013
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [gda-vs-logistic-regression]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    You fit shared-covariance GDA and logistic regression on the same training set. Both produce a posterior of the form $\sigma(w^\top x + b)$. What can you say about the fitted $(\hat w, \hat b)$?
+  options:
+    - { text: 'They generally differ: GDA maximizes the joint likelihood, logistic regression the conditional likelihood of the labels', correct: true }
+    - { text: 'They are identical, because the functional form is the same', misconception: gda-lr-same-theta }
+    - { text: 'They are identical whenever the classes are balanced', misconception: gda-lr-same-theta }
+    - { text: 'GDA''s fit always has the higher conditional log-likelihood on the training set', misconception: gda-always-better }
+  explanation: |
+    der-7-3-6: the joint log-likelihood is the conditional term plus $\sum_i\log p_\theta(x^{(i)})$. Logistic regression maximizes the conditional term alone over all $(w, b)$, so on the training set $\ell_{\mathrm{cond}}(\hat w_{\mathrm{LR}}, \hat b_{\mathrm{LR}}) \ge \ell_{\mathrm{cond}}(\hat w_{\mathrm{GDA}}, \hat b_{\mathrm{GDA}})$ (step 6). GDA trades some of that term for a better fit of $p(x)$.
+  discriminates: [gda-vs-logistic-regression, gda-sigmoid-posterior]
+
+- id: q-u7-l3-014
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [gda-vs-logistic-regression]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The class-conditionals of a feature are strongly skewed (far from Gaussian), and you have plenty of labeled data. Which classifier is the safer choice for $p(y \mid x)$?
+  options:
+    - { text: 'Logistic regression: it assumes only the sigmoid form, which many non-Gaussian generative models also produce', correct: true }
+    - { text: 'Shared-covariance GDA: it uses more information, so it always does at least as well', misconception: gda-always-better }
+    - { text: 'They are equivalent, since both give a sigmoid posterior', misconception: gda-lr-same-theta }
+    - { text: 'Shared-covariance GDA, because its MLE is in closed form' }
+  explanation: |
+    GDA's extra information is correct only if the class-conditionals really are Gaussian with a shared covariance. When they are not, GDA's $w = \hat\Sigma^{-1}(\hat\mu_1 - \hat\mu_0)$ comes from a wrong model, while logistic regression still targets the best sigmoid. GDA tends to win with little data and a plausible Gaussian model; a closed-form fit is a convenience, not an accuracy guarantee.
+  discriminates: [gda-vs-logistic-regression, discriminative-model]
+
+- id: q-u7-l3-015
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [pooled-covariance-mle]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-7-3-3
+  corrupt: { step: 12, replaceTex: '\hat\Sigma = \frac{S}{n} = \frac{1}{n}\sum_{i=1}^{n}(x^{(i)} - \bar x)(x^{(i)} - \bar x)^\top, \quad \bar x = \frac{1}{n}\sum_{i=1}^{n} x^{(i)}', explanation: 'Step 6 defined the residuals from each example''s own class mean, $r^{(i)} = x^{(i)} - \hat\mu_{y^{(i)}}$, so $S = \sum_i r^{(i)}r^{(i)\top}$. Centering at the overall mean $\bar x$ adds the between-class spread and inflates $\hat\Sigma$ along $\hat\mu_1 - \hat\mu_0$.' }
+
+- id: q-u7-l3-016
+  lesson: shared-covariance-and-logistic-regression
+  concepts: [gda-linear-boundary, gda-sigmoid-posterior]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of the argument that shared-covariance GDA has a logistic posterior in order.
+  items:
+    - 'Write the posterior odds with Bayes'' rule; the evidence $p(x)$ cancels.'
+    - 'Take logs and substitute the log Gaussian density for each class; the normalizers cancel because $\Sigma$ is shared.'
+    - 'Expand both quadratic forms $(x - \mu_k)^\top\Sigma^{-1}(x - \mu_k)$.'
+    - 'Cancel the two $x^\top\Sigma^{-1}x$ terms.'
+    - 'Name $w = \Sigma^{-1}(\mu_1 - \mu_0)$ and collect the constants into $b$.'
+    - 'Exponentiate and solve for $p(y = 1 \mid x) = \sigma(w^\top x + b)$.'
+  explanation: |
+    der-7-3-1 steps 1–10 give affine log-odds; der-7-3-2 turns affine log-odds into a sigmoid. The cancellation of the quadratic terms is the step that needs the shared covariance a second time.

@@ -1,0 +1,16 @@
+---
+id: change-of-variables
+term: Change of variables for densities
+aliases: [Jacobian rule, transformation of densities, change-of-variables formula]
+field: probability
+firstUsedIn: u7-gaussian-discriminant-analysis
+related: [determinant, multivariate-gaussian, gaussian]
+---
+
+**What it is.** If $z$ has density $p_z$ on $\mathbb{R}^d$ and $x = g(z)$ for an invertible, differentiable map $g$, then
+
+$$p_x(x) = p_z\big(g^{-1}(x)\big)\,\big|\det J_{g^{-1}}(x)\big|,$$
+
+where $J_{g^{-1}}$ is the Jacobian matrix of the inverse map. The determinant corrects for how $g$ stretches volume: probability is conserved, so where $g$ spreads a region out, the density must drop. For an affine map $x = \mu + Az$, the Jacobian of the inverse is the constant matrix $A^{-1}$.
+
+**How ML uses it.** It turns the density of independent standard normals into the multivariate Gaussian density, and it gives $\mathcal{N}(\mu, \sigma^2)$ from $\mathcal{N}(0, 1)$ through $x = \mu + \sigma z$. Normalizing flows are built entirely on this rule.

@@ -1,0 +1,12 @@
+---
+id: unbiased-estimator
+term: Unbiased estimator
+aliases: [bias of an estimator, unbiased, Bessel's correction]
+field: statistics
+firstUsedIn: u7-gaussian-discriminant-analysis
+related: [expectation, variance, covariance-matrix, iid]
+---
+
+**What it is.** An estimator $\hat\theta$, computed from a random sample, is unbiased when $\E[\hat\theta] = \theta$ for every value of the true parameter $\theta$. Its bias is $\E[\hat\theta] - \theta$. The sample mean is unbiased for the mean. The sample variance that divides by $n$ is not: its expectation is $\frac{n-1}{n}\sigma^2$, because deviations are measured from the sample mean, which sits closer to the data than the true mean does. Dividing by $n - 1$ instead (Bessel's correction) removes the bias.
+
+**How ML uses it.** Maximum likelihood does not promise unbiasedness. The GDA covariance MLE divides by $n_k$ and is biased by the factor $\frac{n_k - 1}{n_k}$, which approaches 1 as $n_k$ grows. In NumPy, `np.cov` divides by $n - 1$ by default and `np.cov(..., bias=True)` gives the MLE.

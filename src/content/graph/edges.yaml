@@ -64,3 +64,54 @@
 
 # Within lesson 6.4: scoring test emails needs features built with the train-fit vocabulary
 - { from: fit-preprocessing-on-train, to: nb-vectorized-scoring, type: requires }
+
+# ---------- Unit 7: Gaussian discriminant analysis ----------
+
+# Lesson 7.1: within-lesson chain (course map L10 seed "Covariance matrix -> Multivariate Gaussian") and the density -> mixture link
+- { from: covariance-matrix-properties, to: mvn-density, type: requires }
+- { from: mvn-density, to: covariance-ellipse-geometry, type: requires }
+- { from: covariance-ellipse-geometry, to: covariance-quartet, type: requires }
+- { from: mvn-density, to: gaussian-mixture, type: uses }
+
+# Lesson 7.2 (course map L10 seeds: Gaussian mixture -> GDA model; Bayes classifier -> GDA prediction;
+# ML learning -> GDA log-likelihood decomposition -> closed-form estimates; matrix calculus -> estimates)
+- { from: gaussian-mixture, to: gda-model, type: requires }
+- { from: gda-model, to: gda-log-likelihood-decomposition, type: requires }
+- { from: gda-log-likelihood-decomposition, to: gda-mle-mean, type: requires }
+- { from: gda-mle-mean, to: gda-mle-covariance, type: requires }
+- { from: gda-model, to: gda-prediction, type: requires }
+- { from: gda-mle-covariance, to: gda-covariance-bias, type: requires }
+- { from: gda-mle-covariance, to: gda-covariance-singularity, type: requires }
+
+# Uses (the matrix-calculus tools behind the closed form)
+- { from: matrix-calculus-identities, to: gda-mle-mean, type: uses }
+- { from: matrix-calculus-identities, to: gda-mle-covariance, type: uses }
+- { from: trace, to: gda-mle-covariance, type: uses }
+- { from: unbiased-estimator, to: gda-covariance-bias, type: uses }
+
+# Generalizes (from = special case, to = general result)
+- { from: gda-log-likelihood-decomposition, to: generative-mle-factorization, type: generalizes }
+- { from: gda-prediction, to: bayes-classifier, type: generalizes }
+
+# Contrasts
+- { from: bernoulli-naive-bayes, to: gda-model, type: contrasts }
+- { from: nb-log-likelihood-decomposition, to: gda-log-likelihood-decomposition, type: contrasts }
+
+# Lesson 7.3 (course map L10 seeds: GDA -> linear boundary with shared Σ -> logistic regression link;
+# Naive Bayes -> Gaussian NB = diagonal GDA)
+- { from: shared-covariance-gda, to: gda-linear-boundary, type: requires }
+- { from: gda-linear-boundary, to: gda-sigmoid-posterior, type: requires }
+- { from: shared-covariance-gda, to: pooled-covariance-mle, type: requires }
+- { from: gda-sigmoid-posterior, to: gda-vs-logistic-regression, type: requires }
+- { from: pooled-covariance-mle, to: gda-vs-logistic-regression, type: uses }
+
+# Generalizations (`to` generalizes `from`)
+- { from: shared-covariance-gda, to: gda-model, type: generalizes }
+- { from: gaussian-naive-bayes, to: gda-model, type: generalizes }
+
+# Contrasts
+- { from: nb-linear-classifier, to: gda-linear-boundary, type: contrasts }
+- { from: gda-linear-boundary, to: qda-quadratic-boundary, type: contrasts }
+- { from: bernoulli-naive-bayes, to: gaussian-naive-bayes, type: contrasts }
+- { from: discriminative-model, to: gda-vs-logistic-regression, type: contrasts }
+- { from: generative-model, to: gda-vs-logistic-regression, type: uses }

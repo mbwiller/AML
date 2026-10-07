@@ -1,0 +1,630 @@
+---
+title: "Shared covariance and logistic regression"
+unit: u7-gaussian-discriminant-analysis
+order: 3
+slug: shared-covariance-and-logistic-regression
+summary: "Share one covariance across classes and the GDA log-odds become affine, so the posterior is a sigmoid. Same form as logistic regression, different fit. Per-class covariances give QDA; diagonal ones give Gaussian Naive Bayes."
+lectures:
+  - { lecture: 10, pages: "15-21" }
+concepts:
+  - shared-covariance-gda
+  - gda-linear-boundary
+  - gda-sigmoid-posterior
+  - pooled-covariance-mle
+  - qda-quadratic-boundary
+  - gaussian-naive-bayes
+  - gda-vs-logistic-regression
+prerequisites:
+  - gda-model
+  - gda-log-likelihood-decomposition
+  - gda-mle-mean
+  - gda-mle-covariance
+  - gda-prediction
+  - gda-covariance-singularity
+  - gaussian-mixture
+  - multivariate-gaussian
+  - covariance-matrix
+  - quadratic-form
+  - matrix-inverse
+  - determinant
+  - trace
+  - matrix-calculus-identities
+  - bayes-rule
+  - bayes-classifier
+  - generative-mle-factorization
+  - log-likelihood
+  - log-rules
+  - sigmoid
+  - conditional-independence
+  - naive-bayes-assumption
+  - nb-linear-classifier
+  - discriminative-model
+homework: [hw3]
+cases: [tropo]
+estimatedMinutes: 60
+status: review
+authors: [jide]
+---
+
+<Frame
+  data="labeled pairs $(x^{(i)}, y^{(i)})$ with $x^{(i)} \in \mathbb{R}^d$, $y^{(i)} \in \{0, 1\}$"
+  model="$y \sim \mathrm{Bernoulli}(\phi_1)$, $x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma)$ with one shared $\Sigma$ (LDA), or $\Sigma_k$ per class (QDA)"
+  objective="maximize the joint log-likelihood $\sum_i \log p_\theta(x^{(i)}, y^{(i)})$"
+  optimizer="closed form: class means, class proportions, pooled covariance"
+/>
+
+<Objectives>
+
+- Derive that, with a shared covariance, the GDA log posterior odds are $w^\top x + b$ with $w = \Sigma^{-1}(\mu_1 - \mu_0)$, so the posterior is $\sigma(w^\top x + b)$ and the boundary is a hyperplane.
+- Derive the pooled-covariance MLE $\hat\Sigma = \frac{1}{n}\sum_i (x^{(i)} - \hat\mu_{y^{(i)}})(x^{(i)} - \hat\mu_{y^{(i)}})^\top$.
+- Show that per-class covariances leave a quadratic term $\tfrac12 x^\top(\Sigma_0^{-1} - \Sigma_1^{-1})x$ in the log-odds (QDA).
+- Show that a diagonal $\Sigma_k$ makes the Gaussian factorize, so diagonal GDA is Gaussian Naive Bayes, and explain why full-covariance GDA is not.
+- Explain why GDA and logistic regression share a functional form but not a fit, and when each should win.
+
+</Objectives>
+
+<Hook>
+
+In the TROPO case, an emergency physician orders a high-sensitivity troponin test for a patient with chest pain. The case specifies two Gaussians on the log scale: $\log T \sim \mathcal{N}(\log 8, 0.6^2)$ without myocardial infarction (MI), $\log T \sim \mathcal{N}(\log 60, 0.9^2)$ with MI, and an MI prevalence of 15%.
+
+That is a GDA model in one dimension. Two questions follow. As the troponin level rises, does the probability of MI trace the familiar S-curve of logistic regression? And is there a single cut-off above which the model says "MI", or can there be two?
+
+{/* hook-figure: the gda-fitter widget below serves as the hook's explorable */}
+
+</Hook>
+
+## Where lesson 7.2 left us
+
+Lesson 7.2 fit GDA as the slides define it: one Gaussian per class, $x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma_k)$, with the closed-form MLE $\hat\mu_k$ = class mean, $\hat\Sigma_k$ = class covariance, $\hat\phi_k = n_k/n$ <SlideRef lecture={10} pages="15-20" />. Prediction is the Bayes classifier (lesson 6.1), $\hat y = \argmax_k p(x \mid y = k)\,\phi_k$ <SlideRef lecture={10} pages="21" />. The [[multivariate-gaussian]] density from lesson 7.1 is
+
+$$\mathcal{N}(x; \mu, \Sigma) = \frac{1}{(2\pi)^{d/2}|\Sigma|^{1/2}}\exp\Big(-\tfrac12 (x - \mu)^\top \Sigma^{-1}(x - \mu)\Big).$$
+
+This lesson asks what that classifier looks like as a function of $x$, and the answer depends on one modeling choice: whether the classes share a [[covariance-matrix|covariance matrix]].
+
+<Callout type="slide">
+
+L10 p.15 defines GDA with a covariance $\Sigma_k$ per class and says to fit "empirical means and variances of each label class"; read "variances" as covariance matrices. The slides never introduce the shared-covariance variant, the names LDA and QDA, or the link to logistic regression. L10 writes the Gaussian as $N(\mathbf{u}, \Sigma)$; we write $\mathcal{N}(\mu, \Sigma)$, second argument a covariance.
+
+</Callout>
+
+<Callout type="beyond">
+
+Everything derived in this lesson is beyond the slides (course map L10, derivation gaps 2 and 3). The only slide material is the GDA model (L10 pp.15–20) and the poll on p.21, whose statement (d) this lesson makes precise.
+
+</Callout>
+
+<Definition id="def-7-3-1" title="Linear discriminant analysis (shared-covariance GDA)" source="beyond the slides (L10 p.15 defines GDA with per-class Σ_k)">
+
+GDA in which every class has the same covariance matrix:
+
+$$y \sim \mathrm{Categorical}(\phi), \qquad x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma), \qquad k = 1, \dots, K.$$
+
+The parameters are $\phi$, the means $\mu_1, \dots, \mu_K$, and one symmetric positive definite $\Sigma$. The classes differ only in where their Gaussian clouds sit, not in their shape.
+
+Also written as: LDA, Fisher's discriminant analysis (the same boundary reached by a different argument), "GDA" in CS229, which uses the shared $\Sigma$ by default.
+
+</Definition>
+
+<Callout type="note">
+
+**Naming: QDA.** GDA with a separate covariance per class, $x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma_k)$, is exactly the model of L10 pp.15–20 and of def-7-2-2 in lesson 7.2. When it needs to be told apart from the shared-covariance variant it is called quadratic discriminant analysis (QDA), as in sklearn's `QuadraticDiscriminantAnalysis`; der-7-3-4 shows where the name comes from. The name is beyond the slides.
+
+</Callout>
+
+<Definition id="def-7-3-3" title="Gaussian Naive Bayes" source="beyond the slides (clarifies the L10 p.21 poll)">
+
+GDA with a diagonal covariance per class, $\Sigma_k = \diag(\sigma_{1k}^2, \dots, \sigma_{dk}^2)$. Equivalently, Naive Bayes ([[conditional-independence|the conditional-independence assumption]]) with a one-dimensional Gaussian for each feature: $x_j \mid y = k \sim \mathcal{N}(\mu_{jk}, \sigma_{jk}^2)$.
+
+Also written as: `GaussianNB` in sklearn.
+
+</Definition>
+
+<Check ids={["q-u7-l3-001", "q-u7-l3-002"]} />
+
+<Intuition>
+
+Take $d = 1$, two classes with the same variance $\sigma^2$. Each log class-conditional is a downward parabola in $x$, $-\frac{(x - \mu_k)^2}{2\sigma^2}$ plus a constant. Both parabolas have the same curvature $-\frac{1}{2\sigma^2}$, so their difference, the log-odds, has curvature zero: it is a straight line in $x$. A straight line through the [[sigmoid]] is logistic regression's S-curve.
+
+Now give class 1 a wider Gaussian, $\sigma_1 > \sigma_0$. Its parabola is flatter. Far from both means in either direction, the flatter parabola is the higher one, so the wide class wins at both extremes. The log-odds is now itself a parabola, opening upward, and it can cross zero twice (it does in TROPO): two cut-offs. That is the QDA answer to the hook's second question, and the TROPO example below finds both cut-offs.
+
+</Intuition>
+
+## Shared covariance makes the log-odds affine
+
+We work with two classes, numbered 0 and 1 as in the TROPO case. The question is the one lesson 6.3 asked of Naive Bayes (der-6-3-8): how do the log posterior odds depend on $x$?
+
+<Derivation
+  id="der-7-3-1"
+  title="With a shared covariance, the GDA log-odds are affine in x"
+  goalTex="\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} \text{ as a function of } x, \quad x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma)"
+  resultTex="\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = w^\top x + b, \quad w = \Sigma^{-1}(\mu_1 - \mu_0), \quad b = -\tfrac12\mu_1^\top\Sigma^{-1}\mu_1 + \tfrac12\mu_0^\top\Sigma^{-1}\mu_0 + \log\frac{\phi_1}{\phi_0}"
+  source="beyond the slides (course map L10 derivation gap 2); model of L10 p.15 with Σ_k = Σ"
+>
+
+<Chunk title="Write the log-odds as a difference of log joints">
+
+<Step justification="Bayes' rule for each posterior; the evidence $p(x)$ is the same in numerator and denominator and cancels" sticky="bayes-rule">
+$$\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = \frac{p(x \mid y = 1)\,\phi_1}{p(x \mid y = 0)\,\phi_0}$$
+</Step>
+
+<Step justification="the log of a quotient of products is a sum and difference of logs" sticky="log-rules">
+$$\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = \log\mathcal{N}(x; \mu_1, \Sigma) - \log\mathcal{N}(x; \mu_0, \Sigma) + \log\frac{\phi_1}{\phi_0}$$
+</Step>
+
+<Step justification="take the log of the multivariate Gaussian density: the log of the normalizer plus the exponent" sticky="multivariate-gaussian">
+$$\log\mathcal{N}(x; \mu_k, \Sigma) = -\tfrac{d}{2}\log 2\pi - \tfrac12\log|\Sigma| - \tfrac12(x - \mu_k)^\top\Sigma^{-1}(x - \mu_k)$$
+</Step>
+
+<Step justification="substitute step 3 into step 2; the normalizer terms are identical for both classes because $\Sigma$ is shared, so they cancel" fadeable>
+$$\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = -\tfrac12(x - \mu_1)^\top\Sigma^{-1}(x - \mu_1) + \tfrac12(x - \mu_0)^\top\Sigma^{-1}(x - \mu_0) + \log\frac{\phi_1}{\phi_0}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Expand the two quadratic forms and watch the quadratic term cancel">
+
+<Step justification="expand the product; the two cross terms are equal because each is a scalar, a scalar equals its transpose, and $\Sigma^{-1}$ is symmetric" sticky="quadratic-form">
+$$(x - \mu_k)^\top\Sigma^{-1}(x - \mu_k) = x^\top\Sigma^{-1}x - 2\mu_k^\top\Sigma^{-1}x + \mu_k^\top\Sigma^{-1}\mu_k$$
+</Step>
+
+<Step justification="substitute step 5 for $k = 1$ and $k = 0$ into step 4, multiplying through by $\mp\tfrac12$">
+$$\begin{aligned}\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = &-\tfrac12 x^\top\Sigma^{-1}x + \mu_1^\top\Sigma^{-1}x - \tfrac12\mu_1^\top\Sigma^{-1}\mu_1 \\ &+ \tfrac12 x^\top\Sigma^{-1}x - \mu_0^\top\Sigma^{-1}x + \tfrac12\mu_0^\top\Sigma^{-1}\mu_0 + \log\frac{\phi_1}{\phi_0}\end{aligned}$$
+</Step>
+
+<Step justification="the two $x^\top\Sigma^{-1}x$ terms have opposite signs and cancel; this is the only place the shared $\Sigma$ is used a second time" fadeable>
+$$\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = (\mu_1 - \mu_0)^\top\Sigma^{-1}x - \tfrac12\mu_1^\top\Sigma^{-1}\mu_1 + \tfrac12\mu_0^\top\Sigma^{-1}\mu_0 + \log\frac{\phi_1}{\phi_0}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Name the weights and the bias">
+
+<Step justification="transpose the row vector $(\mu_1 - \mu_0)^\top\Sigma^{-1}$; the inverse of a symmetric matrix is symmetric, so $(\Sigma^{-1})^\top = \Sigma^{-1}$" sticky="matrix-inverse" fadeable>
+$$w = \Sigma^{-1}(\mu_1 - \mu_0), \qquad (\mu_1 - \mu_0)^\top\Sigma^{-1}x = w^\top x$$
+</Step>
+
+<Step justification="the remaining terms of step 7 do not involve $x$; call them $b$">
+$$b = -\tfrac12\mu_1^\top\Sigma^{-1}\mu_1 + \tfrac12\mu_0^\top\Sigma^{-1}\mu_0 + \log\frac{\phi_1}{\phi_0}$$
+</Step>
+
+<Step justification="substitute steps 8 and 9 into step 7">
+$$\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = w^\top x + b$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 7 is the whole result. Each class contributes $-\tfrac12 x^\top\Sigma_k^{-1}x$, the curvature of its log-density, and with a shared $\Sigma$ the two curvatures are equal and cancel. What survives is linear in $x$.
+
+Two readings of $w$ and $b$:
+
+- **$w$ is not $\mu_1 - \mu_0$.** It is the mean difference after "whitening" by $\Sigma^{-1}$. If two features are positively correlated, $\Sigma^{-1}$ discounts the evidence they share, so $w$ can point well away from the line joining the means (q-u7-l3-004 works a case).
+- **With equal priors the boundary passes through the midpoint of the means.** At $x = \tfrac12(\mu_0 + \mu_1)$, $w^\top x = \tfrac12(\mu_1 - \mu_0)^\top\Sigma^{-1}(\mu_1 + \mu_0) = \tfrac12\mu_1^\top\Sigma^{-1}\mu_1 - \tfrac12\mu_0^\top\Sigma^{-1}\mu_0$ (the cross terms $\mu_1^\top\Sigma^{-1}\mu_0$ and $\mu_0^\top\Sigma^{-1}\mu_1$ are equal by the symmetry used in step 5 and cancel). That is exactly $-b$ when $\log(\phi_1/\phi_0) = 0$, so the log-odds there are 0. A larger $\phi_1$ adds a positive constant to $b$ and shifts the boundary toward $\mu_0$: the rarer class must earn its label with more extreme features.
+
+## The posterior is a sigmoid
+
+Affine log-odds give a sigmoid posterior by the same algebra as the last chunk of der-6-3-8.
+
+<Derivation
+  id="der-7-3-2"
+  title="Shared-covariance GDA has a logistic posterior and a hyperplane boundary"
+  goalTex="p(y = 1 \mid x) \text{ for shared-covariance GDA}"
+  resultTex="p(y = 1 \mid x) = \sigma(w^\top x + b) = \frac{1}{1 + e^{-(w^\top x + b)}}, \qquad \hat y = 1 \iff w^\top x + b > 0"
+  source="beyond the slides (course map L10 derivation gap 2); same steps as der-6-3-8 steps 7–9"
+>
+
+<Chunk title="From log-odds to probability">
+
+<Step justification="exponentiate der-7-3-1; with two classes $p(y = 0 \mid x) = 1 - p(y = 1 \mid x)$; write $p = p(y = 1 \mid x)$ and $z = w^\top x + b$">
+$$\frac{p}{1 - p} = e^{z}$$
+</Step>
+
+<Step justification="multiply both sides by $1 - p$ and collect the $p$ terms on the left" fadeable>
+$$p\,(1 + e^{z}) = e^{z}$$
+</Step>
+
+<Step justification="divide both sides by $1 + e^{z}$, which is positive" fadeable>
+$$p(y = 1 \mid x) = \frac{e^{z}}{1 + e^{z}}$$
+</Step>
+
+<Step justification="divide numerator and denominator by $e^{z}$; the result is the sigmoid" sticky="sigmoid" fadeable>
+$$p(y = 1 \mid x) = \frac{1}{1 + e^{-z}} = \sigma(w^\top x + b)$$
+</Step>
+
+<Step justification="$\sigma(z) > \tfrac12$ exactly when $z > 0$, so the Bayes classifier's boundary is the set where the log-odds vanish">
+$$\hat y = 1 \iff w^\top x + b > 0, \qquad \text{boundary: } \{x : w^\top x + b = 0\}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+With $K$ classes and a shared $\Sigma$, the same expansion gives each class a score $\log\phi_k + \mu_k^\top\Sigma^{-1}x - \tfrac12\mu_k^\top\Sigma^{-1}\mu_k$ after dropping the class-independent $-\tfrac12 x^\top\Sigma^{-1}x$ and normalizer; the posterior is a softmax of affine scores, and the boundaries between classes are hyperplanes. That is why the method is called *linear* discriminant analysis.
+
+<Check ids={["q-u7-l3-003", "q-u7-l3-004", "q-u7-l3-005", "q-u7-l3-012"]} />
+
+## Fitting the shared covariance
+
+Lesson 7.2 fit one covariance per class. With one shared $\Sigma$, the class-$k$ terms no longer separate from the others, because they all involve the same matrix. The derivation is lesson 7.2's covariance derivation with one change: the sum runs over all $n$ examples, each centered at its own class mean.
+
+<Derivation
+  id="der-7-3-3"
+  title="The pooled-covariance MLE"
+  goalTex="\max_{\mu_0, \mu_1, \Sigma, \phi}\; \sum_{i=1}^{n}\log p_\theta(x^{(i)}, y^{(i)}), \quad x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma)"
+  resultTex="\hat\mu_k = \frac{1}{n_k}\sum_{i:\,y^{(i)} = k} x^{(i)}, \qquad \hat\phi_k = \frac{n_k}{n}, \qquad \hat\Sigma = \frac{1}{n}\sum_{i=1}^{n}(x^{(i)} - \hat\mu_{y^{(i)}})(x^{(i)} - \hat\mu_{y^{(i)}})^\top = \sum_{k}\frac{n_k}{n}\hat\Sigma_k"
+  source="beyond the slides (course map L10 derivation gap 2; L10 pp.16–20 do the per-class version, stated only)"
+>
+
+<Chunk title="Write the log-likelihood with one Σ">
+
+<Step justification="the generative log-likelihood splits into a class-conditional term and a prior term (der-6-1-3; L10 p.16)" sticky="log-likelihood">
+$$\ell(\theta) = \sum_{i=1}^{n}\log\mathcal{N}(x^{(i)}; \mu_{y^{(i)}}, \Sigma) + \sum_{i=1}^{n}\log\phi_{y^{(i)}}$$
+</Step>
+
+<Step justification="log of the Gaussian density, as in der-7-3-1 step 3, summed over the examples" sticky="multivariate-gaussian">
+$$\ell(\theta) = \sum_{i=1}^{n}\Big[-\tfrac{d}{2}\log 2\pi - \tfrac12\log|\Sigma| - \tfrac12(x^{(i)} - \mu_{y^{(i)}})^\top\Sigma^{-1}(x^{(i)} - \mu_{y^{(i)}})\Big] + \sum_{i=1}^{n}\log\phi_{y^{(i)}}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="The means and priors do not change">
+
+<Step justification="only the class-$k$ terms involve $\mu_k$; $\nabla_\mu (x - \mu)^\top A(x - \mu) = -2A(x - \mu)$ for symmetric $A$" sticky="matrix-calculus-identities">
+$$\nabla_{\mu_k}\ell = \Sigma^{-1}\sum_{i:\,y^{(i)} = k}(x^{(i)} - \mu_k)$$
+</Step>
+
+<Step justification="set step 3 to zero, multiply by the invertible $\Sigma$, and divide by $n_k$, as in der-7-2-4 steps 5–7" sticky="first-order-condition" fadeable>
+$$\hat\mu_k = \frac{1}{n_k}\sum_{i:\,y^{(i)} = k}x^{(i)}$$
+</Step>
+
+<Step justification="the prior term does not involve $\Sigma$ or $\mu$, so its maximizer is the class proportion, exactly as in der-7-2-3 (der-6-3-5)" sticky="lagrange-multipliers">
+$$\hat\phi_k = \frac{n_k}{n}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Reduce the Σ problem to lesson 7.2's form">
+
+<Step justification="$\hat\mu_k$ does not depend on $\Sigma$, so substituting it is valid; keep the terms that involve $\Sigma$; $\log|\Sigma|$ appears once per example; write $r^{(i)} = x^{(i)} - \hat\mu_{y^{(i)}}$ for the residual from the example's own class mean">
+$$\ell(\Sigma) = -\tfrac{n}{2}\log|\Sigma| - \tfrac12\sum_{i=1}^{n} r^{(i)\top}\Sigma^{-1}r^{(i)} + \text{const}$$
+</Step>
+
+<Step justification="trace trick: a scalar is its own trace and the trace is invariant under cyclic shifts; the trace is linear, so the sum moves inside" sticky="trace">
+$$\sum_{i=1}^{n} r^{(i)\top}\Sigma^{-1}r^{(i)} = \mathrm{tr}\Big(\Sigma^{-1}\sum_{i=1}^{n} r^{(i)}r^{(i)\top}\Big) = \mathrm{tr}(\Sigma^{-1}S)$$
+</Step>
+
+<Step justification="substitute step 7 into step 6; this is the per-class objective of der-7-2-5 step 5 with $n_k \to n$ and the class scatter matrix $S_k$ replaced by the pooled scatter $S$">
+$$\ell(\Sigma) = -\tfrac{n}{2}\log|\Sigma| - \tfrac12\mathrm{tr}(\Sigma^{-1}S) + \text{const}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Solve and read the answer as a weighted average">
+
+<Step justification="$\nabla_\Sigma\log|\Sigma| = \Sigma^{-1}$ and $\nabla_\Sigma\mathrm{tr}(\Sigma^{-1}S) = -\Sigma^{-1}S\Sigma^{-1}$ (der-7-2-5 steps 6–7); set the gradient to zero" sticky="matrix-calculus-identities">
+$$-\tfrac{n}{2}\Sigma^{-1} + \tfrac12\Sigma^{-1}S\Sigma^{-1} = 0$$
+</Step>
+
+<Step justification="multiply on the left by $2\Sigma$; $\Sigma\Sigma^{-1} = I$ (as in der-7-2-5 step 9)" sticky="matrix-inverse" fadeable>
+$$-nI + S\Sigma^{-1} = 0$$
+</Step>
+
+<Step justification="multiply on the right by $\Sigma$ (as in der-7-2-5 step 10)" fadeable>
+$$-n\Sigma + S = 0$$
+</Step>
+
+<Step justification="divide by $n$; der-7-2-6, with $n_k \to n$ and $S_k \to S$, shows this stationary point is the global maximum provided $S$ is positive definite, which holds when $n - K \ge d$ (generically)" fadeable>
+$$\hat\Sigma = \frac{S}{n} = \frac{1}{n}\sum_{i=1}^{n}(x^{(i)} - \hat\mu_{y^{(i)}})(x^{(i)} - \hat\mu_{y^{(i)}})^\top$$
+</Step>
+
+<Step justification="group the sum in step 12 by class; the class-$k$ block is $n_k\hat\Sigma_k$ by der-7-2-5 step 11">
+$$\hat\Sigma = \frac{1}{n}\sum_{k}n_k\hat\Sigma_k = \sum_{k}\frac{n_k}{n}\hat\Sigma_k$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The pooled estimate is the per-class covariances averaged with weights equal to the class proportions. Every example is centered at its **own** class mean, not at the overall mean; centering at the overall mean would add the spread between the class means to $\hat\Sigma$ and inflate it along $\mu_1 - \mu_0$, exactly the direction that matters for classification.
+
+Pooling also buys stability. A per-class $\hat\Sigma_k$ is a sum of $n_k$ outer products whose residuals sum to zero, so its rank is at most $n_k - 1$ and it is singular whenever $n_k \le d$. The pooled $S$ has rank at most $n - K$, so LDA needs $n - K \ge d$, a much weaker condition when one class is rare.
+
+<Check ids={["q-u7-l3-006", "q-u7-l3-007"]} />
+
+## Per-class covariances: QDA has a quadratic boundary
+
+What if we keep the slides' model, a $\Sigma_k$ per class? Run der-7-3-1 again and see which cancellation fails.
+
+<Derivation
+  id="der-7-3-4"
+  title="With per-class covariances, the log-odds are quadratic in x"
+  goalTex="\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)}, \quad x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma_k)"
+  resultTex="\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = \tfrac12 x^\top(\Sigma_0^{-1} - \Sigma_1^{-1})x + (\Sigma_1^{-1}\mu_1 - \Sigma_0^{-1}\mu_0)^\top x + c, \quad c = -\tfrac12\mu_1^\top\Sigma_1^{-1}\mu_1 + \tfrac12\mu_0^\top\Sigma_0^{-1}\mu_0 - \tfrac12\log\frac{|\Sigma_1|}{|\Sigma_0|} + \log\frac{\phi_1}{\phi_0}"
+  source="beyond the slides (course map L10 derivation gap 2); model of L10 p.15"
+>
+
+<Chunk title="Only part of the normalizer cancels">
+
+<Step justification="der-7-3-1 steps 1–2, which did not use the shared covariance" sticky="bayes-rule">
+$$\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = \log\mathcal{N}(x; \mu_1, \Sigma_1) - \log\mathcal{N}(x; \mu_0, \Sigma_0) + \log\frac{\phi_1}{\phi_0}$$
+</Step>
+
+<Step justification="substitute the log density (der-7-3-1 step 3) for each class; the $-\tfrac{d}{2}\log 2\pi$ terms cancel, but the log-determinants differ and survive" sticky="determinant" fadeable>
+$$= -\tfrac12\log\frac{|\Sigma_1|}{|\Sigma_0|} - \tfrac12(x - \mu_1)^\top\Sigma_1^{-1}(x - \mu_1) + \tfrac12(x - \mu_0)^\top\Sigma_0^{-1}(x - \mu_0) + \log\frac{\phi_1}{\phi_0}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Expand and collect by degree in x">
+
+<Step justification="expand each quadratic form as in der-7-3-1 step 5, now with its own $\Sigma_k^{-1}$" sticky="quadratic-form">
+$$(x - \mu_k)^\top\Sigma_k^{-1}(x - \mu_k) = x^\top\Sigma_k^{-1}x - 2\mu_k^\top\Sigma_k^{-1}x + \mu_k^\top\Sigma_k^{-1}\mu_k$$
+</Step>
+
+<Step justification="collect the degree-2 terms of step 2 after substituting step 3; they no longer cancel" fadeable>
+$$-\tfrac12 x^\top\Sigma_1^{-1}x + \tfrac12 x^\top\Sigma_0^{-1}x = \tfrac12 x^\top(\Sigma_0^{-1} - \Sigma_1^{-1})x$$
+</Step>
+
+<Step justification="collect the degree-1 terms, transposing with the symmetry of each $\Sigma_k^{-1}$" sticky="matrix-inverse" fadeable>
+$$\mu_1^\top\Sigma_1^{-1}x - \mu_0^\top\Sigma_0^{-1}x = (\Sigma_1^{-1}\mu_1 - \Sigma_0^{-1}\mu_0)^\top x$$
+</Step>
+
+<Step justification="everything else is constant in $x$; call it $c$">
+$$c = -\tfrac12\mu_1^\top\Sigma_1^{-1}\mu_1 + \tfrac12\mu_0^\top\Sigma_0^{-1}\mu_0 - \tfrac12\log\frac{|\Sigma_1|}{|\Sigma_0|} + \log\frac{\phi_1}{\phi_0}$$
+</Step>
+
+<Step justification="add steps 4, 5, and 6">
+$$\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = \tfrac12 x^\top(\Sigma_0^{-1} - \Sigma_1^{-1})x + (\Sigma_1^{-1}\mu_1 - \Sigma_0^{-1}\mu_0)^\top x + c$$
+</Step>
+
+</Chunk>
+
+<Chunk title="When does the quadratic term vanish?">
+
+<Step justification="matrix inversion is one-to-one, so $\Sigma_0^{-1} = \Sigma_1^{-1}$ exactly when $\Sigma_0 = \Sigma_1$; then steps 5–6 reduce to der-7-3-1's $w$ and $b$" sticky="matrix-inverse">
+$$\Sigma_0^{-1} - \Sigma_1^{-1} = 0 \iff \Sigma_0 = \Sigma_1$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+So QDA's boundary $\{x : \text{step 7} = 0\}$ is a quadric: in two dimensions an ellipse, parabola, or hyperbola (or a pair of lines). The posterior is still a sigmoid, but of a quadratic function of $x$: $p(y = 1 \mid x) = \sigma\big(\tfrac12 x^\top A x + \beta^\top x + c\big)$ with $A = \Sigma_0^{-1} - \Sigma_1^{-1}$. That is the form of logistic regression on the features $x_j$ and all products $x_j x_l$.
+
+The price is parameters. QDA estimates $K$ symmetric $d \times d$ covariances, $K\,d(d+1)/2$ numbers; LDA estimates one, $d(d+1)/2$. At $d = 100$ and $K = 2$ that is 10,100 against 5,050 covariance entries, and each $\hat\Sigma_k$ rests only on its own $n_k$ examples.
+
+<Check ids={["q-u7-l3-008", "q-u7-l3-009"]} />
+
+## Diagonal covariance: Gaussian Naive Bayes
+
+The L10 p.21 poll says "GDA is the equivalent of Naive Bayes but for continuous data." The intended answer is True, in spirit: both are generative classifiers fit by closed-form MLE and used through Bayes' rule. Strictly, GDA with a full $\Sigma_k$ makes **no** independence assumption. The precise statement is that one special case of GDA is Naive Bayes.
+
+<Derivation
+  id="der-7-3-5"
+  title="A diagonal covariance makes the Gaussian factorize: diagonal GDA is Gaussian Naive Bayes"
+  goalTex="\mathcal{N}(x; \mu_k, \Sigma_k) \text{ with } \Sigma_k = \diag(\sigma_{1k}^2, \dots, \sigma_{dk}^2)"
+  resultTex="p(x \mid y = k) = \mathcal{N}(x; \mu_k, \Sigma_k) = \prod_{j=1}^{d}\mathcal{N}(x_j; \mu_{jk}, \sigma_{jk}^2)"
+  source="beyond the slides (course map L10 derivation gap 3; clarifies L10 p.21 poll (d))"
+>
+
+<Chunk title="The determinant and the inverse of a diagonal matrix">
+
+<Step justification="the determinant of a diagonal matrix is the product of its diagonal entries" sticky="determinant">
+$$|\Sigma_k| = \prod_{j=1}^{d}\sigma_{jk}^2$$
+</Step>
+
+<Step justification="the inverse of a diagonal matrix with nonzero entries inverts each entry" sticky="matrix-inverse">
+$$\Sigma_k^{-1} = \diag\Big(\frac{1}{\sigma_{1k}^2}, \dots, \frac{1}{\sigma_{dk}^2}\Big)$$
+</Step>
+
+<Step justification="a quadratic form with a diagonal matrix has no cross terms: $\sum_{j,l}A_{jl}v_jv_l$ keeps only $j = l$" sticky="quadratic-form" fadeable>
+$$(x - \mu_k)^\top\Sigma_k^{-1}(x - \mu_k) = \sum_{j=1}^{d}\frac{(x_j - \mu_{jk})^2}{\sigma_{jk}^2}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Split the density into one factor per feature">
+
+<Step justification="substitute steps 1 and 3 into the density; $(2\pi)^{d/2} = \prod_j (2\pi)^{1/2}$ and $|\Sigma_k|^{1/2} = \prod_j\sigma_{jk}$" sticky="multivariate-gaussian">
+$$\mathcal{N}(x; \mu_k, \Sigma_k) = \frac{1}{\prod_{j}\sqrt{2\pi}\,\sigma_{jk}}\exp\Big(-\sum_{j=1}^{d}\frac{(x_j - \mu_{jk})^2}{2\sigma_{jk}^2}\Big)$$
+</Step>
+
+<Step justification="the exponential of a sum is the product of the exponentials" fadeable>
+$$\mathcal{N}(x; \mu_k, \Sigma_k) = \prod_{j=1}^{d}\frac{1}{\sqrt{2\pi}\,\sigma_{jk}}\exp\Big(-\frac{(x_j - \mu_{jk})^2}{2\sigma_{jk}^2}\Big)$$
+</Step>
+
+<Step justification="each factor is a one-dimensional Gaussian density in $x_j$" sticky="gaussian">
+$$\mathcal{N}(x; \mu_k, \Sigma_k) = \prod_{j=1}^{d}\mathcal{N}(x_j; \mu_{jk}, \sigma_{jk}^2)$$
+</Step>
+
+<Step justification="a joint density that is a product of one-variable densities, given the class, is conditional independence given the class: the Naive Bayes assumption of def-6-3-2 with Gaussian factors" sticky="conditional-independence">
+$$p(x \mid y = k) = \prod_{j=1}^{d}p(x_j \mid y = k), \qquad x_j \mid y = k \sim \mathcal{N}(\mu_{jk}, \sigma_{jk}^2)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The converse also holds for Gaussians: if the features are conditionally independent given the class, every off-diagonal covariance is zero, so $\Sigma_k$ is diagonal. For a Gaussian class-conditional, then, "Naive Bayes" and "diagonal $\Sigma_k$" are the same assumption. Fitting follows the Naive Bayes pattern of der-6-3-3: the log-likelihood splits into one one-dimensional Gaussian problem per feature and class, so $\hat\mu_{jk}$ is the class-$k$ mean of feature $j$ and $\hat\sigma_{jk}^2$ its class-$k$ variance, which are the diagonal entries of lesson 7.2's $\hat\Sigma_k$.
+
+The three variants form a ladder of assumptions about the covariance:
+
+| Model | Covariance | Free covariance entries | Log-odds in $x$ |
+|---|---|---|---|
+| QDA (the slides' GDA) | $\Sigma_k$ per class, full | $K\,d(d+1)/2$ | quadratic, any orientation |
+| LDA | one shared $\Sigma$, full | $d(d+1)/2$ | affine |
+| Gaussian NB | $\Sigma_k$ per class, diagonal | $Kd$ | quadratic, no cross terms $x_jx_l$ |
+| Gaussian NB, shared variances | one shared diagonal $\Sigma$ | $d$ | affine |
+
+The last row combines both restrictions, and der-7-3-1 applies to it unchanged: it is linear for the same reason Bernoulli NB is (der-6-3-8).
+
+<Check ids={["q-u7-l3-010", "q-u7-l3-011"]} />
+
+## GDA and logistic regression: same form, different fit
+
+Shared-covariance GDA and logistic regression both produce $p(y = 1 \mid x) = \sigma(w^\top x + b)$. They are still different methods, for two separate reasons.
+
+**The implication runs one way.** Gaussian class-conditionals with a shared covariance imply a logistic posterior; a logistic posterior does not imply Gaussian class-conditionals. Here is a counterexample with a count feature. Let $x \in \{0, 1, 2, \dots\}$ with $x \mid y = k \sim \mathrm{Poisson}(\lambda_k)$, whose log pmf is $x\log\lambda_k - \lambda_k - \log x!$. In the log-odds the $\log x!$ terms are identical and cancel, leaving
+
+$$\log\frac{p(y = 1 \mid x)}{p(y = 0 \mid x)} = x\log\frac{\lambda_1}{\lambda_0} - (\lambda_1 - \lambda_0) + \log\frac{\phi_1}{\phi_0},$$
+
+which is affine in $x$, so the posterior is again a sigmoid. Bernoulli Naive Bayes (der-6-3-8) is a third example. Logistic regression assumes only the sigmoid form, so it is correct for every one of these generative stories; GDA is correct only for the Gaussian one. That is the sense in which GDA makes the stronger assumption.
+
+**The fit differs even when the form agrees.** The two methods maximize different objectives.
+
+<Derivation
+  id="der-7-3-6"
+  title="GDA maximizes the joint likelihood, logistic regression the conditional"
+  goalTex="\text{compare } (\hat w_{\mathrm{GDA}}, \hat b_{\mathrm{GDA}}) \text{ and } (\hat w_{\mathrm{LR}}, \hat b_{\mathrm{LR}})"
+  resultTex="\ell_{\mathrm{joint}}(\theta) = \underbrace{\sum_i \log p_\theta(y^{(i)} \mid x^{(i)})}_{\text{logistic regression maximizes this alone}} + \underbrace{\sum_i \log p_\theta(x^{(i)})}_{\text{GDA also fits this}}, \qquad \ell_{\mathrm{cond}}(\hat w_{\mathrm{LR}}, \hat b_{\mathrm{LR}}) \ge \ell_{\mathrm{cond}}(\hat w_{\mathrm{GDA}}, \hat b_{\mathrm{GDA}})"
+  source="beyond the slides (course map L10 derivation gap 2; Part B topic (12e))"
+>
+
+<Chunk title="Split the joint log-likelihood">
+
+<Step justification="product rule, factoring the joint the other way round from the generative model" sticky="chain-rule-probability">
+$$p_\theta(x, y) = p_\theta(y \mid x)\,p_\theta(x)$$
+</Step>
+
+<Step justification="take logs and sum over the training set; the log of a product is a sum of logs" sticky="log-rules">
+$$\ell_{\mathrm{joint}}(\theta) = \sum_{i=1}^{n}\log p_\theta(y^{(i)} \mid x^{(i)}) + \sum_{i=1}^{n}\log p_\theta(x^{(i)})$$
+</Step>
+
+<Step justification="for shared-covariance GDA the first sum depends on $\theta = (\phi, \mu_0, \mu_1, \Sigma)$ only through $(w, b)$ (der-7-3-2); call it $\ell_{\mathrm{cond}}(w, b)$" sticky="sigmoid">
+$$\sum_{i=1}^{n}\log p_\theta(y^{(i)} \mid x^{(i)}) = \ell_{\mathrm{cond}}(w, b) = \sum_{i=1}^{n}\Big[y^{(i)}\log\sigma(w^\top x^{(i)} + b) + (1 - y^{(i)})\log\big(1 - \sigma(w^\top x^{(i)} + b)\big)\Big]$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Compare the two maximizers">
+
+<Step justification="logistic regression is the discriminative model with exactly this conditional, fit by maximizing it over all $(w, b)$ (or approaching the supremum, which may not be attained on separable data)">
+$$(\hat w_{\mathrm{LR}}, \hat b_{\mathrm{LR}}) = \argmax_{w, b}\;\ell_{\mathrm{cond}}(w, b)$$
+</Step>
+
+<Step justification="every $(w, b)$ is reachable from GDA parameters: take $\Sigma = I$, $\mu_0 = 0$, $\mu_1 = w$, and choose $\phi_1$ so that $\log\frac{\phi_1}{\phi_0} = b + \tfrac12 w^\top w$ (der-7-3-1 steps 8–9)">
+$$\{(w, b) \text{ produced by some GDA } \theta\} = \mathbb{R}^d \times \mathbb{R}$$
+</Step>
+
+<Step justification="so the GDA estimate is one of the candidates logistic regression searched over, and logistic regression picked the best one for $\ell_{\mathrm{cond}}$" fadeable>
+$$\ell_{\mathrm{cond}}(\hat w_{\mathrm{LR}}, \hat b_{\mathrm{LR}}) \ge \ell_{\mathrm{cond}}(\hat w_{\mathrm{GDA}}, \hat b_{\mathrm{GDA}})$$
+</Step>
+
+<Step justification="GDA's closed-form MLE (der-7-3-3) maximizes the sum in step 2, trading some of the first term for the second; the two maximizers coincide only if GDA's parameters happen to maximize $\ell_{\mathrm{cond}}$ as well" fadeable>
+$$(\hat w_{\mathrm{GDA}}, \hat b_{\mathrm{GDA}}) = \Big(\hat\Sigma^{-1}(\hat\mu_1 - \hat\mu_0),\ \hat b(\hat\mu, \hat\Sigma, \hat\phi)\Big) \ne (\hat w_{\mathrm{LR}}, \hat b_{\mathrm{LR}}) \text{ in general}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The second term in step 2 is the marginal $p_\theta(x) = \sum_k\phi_k\mathcal{N}(x; \mu_k, \Sigma)$, a Gaussian mixture. GDA spends effort making the inputs themselves look Gaussian; logistic regression ignores where the inputs came from and spends all its effort on the labels.
+
+<Callout type="beyond">
+
+Which is better depends on whether the Gaussian story is true, and the standard comparison (CS229 §4.1; Ng and Jordan, 2002) goes like this. When the class-conditionals really are Gaussian with a shared covariance, GDA uses that knowledge: its estimates come from class means and a pooled covariance, and it typically needs fewer examples to reach a given accuracy. GDA is asymptotically efficient in that case (CS229). When the class-conditionals are not Gaussian (heavy tails, skew, counts, mixtures), GDA's $w$ is computed from a wrong model and can be badly off, while logistic regression still targets the best sigmoid. With plenty of data, logistic regression is the safer choice; with little data and a plausible Gaussian model, GDA often wins. This is the L9 trade-off between generative and discriminative models (lesson 6.1), now with a formula for each side.
+
+</Callout>
+
+<Check ids={["q-u7-l3-013", "q-u7-l3-014"]} />
+
+## Explore
+
+<Widget
+  name="gda-fitter"
+  sharedCovariance={true}
+  showLogisticRegression={true}
+  challenge="Start with shared covariance on and watch the boundary stay straight. Turn it off and stretch one class's ellipse: where does the boundary curve, and can it close into an ellipse around one class? Then drag a few points of one class far out along a line and compare how far the GDA line and the logistic-regression line move."
+/>
+
+## Worked example
+
+{/* example-case: TROPO population parameters from the case spec (pedagogy reference Part C, C3); no sampled data is used */}
+
+<Example case="tropo" title="TROPO: the troponin cut-off from the GDA posterior">
+
+The case specifies, on the scale $t = \log T$ with $T$ in ng/L, the class-conditionals $t \mid \text{MI} = 0 \sim \mathcal{N}(\log 8, 0.6^2)$ and $t \mid \text{MI} = 1 \sim \mathcal{N}(\log 60, 0.9^2)$, with prevalence $\phi_1 = 0.15$. These are the population parameters of the case's generative model, not estimates from a sample. Write $\mu_0 = \log 8 \approx 2.0794$, $\mu_1 = \log 60 \approx 4.0943$, and $\log\frac{\phi_1}{\phi_0} = \log\frac{0.15}{0.85} \approx -1.7346$.
+
+**Our simplification: a shared variance (LDA).** The spec's variances differ, so this is a deliberate approximation. Use the pooled variance that der-7-3-3 step 13 converges to as the sample grows, $\sigma^2 = 0.85 \times 0.36 + 0.15 \times 0.81 = 0.4275$. In one dimension der-7-3-1 gives
+
+$$w = \frac{\mu_1 - \mu_0}{\sigma^2} = \frac{2.0149}{0.4275} \approx 4.713, \qquad b = -\frac{\mu_1^2 - \mu_0^2}{2\sigma^2} + \log\frac{\phi_1}{\phi_0} \approx -16.284.$$
+
+The posterior is $\sigma(4.713\,t - 16.284)$, an S-curve in log troponin. The cut-off is $t^\star = -b/w \approx 3.455$, that is $T^\star = e^{3.455} \approx 31.7$ ng/L. With equal priors it would sit at the midpoint $\tfrac12(\mu_0 + \mu_1) \approx 3.087$, the geometric mean $\sqrt{8 \times 60} \approx 21.9$ ng/L; the 15% prevalence moves it up, because MI is the rarer class.
+
+**The spec's model: unequal variances (QDA).** In one dimension der-7-3-4 gives log-odds $a t^2 + \beta t + c$ with
+
+$$a = \tfrac12\Big(\frac{1}{0.36} - \frac{1}{0.81}\Big) \approx 0.7716, \quad \beta = \frac{\mu_1}{0.81} - \frac{\mu_0}{0.36} \approx -0.7215, \quad c = -\frac{\mu_1^2}{2 \times 0.81} + \frac{\mu_0^2}{2 \times 0.36} - \tfrac12\log\frac{0.81}{0.36} + \log\frac{\phi_1}{\phi_0} \approx -6.482.$$
+
+Since $a > 0$ the log-odds is an upward parabola with two roots, $t \approx 3.403$ and $t \approx -2.468$: $T \approx 30.1$ ng/L and $T \approx 0.085$ ng/L. Above 30.1 ng/L the model says MI, as expected. Below 0.085 ng/L it says MI again, because the MI Gaussian is wider and so dominates far out in **both** tails, as the intuition section predicted. That lower region is far below anything a troponin assay reports, so the second cut-off is a property of the Gaussian model, not of patients.
+
+**What changes in between.** At $T = 20$ ng/L the shared-variance model gives $p(\text{MI} \mid T) \approx 0.103$ and the unequal-variance model 0.152; at $T = 52$ ng/L, 0.912 and 0.938. The two cut-offs differ by under 2 ng/L, but the posteriors near the boundary differ by several percentage points. A logistic regression on $t$ alone is misspecified for the spec's model, because the true log-odds are quadratic in $t$; a logistic regression on $(t, t^2)$ is not.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u7-l3-015", "q-u7-l3-016"]} />
+
+## Pitfalls
+
+<Pitfall title="Same sigmoid form does not mean the same θ" misconception="gda-lr-same-theta">
+
+The belief: since shared-covariance GDA and logistic regression both output $\sigma(w^\top x + b)$, fitting either on the same data gives the same $w$ and $b$. The fix: GDA maximizes the joint likelihood and logistic regression the conditional one (der-7-3-6). GDA's $\hat w = \hat\Sigma^{-1}(\hat\mu_1 - \hat\mu_0)$ comes from class means and a pooled covariance; logistic regression's comes from iterative optimization of the label likelihood. The fitted weights generally differ, and on non-Gaussian data they can differ a lot.
+
+</Pitfall>
+
+<Pitfall title="GDA does not always beat logistic regression" misconception="gda-always-better">
+
+The belief: GDA uses more information (it models $x$ too), so it always classifies at least as well. The fix: the extra information is only correct if the class-conditionals are Gaussian with the covariance structure assumed. When that holds, GDA is more data-efficient. When it fails (skewed, heavy-tailed, or multimodal classes), the extra modeling misleads the fit, and logistic regression, which assumes only the sigmoid form, is more robust. A logistic posterior is implied by many generative models (the Poisson example above), not only the Gaussian one.
+
+</Pitfall>
+
+<Pitfall title="Full-covariance GDA does not assume conditional independence" misconception="full-gda-cond-indep">
+
+The belief: GDA is "Naive Bayes for continuous data", so it assumes the features are independent given the class. The fix: a full $\Sigma_k$ models every pairwise covariance within a class; only a diagonal $\Sigma_k$ makes the density factorize into one Gaussian per feature (der-7-3-5). The L10 p.21 poll's statement (d) is right that GDA follows the same generative recipe as Naive Bayes; it is wrong if read as "GDA makes the Naive Bayes assumption". Gaussian Naive Bayes is the diagonal special case.
+
+</Pitfall>
+
+<Pitfall title="LDA here is not latent Dirichlet allocation" misconception="lda-latent-dirichlet">
+
+"LDA" names two unrelated methods. Linear discriminant analysis (this lesson) is a supervised classifier with Gaussian class-conditionals and a shared covariance. Latent Dirichlet allocation is an unsupervised topic model for text, built from Dirichlet and categorical distributions. In sklearn they live in different modules: `sklearn.discriminant_analysis.LinearDiscriminantAnalysis` and `sklearn.decomposition.LatentDirichletAllocation`.
+
+</Pitfall>
+
+<Pitfall title="The pooled covariance is singular when d is too large" misconception="pooled-cov-singular">
+
+The belief: the pooled $\hat\Sigma$ can always be inverted to compute $w = \hat\Sigma^{-1}(\hat\mu_1 - \hat\mu_0)$. The fix: $\hat\Sigma = S/n$ is a sum of $n$ outer products whose residuals sum to zero within each class, so its rank is at most $n - K$. With $d > n - K$ (for example, a bag-of-words matrix with more words than documents), $\hat\Sigma$ is singular and $\hat\Sigma^{-1}$ does not exist. Standard remedies are shrinkage, $\hat\Sigma + \lambda I$ (sklearn's `shrinkage` option), or a diagonal covariance, which is Gaussian Naive Bayes. Per-class QDA hits the same wall sooner, at $n_k \le d$.
+
+</Pitfall>
+
+<Pitfall title="Center each example at its own class mean" misconception="pooled-cov-global-mean">
+
+The belief: the shared covariance is the covariance of all the $x^{(i)}$ together, ignoring labels. The fix: der-7-3-3 step 12 centers each $x^{(i)}$ at $\hat\mu_{y^{(i)}}$. Centering at the overall mean adds the between-class spread, which lies along $\hat\mu_1 - \hat\mu_0$, and inflates $\hat\Sigma$ exactly in the direction the classifier needs; $\hat\Sigma^{-1}$ then shrinks $w$ along it.
+
+</Pitfall>
+
+<Connections>
+
+- Before: 7.1 Multivariate Gaussian and covariance (the density, $|\Sigma|$, $\Sigma^{-1}$, ellipses); 7.2 Gaussian discriminant analysis (the per-class MLE that der-7-3-3 reuses).
+- Unit 6: der-6-3-8 proved the same linear log-odds for Bernoulli Naive Bayes; lesson 6.1 set up the generative-discriminative trade-off that der-7-3-6 makes precise.
+- Logistic regression (Unit 3) is the discriminative model with the same posterior form.
+- Next: Unit 8 clusters unlabeled data with k-means.
+- Later: Unit 9 (L11–L12) drops the labels from GDA. A Gaussian mixture with unknown class memberships is GDA without $y$, and fitting it needs EM; k-means is its hard-assignment cousin.
+- Graph neighbors: [[conditional-independence]], [[matrix-inverse]], [[quadratic-form]], [[sigmoid]].
+
+</Connections>
+
+<HomeworkBridge hw="hw3" skills={["gda-linear-boundary", "gda-sigmoid-posterior", "pooled-covariance-mle", "qda-quadratic-boundary", "gaussian-naive-bayes", "gda-vs-logistic-regression"]} />
+
+<Summary>
+
+- **LDA:** $x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma)$ with one shared $\Sigma$. **QDA:** $\Sigma_k$ per class (the slides' GDA). **Gaussian NB:** diagonal $\Sigma_k$.
+- **Shared covariance ⇒ affine log-odds:** $\log\frac{p(y=1\mid x)}{p(y=0\mid x)} = w^\top x + b$, $w = \Sigma^{-1}(\mu_1 - \mu_0)$, $b = -\tfrac12\mu_1^\top\Sigma^{-1}\mu_1 + \tfrac12\mu_0^\top\Sigma^{-1}\mu_0 + \log\frac{\phi_1}{\phi_0}$. The $x^\top\Sigma^{-1}x$ terms cancel.
+- **Posterior:** $p(y = 1 \mid x) = \sigma(w^\top x + b)$; boundary is the hyperplane $w^\top x + b = 0$, through the midpoint of the means when $\phi_0 = \phi_1$.
+- **Pooled MLE:** $\hat\Sigma = \frac1n\sum_i(x^{(i)} - \hat\mu_{y^{(i)}})(x^{(i)} - \hat\mu_{y^{(i)}})^\top = \sum_k\frac{n_k}{n}\hat\Sigma_k$; means and priors as before. Singular when $d > n - K$.
+- **QDA:** log-odds $\tfrac12 x^\top(\Sigma_0^{-1} - \Sigma_1^{-1})x + (\Sigma_1^{-1}\mu_1 - \Sigma_0^{-1}\mu_0)^\top x + c$; quadratic boundary, $K\,d(d+1)/2$ covariance entries.
+- **Diagonal GDA = Gaussian NB:** $\mathcal{N}(x; \mu_k, \diag(\sigma_{jk}^2)) = \prod_j\mathcal{N}(x_j; \mu_{jk}, \sigma_{jk}^2)$. Full-covariance GDA assumes no conditional independence.
+- **GDA vs logistic regression:** GDA ⇒ logistic form, not conversely. GDA maximizes the joint likelihood, logistic regression the conditional, so the fitted $(w, b)$ differ; GDA is more data-efficient when the Gaussian model holds, logistic regression more robust when it does not.
+
+</Summary>

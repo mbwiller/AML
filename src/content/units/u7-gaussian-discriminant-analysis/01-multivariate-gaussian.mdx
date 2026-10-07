@@ -1,0 +1,685 @@
+---
+title: "The multivariate Gaussian and covariance"
+unit: u7-gaussian-discriminant-analysis
+order: 1
+slug: multivariate-gaussian-and-covariance
+summary: "The density the slides never write, derived from d standard normals; why a covariance matrix is symmetric and PSD; contours as ellipses along the eigenvectors; the L10 p.14 quartet; and the mixture as a marginal."
+lectures:
+  - { lecture: 9, pages: "41-46" }
+  - { lecture: 10, pages: "6-14" }
+concepts:
+  - covariance-matrix-properties
+  - mvn-density
+  - covariance-ellipse-geometry
+  - covariance-quartet
+  - gaussian-mixture
+prerequisites:
+  - gaussian
+  - variance
+  - covariance
+  - expectation
+  - determinant
+  - matrix-inverse
+  - quadratic-form
+  - eigenvectors
+  - trace
+  - positive-semidefinite
+  - change-of-variables
+  - log-rules
+  - conditional-probability
+  - mixture-distribution
+  - class-prior
+  - class-conditional-distribution
+homework: [hw3]
+cases: [tropo, adverse]
+estimatedMinutes: 65
+status: review
+authors: [jide]
+---
+
+<Frame
+  data="feature vectors $x \in \mathbb{R}^d$ (labels enter only in the last section)"
+  model="$x \sim \mathcal{N}(\mu, \Sigma)$ with density $(2\pi)^{-d/2}|\Sigma|^{-1/2}\exp\big(-\tfrac12 (x - \mu)^\top \Sigma^{-1}(x - \mu)\big)$"
+  objective="none yet: lesson 7.2 fits one Gaussian per class by maximum likelihood"
+  optimizer="none yet (lesson 7.2: closed form)"
+/>
+
+<Objectives>
+
+- Read a covariance matrix: variances on the diagonal, covariances off it, and the sign of each off-diagonal entry as the direction of a pairwise association.
+- Prove that every covariance matrix is symmetric and positive semi-definite, and that $\Sigma = \E[xx^\top] - \mu\mu^\top$.
+- Derive the multivariate Gaussian density, first for a diagonal $\Sigma$ as a product of $d$ univariate Gaussians, then for any positive definite $\Sigma$ by a change of variables, and check that $d = 1$ gives back $\mathcal{N}(\mu, \sigma^2)$.
+- Show that the density's contours are ellipses whose axes point along the eigenvectors of $\Sigma$, with half-lengths proportional to $\sqrt{\lambda_j}$.
+- Match each of four covariance matrices to its cloud, with eigenvalues and eigenvectors to back the match.
+- Derive the mixture $p(x) = \sum_k P(Y = k)\,p(x \mid Y = k)$ as the marginal of a generative classifier.
+
+</Objectives>
+
+<Hook>
+
+In the ADVERSE cohort, age and kidney function (eGFR) are plausibly correlated: kidney function tends to decline with age, so a plot of age against eGFR may tilt downward; the case data will show how. Lesson 6.3 modeled each feature on its own, given the class. Two separate bell curves, one for age and one for eGFR, can describe each axis's spread but have no way to say "older patients tend to have lower eGFR".
+
+Unit 7 needs a model of $p(x \mid y)$ for continuous features that can say exactly that. Which single object records the spread of every feature and the tilt of every pair, and what does the density built from it look like?
+
+{/* hook-figure: the gaussian-2d-covariance widget in the Explore section is the hook's explorable; set rho below 0 to see a downward tilt */}
+
+</Hook>
+
+## From one bell curve to many dimensions
+
+Naive Bayes modeled binary words with one Bernoulli per feature and class (lesson 6.3). For continuous features the slides switch to Gaussians <SlideRef lecture={9} pages="42" />. They start in one dimension, with the [[gaussian|univariate Gaussian]] <SlideRef lecture={9} pages="43" />
+
+$$\mathcal{N}(x; \mu, \sigma^2) = \frac{1}{\sigma\sqrt{2\pi}}\exp\Big(-\frac12\Big(\frac{x - \mu}{\sigma}\Big)^2\Big),$$
+
+whose second argument is a [[variance]]. They then add Gaussians together into a [[mixture-distribution|mixture]] <SlideRef lecture={9} pages="44-46" /> and finally move to vectors: L10 p.12 names the multivariate Gaussian $\mathcal{N}(\mu, \Sigma)$ and plots it, and L10 p.13 defines the [[covariance]] matrix <SlideRef lecture={10} pages="12-13" />. The density itself never appears on a slide. This lesson derives it.
+
+<Definition id="def-7-1-1" title="Mean vector and covariance matrix" source="L10 p.13">
+
+For a random vector $x = (x_1, \dots, x_d)^\top$, the mean is $\mu = \E[x] \in \mathbb{R}^d$ (entrywise, $\mu_j = \E[x_j]$), and the covariance matrix is the $d \times d$ matrix
+
+$$\Sigma = \E\big[(x - \mu)(x - \mu)^\top\big], \qquad \Sigma_{jl} = \Cov(x_j, x_l).$$
+
+In two dimensions, with standard deviations $\sigma_x, \sigma_y$ and correlation $\rho = \Cov(x, y)/(\sigma_x\sigma_y) \in [-1, 1]$,
+
+$$\Sigma = \begin{bmatrix} \Var(x) & \Cov(x, y) \\ \Cov(x, y) & \Var(y) \end{bmatrix} = \begin{bmatrix} \sigma_x^2 & \rho\,\sigma_x\sigma_y \\ \rho\,\sigma_x\sigma_y & \sigma_y^2 \end{bmatrix}.$$
+
+<SlideRef lecture={10} pages="13" />
+
+Also written as: $\mathrm{cov}(X, Y)$ and $var(x)$ (the slides), $\Cov(x)$, $\Var(x)$ for the whole matrix (many textbooks).
+
+</Definition>
+
+<Definition id="def-7-1-2" title="Multivariate Gaussian" source="L10 p.12 (named and plotted; density not written)">
+
+A random vector $x \in \mathbb{R}^d$ is Gaussian with mean $\mu \in \mathbb{R}^d$ and positive definite covariance $\Sigma \in \mathbb{R}^{d \times d}$, written $x \sim \mathcal{N}(\mu, \Sigma)$, when its density is
+
+$$\htmlId{eq-7-1-1}{\mathcal{N}(x; \mu, \Sigma) = \frac{1}{(2\pi)^{d/2}\,|\Sigma|^{1/2}}\exp\Big(-\tfrac12 (x - \mu)^\top \Sigma^{-1}(x - \mu)\Big).} \tag{7.1.1}$$
+
+The scalar $(x - \mu)^\top \Sigma^{-1}(x - \mu)$ is the squared Mahalanobis distance from $x$ to $\mu$. der-7-1-2 and der-7-1-3 derive the formula; der-7-1-3 also checks that $\mu$ and $\Sigma$ really are the mean and covariance. <SlideRef lecture={10} pages="12" />
+
+Also written as: $N(\mathbf{u}, \Sigma)$ (the slides), $\mathcal{N}(x \mid \mu, \Sigma)$ (L10 p.19, Bishop), MVN.
+
+</Definition>
+
+<Definition id="def-7-1-3" title="Gaussian mixture" source="L9 p.44, L9 p.46 (= L10 pp.9, 11)">
+
+A density of the form
+
+$$p(x) = \sum_{k=1}^{K} \pi_k\,\mathcal{N}(x; \mu_k, \Sigma_k), \qquad \pi_k \ge 0, \quad \sum_{k=1}^{K} \pi_k = 1.$$
+
+The mixture weight $\pi_k$ is the probability that a point is drawn from component $k$. In one dimension $\Sigma_k = \sigma_k^2$. <SlideRef lecture={9} pages="44" />
+
+Also written as: $\sum_k P(k)\,N(x; \mu_k, \sigma_k^2)$ (the slides), GMM.
+
+</Definition>
+
+<Callout type="slide">
+
+Four notational notes. The slides write $N(u, \sigma^2)$ and $N(\mathbf{u}, \Sigma)$ with $u$ for the mean (L9 p.43, L10 p.12); we write $\mu$, and $\mathcal{N}$. We always write a Gaussian's second argument as a **variance** ($\sigma^2$ or $\Sigma$), never a standard deviation. The slides do too wherever they write a formula ($N(x; \mu_k, \sigma_k^2)$ on L9 p.44), but L10 p.9 labels its four mixture components $N(-2.5, 0.85)$, $N(-1, 0.7)$, $N(0, 1)$, and $N(2, 2)$ without saying which convention the numbers use. We read them as variances, to match p.44; if they were standard deviations, the yellow component $N(2, 2)$ would have variance 4. Only $N(0, 1)$ means the same thing either way. Finally, the slides write the mixture weight as $P(k)$ or $p(k)$ (L9 p.44); we write $\pi_k$, as Bishop and CS229 do. When the components are classes, the weight is the class prior, so from der-7-1-6 on $\pi_k$ becomes $\phi_k$, the course's symbol for a class prior.
+
+</Callout>
+
+<Callout type="beyond">
+
+Everything from der-7-1-2 on goes beyond the slides: the density formula, the proof that it is a density with the advertised mean and covariance, the eigenvector picture of the contours, explicit matrices for the L10 p.14 quartet, and the one-line marginalization behind L9 p.46.
+
+</Callout>
+
+<Check ids={["q-u7-l1-007", "q-u7-l1-008"]} />
+
+<Intuition>
+
+Start in one dimension. The exponent of $\mathcal{N}(x; \mu, \sigma^2)$ is $-\tfrac12 z^2$ with $z = (x - \mu)/\sigma$, the [[z-score]]: the density depends on $x$ only through "how many standard deviations from the mean".
+
+Now take two features that do not interact, with standard deviations $\sigma_1$ and $\sigma_2$. Each gets its own z-score, and the joint density's exponent is $-\tfrac12(z_1^2 + z_2^2)$. The points with equal density satisfy $z_1^2 + z_2^2 = r^2$: a circle in z-score coordinates, which is an axis-aligned ellipse in the original units, wider along the feature with the larger $\sigma$.
+
+When the features are correlated, as age and eGFR plausibly are, no pair of coordinate axes makes the cloud round. The cure is to rotate first. There is always one rotation, given by the eigenvectors of $\Sigma$, after which the features stop interacting; in the rotated coordinates the picture is the uncorrelated one again. The whole lesson is this sentence made precise: a covariance matrix is a rotation (its eigenvectors) and a stretch along each new axis (the square roots of its eigenvalues).
+
+{/* intuition-figure: the gaussian-2d-covariance widget in the Explore section serves as this figure; rho = 0 shows the axis-aligned case, rho ≠ 0 the rotated one */}
+
+</Intuition>
+
+## What every covariance matrix satisfies
+
+Before writing a density with $\Sigma$ in it, we need to know what kind of matrix $\Sigma$ can be. Four facts follow from def-7-1-1 alone, for any distribution, Gaussian or not.
+
+<Derivation
+  id="der-7-1-1"
+  title="A covariance matrix holds variances on its diagonal, is symmetric, equals E[xxᵀ] − μμᵀ, and is positive semi-definite"
+  goalTex="\text{properties of } \Sigma = \E\big[(x - \mu)(x - \mu)^\top\big]"
+  resultTex="\Sigma_{jj} = \Var(x_j), \qquad \Sigma^\top = \Sigma, \qquad \Sigma = \E[xx^\top] - \mu\mu^\top, \qquad v^\top \Sigma v = \Var(v^\top x) \ge 0 \ \text{ for all } v"
+  source="L10 p.13 (definition and 2×2 layout only; the properties are not stated)"
+>
+
+<Chunk title="Read the entries">
+
+<Step justification="the $(j, l)$ entry of an outer product $uu^\top$ is $u_j u_l$; here $u = x - \mu$">
+$$\big[(x - \mu)(x - \mu)^\top\big]_{jl} = (x_j - \mu_j)(x_l - \mu_l)$$
+</Step>
+
+<Step justification="the expectation of a random matrix is taken entry by entry; the result is the definition of covariance" sticky="covariance">
+$$\Sigma_{jl} = \E\big[(x_j - \mu_j)(x_l - \mu_l)\big] = \Cov(x_j, x_l)$$
+</Step>
+
+<Step justification="set $l = j$; the covariance of a variable with itself is its variance" sticky="variance">
+$$\Sigma_{jj} = \E\big[(x_j - \mu_j)^2\big] = \Var(x_j)$$
+</Step>
+
+<Step justification="multiplication of real numbers commutes, so the expressions in step 2 for $(j, l)$ and $(l, j)$ are equal">
+$$\Sigma_{jl} = \Sigma_{lj} \quad \text{for all } j, l, \qquad \text{i.e. } \Sigma^\top = \Sigma$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Expand the outer product for a shortcut formula">
+
+<Step justification="distribute the product of the two bracketed terms">
+$$(x - \mu)(x - \mu)^\top = xx^\top - x\mu^\top - \mu x^\top + \mu\mu^\top$$
+</Step>
+
+<Step justification="linearity of expectation; $\mu$ is a constant vector, so it moves outside" sticky="expectation">
+$$\Sigma = \E[xx^\top] - \E[x]\,\mu^\top - \mu\,\E[x]^\top + \mu\mu^\top$$
+</Step>
+
+<Step justification="substitute $\E[x] = \mu$; the three $\mu\mu^\top$ terms have coefficients $-1 - 1 + 1 = -1$" fadeable>
+$$\Sigma = \E[xx^\top] - \mu\mu^\top$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Every direction has a nonnegative variance">
+
+<Step justification="fix any vector $v \in \mathbb{R}^d$; the projection $v^\top x$ is a scalar random variable, and linearity of expectation gives its mean" sticky="expectation">
+$$\E[v^\top x] = v^\top \mu$$
+</Step>
+
+<Step justification="definition of variance, then factor $v^\top$ out of the difference" sticky="variance">
+$$\Var(v^\top x) = \E\big[(v^\top x - v^\top \mu)^2\big] = \E\big[(v^\top (x - \mu))^2\big]$$
+</Step>
+
+<Step justification="a scalar equals its own transpose, so $a^2 = a\,a^\top$ with $a = v^\top(x - \mu)$, whose transpose is $(x - \mu)^\top v$" fadeable>
+$$\big(v^\top (x - \mu)\big)^2 = v^\top (x - \mu)(x - \mu)^\top v$$
+</Step>
+
+<Step justification="linearity of expectation; $v$ is constant and moves outside" sticky="expectation" fadeable>
+$$\Var(v^\top x) = v^\top\, \E\big[(x - \mu)(x - \mu)^\top\big]\, v = v^\top \Sigma v$$
+</Step>
+
+<Step justification="a variance is the expectation of a square, so it is never negative; holding for every $v$, this is the definition of positive semi-definite" sticky="positive-semidefinite">
+$$v^\top \Sigma v \ge 0 \quad \text{for every } v \in \mathbb{R}^d, \qquad \text{i.e. } \Sigma \succeq 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 12 can be an equality for some $v \ne 0$. Then $v^\top x$ has variance zero, so it is a constant: the whole cloud lies on a hyperplane, a line in two dimensions. Such a $\Sigma$ is singular (it has the eigenvalue 0), $\Sigma^{-1}$ does not exist, and no density of the form <EqRef id="eq-7-1-1" /> can describe the cloud. The Gaussian density therefore needs $\Sigma$ to be **positive definite**: $v^\top \Sigma v > 0$ for every $v \ne 0$. In GDA this is a practical issue, not a technicality: a class with no more examples than features has a singular sample covariance.
+
+Step 11 is also the most useful formula in the lesson for reading a matrix. Take $\Sigma = \begin{bmatrix} 4 & 3 \\ 3 & 4 \end{bmatrix}$. Along $v = (1, 1)$, the variance of $x_1 + x_2$ is $v^\top \Sigma v = 4 + 3 + 3 + 4 = 14$; along $v = (1, -1)$ the variance of $x_1 - x_2$ is $4 - 3 - 3 + 4 = 2$. The cloud is much wider along the diagonal $y = x$ than across it.
+
+<Check ids={["q-u7-l1-006", "q-u7-l1-017", "q-u7-l1-012"]} />
+
+## The density when the features do not interact
+
+The easiest case is the one the intuition started from: $d$ features that are independent, each Gaussian. Their covariances are zero, so $\Sigma = \diag(\sigma_1^2, \dots, \sigma_d^2)$. Multiplying their densities should produce <EqRef id="eq-7-1-1" />, and it does.
+
+<Derivation
+  id="der-7-1-2"
+  title="With a diagonal covariance, the multivariate Gaussian is a product of d univariate Gaussians"
+  goalTex="\prod_{j=1}^{d} \mathcal{N}(x_j; \mu_j, \sigma_j^2) \text{ written with } \Sigma = \diag(\sigma_1^2, \dots, \sigma_d^2)"
+  resultTex="\prod_{j=1}^{d} \mathcal{N}(x_j; \mu_j, \sigma_j^2) = \frac{1}{(2\pi)^{d/2}|\Sigma|^{1/2}}\exp\Big(-\tfrac12 (x - \mu)^\top \Sigma^{-1} (x - \mu)\Big) = \mathcal{N}(x; \mu, \Sigma)"
+  source="beyond the slides (L10 p.12 names N(u, Σ) without a density)"
+>
+
+<Chunk title="Multiply d univariate densities">
+
+<Step justification="the coordinates are assumed independent of one another (that is what 'do not interact' means here), so the joint density is the product of the one-dimensional densities">
+$$p(x) = \prod_{j=1}^{d} p(x_j)$$
+</Step>
+
+<Step justification="each factor is a univariate Gaussian density" sticky="gaussian">
+$$p(x) = \prod_{j=1}^{d} \frac{1}{\sqrt{2\pi\sigma_j^2}}\exp\Big(-\frac{(x_j - \mu_j)^2}{2\sigma_j^2}\Big)$$
+</Step>
+
+<Step justification="a product of exponentials is the exponential of the sum; collect the $d$ constants, $\prod_j (2\pi)^{1/2} = (2\pi)^{d/2}$" fadeable>
+$$p(x) = \frac{1}{(2\pi)^{d/2}\big(\prod_{j} \sigma_j^2\big)^{1/2}}\exp\Big(-\frac12 \sum_{j=1}^{d} \frac{(x_j - \mu_j)^2}{\sigma_j^2}\Big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Recognize the matrix quantities">
+
+<Step justification="the determinant of a diagonal matrix is the product of its diagonal entries" sticky="determinant">
+$$|\Sigma| = \prod_{j=1}^{d} \sigma_j^2$$
+</Step>
+
+<Step justification="the inverse of a diagonal matrix with nonzero entries inverts each entry" sticky="matrix-inverse">
+$$\Sigma^{-1} = \diag\big(1/\sigma_1^2, \dots, 1/\sigma_d^2\big)$$
+</Step>
+
+<Step justification="a quadratic form with a diagonal matrix keeps only the squared terms: $\sum_{j,l} A_{jl} u_j u_l = \sum_j A_{jj} u_j^2$ when $A$ is diagonal" sticky="quadratic-form" fadeable>
+$$\sum_{j=1}^{d} \frac{(x_j - \mu_j)^2}{\sigma_j^2} = (x - \mu)^\top \Sigma^{-1} (x - \mu)$$
+</Step>
+
+<Step justification="substitute steps 4 and 6 into step 3">
+$$p(x) = \frac{1}{(2\pi)^{d/2}|\Sigma|^{1/2}}\exp\Big(-\tfrac12 (x - \mu)^\top \Sigma^{-1} (x - \mu)\Big)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Read backward, the derivation says that a Gaussian with diagonal $\Sigma$ has independent coordinates: zero covariance plus a joint Gaussian gives independence. For general distributions zero covariance does not imply independence (see the pitfalls). Lesson 7.3 uses the backward reading per class to show that diagonal GDA is Gaussian Naive Bayes.
+
+## The density for any covariance
+
+A general $\Sigma$ has nonzero off-diagonal entries, so the coordinates interact. The plan follows the intuition: build $x$ from $d$ independent standard normals by a stretch and a rotation, then transform the density with the [[change-of-variables|change-of-variables rule]].
+
+We need a square root of $\Sigma$. By the spectral theorem for [[eigenvectors|symmetric matrices]], $\Sigma = V\Lambda V^\top$, where the columns $v_1, \dots, v_d$ of $V$ are orthonormal eigenvectors ($V^\top V = I$) and $\Lambda = \diag(\lambda_1, \dots, \lambda_d)$ holds the eigenvalues. Since $\Sigma$ is positive definite, every $\lambda_j = v_j^\top \Sigma v_j > 0$.
+
+<Derivation
+  id="der-7-1-3"
+  title="The multivariate Gaussian density by a change of variables, and the check at d = 1"
+  goalTex="\text{the density of } x = \mu + \Sigma^{1/2} z, \quad z \sim \mathcal{N}(0, I_d)"
+  resultTex="p(x) = \frac{1}{(2\pi)^{d/2}|\Sigma|^{1/2}}\exp\Big(-\tfrac12 (x - \mu)^\top \Sigma^{-1} (x - \mu)\Big), \qquad \E[x] = \mu, \quad \Cov(x) = \Sigma"
+  source="beyond the slides (L10 p.12 names N(u, Σ) without a density; L9 p.43 gives the d = 1 formula)"
+>
+
+<Chunk title="Build x from standard normals">
+
+<Step justification="der-7-1-2 with $\mu = 0$ and $\Sigma = I$: $|I| = 1$ and $I^{-1} = I$" sticky="gaussian">
+$$p_z(z) = \frac{1}{(2\pi)^{d/2}}\exp\Big(-\tfrac12 z^\top z\Big)$$
+</Step>
+
+<Step justification="define $\Sigma^{1/2} = V\Lambda^{1/2}V^\top$ with $\Lambda^{1/2} = \diag(\sqrt{\lambda_j})$; it is symmetric, and $V^\top V = I$ collapses the middle of the product" sticky="eigenvectors">
+$$\Sigma^{1/2}\Sigma^{1/2} = V\Lambda^{1/2}(V^\top V)\Lambda^{1/2}V^\top = V\Lambda V^\top = \Sigma$$
+</Step>
+
+<Step justification="$\Sigma^{1/2}$ has the positive eigenvalues $\sqrt{\lambda_j}$, so it is invertible; write $\Sigma^{-1/2} = (\Sigma^{1/2})^{-1} = V\Lambda^{-1/2}V^\top$, also symmetric" sticky="matrix-inverse">
+$$x = \mu + \Sigma^{1/2} z \quad \Longleftrightarrow \quad z = \Sigma^{-1/2}(x - \mu)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Check that μ and Σ are the mean and covariance">
+
+<Step justification="linearity of expectation, with $\E[z] = 0$" sticky="expectation">
+$$\E[x] = \mu + \Sigma^{1/2}\,\E[z] = \mu$$
+</Step>
+
+<Step justification="def-7-1-1 with $x - \mu = \Sigma^{1/2}z$; the transpose of a product reverses it, and $\Sigma^{1/2}$ is symmetric" sticky="covariance-matrix">
+$$\Cov(x) = \E\big[\Sigma^{1/2} z\,(\Sigma^{1/2} z)^\top\big] = \E\big[\Sigma^{1/2} z z^\top \Sigma^{1/2}\big]$$
+</Step>
+
+<Step justification="linearity of expectation moves the constant matrices out; $\E[zz^\top] = I$ because the coordinates of $z$ are independent with mean 0 and variance 1; then step 2" sticky="expectation">
+$$\Cov(x) = \Sigma^{1/2}\,\E[zz^\top]\,\Sigma^{1/2} = \Sigma^{1/2}\, I\, \Sigma^{1/2} = \Sigma$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Change variables and simplify the volume factor">
+
+<Step justification="change of variables for the invertible affine map of step 3; the Jacobian of $x \mapsto \Sigma^{-1/2}(x - \mu)$ is the constant matrix $\Sigma^{-1/2}$" sticky="change-of-variables">
+$$p_x(x) = p_z\big(\Sigma^{-1/2}(x - \mu)\big)\,\big|\det \Sigma^{-1/2}\big|$$
+</Step>
+
+<Step justification="the determinant is the product of the eigenvalues: $\prod_j \sqrt{\lambda_j}$ for $\Sigma^{1/2}$ and $\prod_j \lambda_j$ for $\Sigma$" sticky="determinant">
+$$\det \Sigma^{1/2} = \prod_{j=1}^{d}\sqrt{\lambda_j} = |\Sigma|^{1/2}$$
+</Step>
+
+<Step justification="the determinant of an inverse is the reciprocal of the determinant; it is positive, so the absolute value changes nothing" sticky="determinant" fadeable>
+$$\big|\det \Sigma^{-1/2}\big| = \frac{1}{|\Sigma|^{1/2}}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Simplify the exponent, assemble, and check one dimension against the slide">
+
+<Step justification="substitute $z = \Sigma^{-1/2}(x - \mu)$ into $z^\top z$; transpose of a product reverses it, and $\Sigma^{-1/2}$ is symmetric">
+$$z^\top z = (x - \mu)^\top \Sigma^{-1/2}\Sigma^{-1/2} (x - \mu)$$
+</Step>
+
+<Step justification="the inverse of a product is the product of the inverses in reverse order: $\Sigma^{-1/2}\Sigma^{-1/2} = (\Sigma^{1/2}\Sigma^{1/2})^{-1}$, which is $\Sigma^{-1}$ by step 2" sticky="matrix-inverse" fadeable>
+$$\Sigma^{-1/2}\Sigma^{-1/2} = \Sigma^{-1}$$
+</Step>
+
+<Step justification="substitute steps 1, 9, 10, and 11 into step 7" fadeable>
+$$p_x(x) = \frac{1}{(2\pi)^{d/2}|\Sigma|^{1/2}}\exp\Big(-\tfrac12 (x - \mu)^\top \Sigma^{-1} (x - \mu)\Big)$$
+</Step>
+
+<Step justification="at $d = 1$, $\Sigma = \sigma^2$: $|\Sigma|^{1/2} = \sigma$, $\Sigma^{-1} = 1/\sigma^2$, and the quadratic form is $(x - \mu)^2/\sigma^2$; this is L9 p.43's formula" sticky="gaussian">
+$$p_x(x) = \frac{1}{\sigma\sqrt{2\pi}}\exp\Big(-\frac12\Big(\frac{x - \mu}{\sigma}\Big)^2\Big) = \mathcal{N}(x; \mu, \sigma^2)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Each piece of <EqRef id="eq-7-1-1" /> now has a job. The exponent measures distance in the stretched-and-rotated coordinates. The factor $|\Sigma|^{-1/2}$ is the volume correction from the change of variables: a cloud that is spread over more volume has a lower peak, so that the total probability stays 1. And the density is normalized because $p_z$ is.
+
+<Check ids={["q-u7-l1-011", "q-u7-l1-014", "q-u7-l1-018"]} />
+
+## Contours are ellipses along the eigenvectors
+
+The slides draw a green ellipse on top of the L10 p.12 scatter <SlideRef lecture={10} pages="12" />. Where does it come from, and which way does it point?
+
+<Derivation
+  id="der-7-1-4"
+  title="Equal-density contours are ellipses with axes along the eigenvectors of Σ and half-lengths r√λⱼ"
+  goalTex="\text{the shape of } \{x : \mathcal{N}(x; \mu, \Sigma) = c\}"
+  resultTex="\{x : (x - \mu)^\top \Sigma^{-1} (x - \mu) = r^2\} = \Big\{\mu + \sum_{j} u_j v_j : \sum_{j=1}^{d} \frac{u_j^2}{(r\sqrt{\lambda_j})^2} = 1\Big\}"
+  source="beyond the slides (L10 p.12 draws the ellipse; L10 p.14 shows the four shapes)"
+>
+
+<Chunk title="Reduce a density level set to the quadratic form, and pick eigenvector coordinates">
+
+<Step justification="set (7.1.1) equal to a level $c$ below the peak and take logs; the log is increasing, so the equation keeps its solutions" sticky="log-rules">
+$$\mathcal{N}(x; \mu, \Sigma) = c \;\Longleftrightarrow\; \log c = -\tfrac{d}{2}\log 2\pi - \tfrac12\log|\Sigma| - \tfrac12 (x - \mu)^\top \Sigma^{-1} (x - \mu)$$
+</Step>
+
+<Step justification="multiply by $-2$ and move the constants to the right; call the right-hand side $r^2$, which is positive because $c$ is below the peak $(2\pi)^{-d/2}|\Sigma|^{-1/2}$">
+$$(x - \mu)^\top \Sigma^{-1} (x - \mu) = r^2, \qquad r^2 = -2\log\big(c\,(2\pi)^{d/2}|\Sigma|^{1/2}\big)$$
+</Step>
+
+<Step justification="invert $\Sigma = V\Lambda V^\top$ factor by factor in reverse order; $V^{-1} = V^\top$ because $V$ is orthonormal" sticky="eigenvectors">
+$$\Sigma^{-1} = V\Lambda^{-1}V^\top$$
+</Step>
+
+<Step justification="define the coordinates of $x - \mu$ along the eigenvectors, $u_j = v_j^\top(x - \mu)$; $V$ is orthonormal, so this is a rotation (possibly with a reflection) and $x - \mu = Vu$">
+$$u = V^\top (x - \mu)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="In eigenvector coordinates the quadratic form is a sum of squares: an ellipse">
+
+<Step justification="substitute step 3, then group $V^\top(x - \mu) = u$ on the right and its transpose on the left" fadeable>
+$$(x - \mu)^\top \Sigma^{-1} (x - \mu) = u^\top \Lambda^{-1} u$$
+</Step>
+
+<Step justification="a quadratic form with a diagonal matrix keeps only the squared terms" sticky="quadratic-form" fadeable>
+$$u^\top \Lambda^{-1} u = \sum_{j=1}^{d} \frac{u_j^2}{\lambda_j}$$
+</Step>
+
+<Step justification="set step 6 equal to $r^2$ and divide by $r^2$; this is the standard equation of an ellipse (an ellipsoid when $d > 2$) with semi-axis $r\sqrt{\lambda_j}$ along the $u_j$ axis" fadeable>
+$$\sum_{j=1}^{d} \frac{u_j^2}{(r\sqrt{\lambda_j})^2} = 1$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Read off the directions, the shape, and the area">
+
+<Step justification="undo the rotation of step 4: moving along the $u_j$ axis in $u$ coordinates is moving along $v_j$ in the original coordinates">
+$$x = \mu + Vu = \mu + \sum_{j=1}^{d} u_j v_j$$
+</Step>
+
+<Step justification="the ratio of two semi-axes from step 7; $r$ cancels, so every contour is a scaled copy of every other" fadeable>
+$$\frac{r\sqrt{\lambda_1}}{r\sqrt{\lambda_2}} = \sqrt{\frac{\lambda_1}{\lambda_2}}$$
+</Step>
+
+<Step justification="the area of an ellipse with semi-axes $a_1, a_2$ is $\pi a_1 a_2$; the product of the eigenvalues is the determinant" sticky="determinant">
+$$\text{area}(d = 2) = \pi\,(r\sqrt{\lambda_1})(r\sqrt{\lambda_2}) = \pi r^2\,|\Sigma|^{1/2}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+So the eigenvector with the largest eigenvalue points along the direction of greatest spread, and the ellipse is longest there; the half-lengths grow with the **square root** of the eigenvalue, because eigenvalues are variances and $\sqrt{\lambda_j}$ is a standard deviation. Step 10 also explains the normalizer once more: $|\Sigma|^{1/2}$ is proportional to the area inside a contour, and the peak height $1/(2\pi|\Sigma|^{1/2})$ falls as that area grows.
+
+<Check ids={["q-u7-l1-005", "q-u7-l1-013", "q-u7-l1-015"]} />
+
+## Match the matrix to the cloud
+
+L10 p.14 shows four scatter plots on $[-10, 10]^2$ and gives no matrices <SlideRef lecture={10} pages="14" />: a cloud elongated along $y = x$, one elongated along $y = -x$, one roughly round and slightly wider in $x$, and one elongated vertically. The four matrices below are **our choice**, not numbers from the slide; they are the simplest integers that produce each shape. The third is more elongated than the slide's nearly round cloud, so that its shape is unmistakable.
+
+$$\Sigma_A = \begin{bmatrix} 4 & 3 \\ 3 & 4 \end{bmatrix}, \quad \Sigma_B = \begin{bmatrix} 4 & -3 \\ -3 & 4 \end{bmatrix}, \quad \Sigma_C = \begin{bmatrix} 4 & 0 \\ 0 & 1 \end{bmatrix}, \quad \Sigma_D = \begin{bmatrix} 1 & 0 \\ 0 & 4 \end{bmatrix}.$$
+
+In the widget's terms, $\Sigma_A$ is $\sigma_x = \sigma_y = 2$, $\rho = 0.75$; $\Sigma_B$ the same with $\rho = -0.75$; $\Sigma_C$ is $\sigma_x = 2$, $\sigma_y = 1$, $\rho = 0$; $\Sigma_D$ swaps them.
+
+<Derivation
+  id="der-7-1-5"
+  title="Eigenvalues and eigenvectors of the quartet, and the shape each one draws"
+  goalTex="\text{eigenpairs of } \Sigma_A, \Sigma_B, \Sigma_C, \Sigma_D"
+  resultTex="\Sigma_A: \lambda = 7 \text{ along } \tfrac{1}{\sqrt2}(1, 1),\ \lambda = 1 \text{ along } \tfrac{1}{\sqrt2}(1, -1); \quad \Sigma_B: \lambda = 7 \text{ along } \tfrac{1}{\sqrt2}(1, -1),\ \lambda = 1 \text{ along } \tfrac{1}{\sqrt2}(1, 1); \quad \Sigma_C: 4 \text{ along } e_1,\ 1 \text{ along } e_2; \quad \Sigma_D: 1 \text{ along } e_1,\ 4 \text{ along } e_2"
+  source="L10 p.14 (four scatter plots, no matrices; the matrices are our choice, per the course map's derivation gap 5)"
+>
+
+<Chunk title="Positive covariance: the long axis is y = x">
+
+<Step justification="$\lambda$ is an eigenvalue exactly when $\Sigma - \lambda I$ is singular, i.e. has zero determinant" sticky="eigenvectors">
+$$\det(\Sigma_A - \lambda I) = 0$$
+</Step>
+
+<Step justification="the $2 \times 2$ determinant $ps - qr$" sticky="determinant">
+$$(4 - \lambda)^2 - 3^2 = 0$$
+</Step>
+
+<Step justification="take square roots: $4 - \lambda = \pm 3$" fadeable>
+$$\lambda_1 = 7, \qquad \lambda_2 = 1$$
+</Step>
+
+<Step justification="multiply out to verify each eigenvector, then normalize to unit length">
+$$\Sigma_A\begin{bmatrix} 1 \\ 1 \end{bmatrix} = \begin{bmatrix} 7 \\ 7 \end{bmatrix} = 7\begin{bmatrix} 1 \\ 1 \end{bmatrix}, \qquad \Sigma_A\begin{bmatrix} 1 \\ -1 \end{bmatrix} = \begin{bmatrix} 1 \\ -1 \end{bmatrix} \;\Longrightarrow\; v_1 = \tfrac{1}{\sqrt2}(1, 1), \ v_2 = \tfrac{1}{\sqrt2}(1, -1)$$
+</Step>
+
+<Step justification="der-7-1-4 steps 7–9: semi-axes $r\sqrt{\lambda_j}$, long axis along $v_1$">
+$$\text{semi-axes } r\sqrt7 \approx 2.65\,r \text{ along } y = x, \qquad r \text{ along } y = -x$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Flip the sign of the covariance: the ellipse reflects">
+
+<Step justification="the off-diagonal entry enters the characteristic equation only squared, so the eigenvalues do not change" fadeable>
+$$\det(\Sigma_B - \lambda I) = (4 - \lambda)^2 - (-3)^2 = 0 \;\Longrightarrow\; \lambda_1 = 7, \ \lambda_2 = 1$$
+</Step>
+
+<Step justification="multiply out to verify; the eigenvectors swap roles">
+$$\Sigma_B\begin{bmatrix} 1 \\ -1 \end{bmatrix} = 7\begin{bmatrix} 1 \\ -1 \end{bmatrix}, \qquad \Sigma_B\begin{bmatrix} 1 \\ 1 \end{bmatrix} = \begin{bmatrix} 1 \\ 1 \end{bmatrix} \;\Longrightarrow\; v_1 = \tfrac{1}{\sqrt2}(1, -1), \ v_2 = \tfrac{1}{\sqrt2}(1, 1)$$
+</Step>
+
+<Step justification="der-7-1-4 steps 7–9, as in step 5: the same ellipse as $\Sigma_A$'s, reflected across the $x$-axis">
+$$\text{semi-axes } r\sqrt7 \text{ along } y = -x, \qquad r \text{ along } y = x$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Diagonal matrices have the coordinate axes as their axes; check all four">
+
+<Step justification="a diagonal matrix scales each standard basis vector $e_j$ by its $j$-th diagonal entry">
+$$\Sigma_C e_1 = 4e_1, \quad \Sigma_C e_2 = 1\,e_2, \qquad \Sigma_D e_1 = 1\,e_1, \quad \Sigma_D e_2 = 4e_2$$
+</Step>
+
+<Step justification="der-7-1-4 step 7 with $\sqrt4 = 2$ and $\sqrt1 = 1$">
+$$\Sigma_C: \text{semi-axes } 2r \text{ along } x,\ r \text{ along } y; \qquad \Sigma_D: \ r \text{ along } x,\ 2r \text{ along } y$$
+</Step>
+
+<Step justification="check: the eigenvalues of a matrix sum to its trace and multiply to its determinant ($\Sigma_B$ and $\Sigma_D$ give the same sums and products)" sticky="trace" fadeable>
+$$\Sigma_A: \ 7 + 1 = 4 + 4, \quad 7 \times 1 = 4 \cdot 4 - 3 \cdot 3; \qquad \Sigma_C: \ 4 + 1 = 4 + 1, \quad 4 \times 1 = 4$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Three rules come out of the quartet, and they are enough to sort most clouds at a glance. The **sign** of the off-diagonal entry decides whether the long axis tilts up or down. With equal variances the tilt is exactly $45°$, whatever the size of the covariance; the size only sets how elongated the cloud is ($\sqrt7 : 1$ here). With unequal variances the long axis leans toward the feature with the larger variance (q-u7-l1-016 works one). And a **diagonal** $\Sigma$ always gives an axis-aligned ellipse, long along the feature with the larger variance.
+
+$\Sigma_A$ and $\Sigma_B$ have the same eigenvalues and so the same determinant, 7: the same peak height and the same contour areas, rotated by $90°$. Note also that $\Sigma_A$ is far from round even though its diagonal says both features have variance 4; the diagonal alone never tells you the axis lengths.
+
+<Check ids={["q-u7-l1-001", "q-u7-l1-002", "q-u7-l1-016"]} />
+
+## Putting classes together: the mixture is a marginal
+
+Back to L9. The slides model a bumpy one-dimensional density as a weighted sum of Gaussians, the L10 p.9 figure labels its four components, and L9 p.46 makes the step to classification: one component per class, mixture weight $\pi_k \to P(Y = k)$, component $\mathcal{N}(x; \mu_k, \sigma_k^2) \to p(x \mid Y = k)$ <SlideRef lecture={9} pages="44-46" />. The slide states the result. It is one line of probability.
+
+<Derivation
+  id="der-7-1-6"
+  title="A generative classifier's marginal p(x) is a mixture of its class-conditionals"
+  goalTex="p(x) \text{ for a generative model } P(Y = k),\ p(x \mid Y = k)"
+  resultTex="p(x) = \sum_{k=1}^{K} P(Y = k)\,p(x \mid Y = k) \;\overset{\text{GDA}}{=}\; \sum_{k=1}^{K} \phi_k\,\mathcal{N}(x; \mu_k, \Sigma_k)"
+  source="L9 p.46 = L10 p.11 (stated: 'P(x) = Σ_k P(Y=k) P(x|Y=k)'), L10 p.15"
+>
+
+<Chunk title="Marginalize the joint over the label, check it is a density, and specialize to Gaussians">
+
+<Step justification="sum rule: the marginal of $x$ is the joint summed over every value of the discrete label" sticky="conditional-probability">
+$$p(x) = \sum_{k=1}^{K} p(x, Y = k)$$
+</Step>
+
+<Step justification="product rule: joint = prior times class-conditional (the generative factorization of lesson 6.1)" sticky="conditional-probability">
+$$p(x, Y = k) = P(Y = k)\,p(x \mid Y = k)$$
+</Step>
+
+<Step justification="substitute step 2 into step 1" fadeable>
+$$p(x) = \sum_{k=1}^{K} P(Y = k)\,p(x \mid Y = k)$$
+</Step>
+
+<Step justification="the integral is linear; each class-conditional integrates to 1, and the priors sum to 1" fadeable>
+$$\int p(x)\,dx = \sum_{k=1}^{K} P(Y = k)\int p(x \mid Y = k)\,dx = \sum_{k=1}^{K} P(Y = k) = 1$$
+</Step>
+
+<Step justification="GDA's class-conditionals are Gaussian, $p(x \mid Y = k) = \mathcal{N}(x; \mu_k, \Sigma_k)$, and its prior is $P(Y = k) = \phi_k$; this is def-7-1-3 with weights $\pi_k = \phi_k$" sticky="mixture-distribution">
+$$p(x) = \sum_{k=1}^{K} \phi_k\,\mathcal{N}(x; \mu_k, \Sigma_k)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The derivation also tells you what a mixture weight means. $\pi_k$ is the prior probability that a point comes from component $k$, before you look at the point; L9 p.44 calls it "the likelihood that a data point is from each Gaussian", which is not the statistical meaning of likelihood (see the pitfalls). It also shows that the classifier's posterior is already inside the mixture: the share of $p(x)$ contributed by component $k$, $\phi_k\,\mathcal{N}(x; \mu_k, \Sigma_k)/p(x)$, is exactly $P(Y = k \mid x)$ by Bayes' rule. Lesson 7.2 fits the components when the labels are known; when they are not, L9 p.45's open question ("how to determine the parameters of GMM to best fit them?") is the problem EM solves, later in the course.
+
+<Check ids={["q-u7-l1-009", "q-u7-l1-010"]} />
+
+## Explore
+
+<Widget
+  name="gaussian-2d-covariance"
+  sigmaX={2}
+  sigmaY={2}
+  rho={0.75}
+  showEigenvectors={true}
+  showSamples={true}
+  challenge="This is Σ_A. Predict the eigenvalues before you look, then check them against the widget. Now drag ρ to −0.75: what changes and what stays the same? Set ρ = 0 and make σ_x = 2, σ_y = 1 (Σ_C). Finally push ρ toward 1: what happens to the short axis, to the determinant, and to the peak height?"
+/>
+
+## Worked examples
+
+<Example title="The quartet, by the numbers">
+
+All four matrices are our choice (der-7-1-5), so every number here is exact.
+
+**Directional variances.** For $\Sigma_A$, der-7-1-1 step 11 gives $\Var(x_1 + x_2) = (1, 1)\,\Sigma_A\,(1, 1)^\top = 14$ and $\Var(x_1 - x_2) = 2$. In unit directions these become $14/2 = 7$ and $2/2 = 1$: the variance along each unit eigenvector is its eigenvalue, $v_j^\top \Sigma v_j = \lambda_j$.
+
+**Ellipses at Mahalanobis radius $r = 1$ and $r = 2$.** By der-7-1-4 step 7, $\Sigma_A$'s contour at $r = 1$ has semi-axes $\sqrt7 \approx 2.65$ along $y = x$ and $1$ along $y = -x$; at $r = 2$, $5.29$ and $2$. That $r = 2$ ellipse sits comfortably inside the slide's $[-10, 10]^2$ window, which is why the L10 p.14 clouds fill only its middle. $\Sigma_C$'s contours have semi-axes $2r$ and $r$; $\Sigma_D$'s are the same ellipse turned by $90°$.
+
+**Peak heights.** At $x = \mu$ the exponent is 0, so the peak is $1/(2\pi|\Sigma|^{1/2})$: $1/(2\pi\sqrt7) \approx 0.0602$ for $\Sigma_A$ and $\Sigma_B$, and $1/(2\pi \cdot 2) \approx 0.0796$ for $\Sigma_C$ and $\Sigma_D$. The diagonal matrices have the smaller determinant, $4 < 7$, so their contours enclose less area (der-7-1-4 step 10) and their peak is higher.
+
+**Not a covariance.** $\begin{bmatrix} 1 & 2 \\ 2 & 1 \end{bmatrix}$ is symmetric, but along $v = (1, -1)$ it gives $v^\top \Sigma v = 1 - 2 - 2 + 1 = -2 < 0$, a negative variance. Its eigenvalues are $3$ and $-1$, and der-7-1-1 step 12 rules it out.
+
+</Example>
+
+{/* example-case: TROPO population parameters from the case spec (pedagogy reference Part C, C3); no sampled data is used */}
+
+<Example case="tropo" title="TROPO: a two-component mixture on the log-troponin scale">
+
+The TROPO case specifies, for log troponin $t = \log T$ (with $T$ in ng/L), $t \mid \text{no MI} \sim \mathcal{N}(\log 8, 0.6^2)$ and $t \mid \text{MI} \sim \mathcal{N}(\log 60, 0.9^2)$, with MI prevalence 15%. The second arguments are variances, $0.36$ and $0.81$. By der-7-1-6, the distribution of $t$ over the whole emergency-department cohort is the mixture
+
+$$p(t) = 0.85\,\mathcal{N}(t; 2.079, 0.36) + 0.15\,\mathcal{N}(t; 4.094, 0.81).$$
+
+Evaluate it at four troponin levels (densities by der-7-1-3 step 13 at $d = 1$):
+
+| $T$ (ng/L) | $t$ | $0.85\,\mathcal{N}(t; 2.079, 0.36)$ | $0.15\,\mathcal{N}(t; 4.094, 0.81)$ | $p(t)$ | MI share |
+|---|---|---|---|---|---|
+| 8 | 2.079 | 0.5652 | 0.0054 | 0.5706 | 0.010 |
+| 20 | 2.996 | 0.1761 | 0.0316 | 0.2077 | 0.152 |
+| 30 | 3.401 | 0.0499 | 0.0494 | 0.0994 | 0.497 |
+| 60 | 4.094 | 0.0020 | 0.0665 | 0.0685 | 0.971 |
+
+The "MI share" column is the MI component's fraction of $p(t)$, which by Bayes' rule is $P(\text{MI} \mid t)$. Near 30 ng/L the two weighted components contribute almost equally, so the model is undecided there; lesson 7.3 finds the exact cut-off. The mixture itself is not a Gaussian: it has a tall peak near 8 ng/L and a long shoulder toward 60 ng/L.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u7-l1-003", "q-u7-l1-004"]} />
+
+## Pitfalls
+
+<Pitfall title="The second argument of N is a variance" misconception="gaussian-second-arg-sd">
+
+The belief: $\mathcal{N}(0, 4)$ has standard deviation 4. The fix: we always write $\mathcal{N}(\mu, \sigma^2)$, so $\mathcal{N}(0, 4)$ has variance 4 and standard deviation 2. L10 p.9's labels $N(-2.5, 0.85)$, $N(-1, 0.7)$, $N(0, 1)$, $N(2, 2)$ do not say which convention they use; read them as variances, to match the slide's own $N(x; \mu_k, \sigma_k^2)$ on L9 p.44. Code libraries differ too: `scipy.stats.norm(loc, scale)` takes a standard deviation, while `multivariate_normal(mean, cov)` takes a covariance.
+
+</Pitfall>
+
+<Pitfall title="The diagonal does not give the ellipse's axes" misconception="axes-from-diagonal">
+
+The belief: the contours of $\mathcal{N}(0, \Sigma)$ have semi-axes $\sqrt{\Sigma_{11}}$ and $\sqrt{\Sigma_{22}}$ along $x$ and $y$. The fix: that holds only for a diagonal $\Sigma$. In general the axes point along the eigenvectors and have semi-axes $r\sqrt{\lambda_j}$ (der-7-1-4). $\Sigma_A$ has 4 and 4 on its diagonal, yet its $r = 1$ ellipse has semi-axes $\sqrt7$ and $1$ along the diagonals $y = \pm x$.
+
+</Pitfall>
+
+<Pitfall title="Half-lengths grow like √λ, not λ" misconception="halflength-is-eigenvalue">
+
+The belief: an eigenvalue of 7 makes that axis 7 times as long as an axis with eigenvalue 1. The fix: eigenvalues of $\Sigma$ are variances, so lengths scale with their square roots: the ratio is $\sqrt{7/1} \approx 2.65$ (der-7-1-4 step 9). The same mistake in one dimension would say that $\mathcal{N}(0, 4)$ is four times as wide as $\mathcal{N}(0, 1)$; it is twice as wide.
+
+</Pitfall>
+
+<Pitfall title="The covariance does not set the slope" misconception="cov-sets-slope">
+
+The belief: a covariance of 3 means the cloud's long axis has slope 3, or any positive covariance means a $45°$ tilt. The fix: the sign of the covariance decides up or down; the angle depends on all three entries. With equal variances the long axis is at $45°$ for any nonzero covariance ($\Sigma_A$). For $\begin{bmatrix} 9 & 2 \\ 2 & 1 \end{bmatrix}$ the long axis is the eigenvector $(0.973, 0.230)$, a slope of about $0.24$, because $x$ has far more variance than $y$.
+
+</Pitfall>
+
+<Pitfall title="Not every symmetric matrix is a covariance matrix" misconception="any-symmetric-is-covariance">
+
+The belief: a symmetric matrix with positive diagonal entries can serve as $\Sigma$. The fix: it must also be positive semi-definite (der-7-1-1 step 12), and positive definite for a density. $\begin{bmatrix} 1 & 2 \\ 2 & 1 \end{bmatrix}$ would give $x_1 - x_2$ the variance $-2$. In two dimensions both eigenvalues are nonnegative exactly when the trace and the determinant are, so a symmetric $2 \times 2$ matrix is a valid covariance exactly when its diagonal entries are nonnegative and $\Sigma_{12}^2 \le \Sigma_{11}\Sigma_{22}$, which is the statement $|\rho| \le 1$.
+
+</Pitfall>
+
+<Pitfall title="The exponent uses Σ⁻¹, not Σ" misconception="sigma-not-inverted">
+
+The belief: the exponent is $-\tfrac12(x - \mu)^\top \Sigma (x - \mu)$. The fix: distance is measured in standard deviations, so it divides by the spread: $\Sigma^{-1}$, the multivariate version of dividing by $\sigma^2$ (der-7-1-3 step 12). With $\Sigma$ in place of $\Sigma^{-1}$ the density would fall off fastest along the direction of greatest variance, which is backward. Under $\Sigma = \diag(100, 1)$ the point $(5, 0)$ is at squared Mahalanobis distance $0.25$, and $(0, 5)$ at $25$.
+
+</Pitfall>
+
+<Pitfall title="A mixture weight is a prior, not a likelihood" misconception="mixture-weight-is-likelihood">
+
+L9 p.44 describes the weights $p(k)$ as "each representing the likelihood that a data point is from each Gaussian distribution". In statistics, likelihood is the probability of the observed data as a function of the parameters. The weight $\pi_k$ (the slides' $p(k)$) is the probability that a point comes from component $k$ before the point is seen: a prior (der-7-1-6 step 2). The probability that a particular observed $x$ came from component $k$ is the posterior $\pi_k\,\mathcal{N}(x; \mu_k, \Sigma_k)/p(x)$, which changes with $x$.
+
+</Pitfall>
+
+<Pitfall title="A mixture of Gaussians is not a sum of Gaussian variables" misconception="mixture-sum-of-rvs">
+
+The belief: since sums of independent Gaussians are Gaussian, a Gaussian mixture is Gaussian. The fix: a mixture adds **densities**, not random variables. Its sampling story picks one component, then draws from it (def-7-1-3). $\tfrac12\mathcal{N}(-2, 1) + \tfrac12\mathcal{N}(2, 1)$ has two peaks, which no Gaussian has. The variable $\tfrac12 X_1 + \tfrac12 X_2$, for independent $X_1 \sim \mathcal{N}(-2, 1)$ and $X_2 \sim \mathcal{N}(2, 1)$, is $\mathcal{N}(0, 0.5)$: one peak.
+
+</Pitfall>
+
+<Pitfall title="Uncorrelated does not mean independent, except for a joint Gaussian" misconception="uncorrelated-implies-independent">
+
+The belief: zero covariance means the features are independent. The fix: take $x_1 \sim \mathcal{N}(0, 1)$ and $x_2 = x_1^2$. Then $\Cov(x_1, x_2) = \E[x_1^3] - \E[x_1]\E[x_1^2] = 0$, yet $x_2$ is a function of $x_1$. The implication does hold when $(x_1, \dots, x_d)$ is jointly Gaussian: a diagonal $\Sigma$ makes the density factor (der-7-1-2). That is why, for Gaussian class-conditionals, "diagonal $\Sigma_k$" and "Naive Bayes" are the same assumption (lesson 7.3).
+
+</Pitfall>
+
+<Connections>
+
+- Companion: no code companion covers L9 pp.41–46 or L10 pp.6–14; the L10 notebook starts at the k-means half of the lecture.
+- Before: 6.1 Generative vs discriminative (the product rule $p(x, y) = p(y)\,p(x \mid y)$ that der-7-1-6 marginalizes); 6.3 Naive Bayes (one model per feature, which a diagonal $\Sigma$ reproduces).
+- Next: 7.2 Gaussian discriminant analysis fits one $\mathcal{N}(\mu_k, \Sigma_k)$ per class by maximum likelihood, using the log of <EqRef id="eq-7-1-1" />.
+- Then: 7.3 Shared covariance and logistic regression, where the quadratic form of der-7-1-3 cancels between classes and leaves a linear boundary.
+- Later: PCA diagonalizes a sample covariance exactly as der-7-1-4 does; EM fits the mixture of der-7-1-6 when the labels are hidden.
+- Graph neighbors: [[eigenvectors]], [[determinant]], [[positive-semidefinite]], [[mixture-distribution]].
+
+</Connections>
+
+<HomeworkBridge hw="hw3" skills={["covariance-matrix-properties", "mvn-density", "covariance-ellipse-geometry", "gaussian-mixture"]} />
+
+<Summary>
+
+- **Covariance matrix:** $\Sigma = \E[(x - \mu)(x - \mu)^\top] = \E[xx^\top] - \mu\mu^\top$; $\Sigma_{jj} = \Var(x_j)$, $\Sigma_{jl} = \Cov(x_j, x_l)$; symmetric; $v^\top \Sigma v = \Var(v^\top x) \ge 0$, so PSD. A density needs positive definite.
+- **2-D parametrization:** $\Sigma = \begin{bmatrix} \sigma_x^2 & \rho\sigma_x\sigma_y \\ \rho\sigma_x\sigma_y & \sigma_y^2 \end{bmatrix}$, $|\rho| \le 1$.
+- **Density:** $\mathcal{N}(x; \mu, \Sigma) = (2\pi)^{-d/2}|\Sigma|^{-1/2}\exp\big(-\tfrac12 (x - \mu)^\top \Sigma^{-1}(x - \mu)\big)$. Diagonal $\Sigma$: a product of $d$ univariate Gaussians. General $\Sigma$: $x = \mu + \Sigma^{1/2}z$ with $z \sim \mathcal{N}(0, I)$ and a change of variables. $d = 1$: $\mathcal{N}(\mu, \sigma^2)$, second argument a variance.
+- **Contours:** with $\Sigma = V\Lambda V^\top$, the level sets are ellipses centered at $\mu$, axes along the eigenvectors $v_j$, semi-axes $r\sqrt{\lambda_j}$; area $\pi r^2|\Sigma|^{1/2}$ in 2-D.
+- **Quartet (our matrices):** $\begin{bmatrix} 4 & 3 \\ 3 & 4 \end{bmatrix}$: $\lambda = 7, 1$, long axis $y = x$. $\begin{bmatrix} 4 & -3 \\ -3 & 4 \end{bmatrix}$: same eigenvalues, long axis $y = -x$. $\diag(4, 1)$: wide in $x$. $\diag(1, 4)$: tall in $y$.
+- **Mixture as marginal:** $p(x) = \sum_k P(Y = k)\,p(x \mid Y = k)$; for GDA, $\sum_k \phi_k\,\mathcal{N}(x; \mu_k, \Sigma_k)$. Weights are priors; a mixture adds densities, not variables.
+
+</Summary>

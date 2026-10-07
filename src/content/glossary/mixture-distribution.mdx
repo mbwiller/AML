@@ -1,0 +1,12 @@
+---
+id: mixture-distribution
+term: Mixture distribution
+aliases: [mixture model, mixture density, mixture weights]
+field: probability
+firstUsedIn: u7-gaussian-discriminant-analysis
+related: [gaussian, multivariate-gaussian, conditional-probability, categorical]
+---
+
+**What it is.** A density of the form $p(x) = \sum_{k=1}^{K} \pi_k\, p_k(x)$, with weights $\pi_k \ge 0$ that sum to 1 and component densities $p_k$. Its sampling story has two stages: pick a component $k$ with probability $\pi_k$, then draw $x$ from $p_k$. The formula is the marginal of that two-stage joint over the hidden choice $k$. It is a weighted sum of densities, not the density of a weighted sum of random variables.
+
+**How ML uses it.** A mixture of a few Gaussians can model a bumpy, multi-modal density (L9 p.44). When each component is one class, the weights are the class priors (then written $\phi_k$ instead of $\pi_k$), and the mixture is the marginal $p(x)$ of a generative classifier such as GDA. When the component labels are unknown, fitting the mixture is the problem EM solves.

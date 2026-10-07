@@ -269,10 +269,180 @@
   summary: "All Naive Bayes class scores at once: S = X (log Ψ)^T + (1 − X)(log(1 − Ψ))^T + log φ, then argmax over each row."
   derivation: der-6-4-3
 
+# ---------- Unit 7: Gaussian discriminant analysis ----------
+# Seeded from docs/course-map/04-lectures-L8-L10.md, "Concept-graph edges" (L9 mixtures, L10).
+
+# Lesson 7.1: multivariate-gaussian-and-covariance
+
+- id: covariance-matrix-properties
+  label: "Covariance matrix properties"
+  type: concept
+  field: probability
+  unit: u7-gaussian-discriminant-analysis
+  lesson: multivariate-gaussian-and-covariance
+  summary: "Σ has the variances on its diagonal, is symmetric, equals E[xxᵀ] − μμᵀ, and is positive semi-definite because vᵀΣv = Var(vᵀx) ≥ 0."
+  derivation: der-7-1-1
+
+- id: mvn-density
+  label: "Multivariate Gaussian density"
+  type: concept
+  field: probability
+  unit: u7-gaussian-discriminant-analysis
+  lesson: multivariate-gaussian-and-covariance
+  summary: "N(x; μ, Σ) = (2π)^(−d/2) |Σ|^(−1/2) exp(−½ (x − μ)ᵀ Σ⁻¹ (x − μ)); a product of d univariate Gaussians when Σ is diagonal, and the density of μ + Σ^(1/2) z for standard normal z in general."
+  derivation: der-7-1-3
+
+- id: covariance-ellipse-geometry
+  label: "Covariance ellipse geometry"
+  type: concept
+  field: linear-algebra
+  unit: u7-gaussian-discriminant-analysis
+  lesson: multivariate-gaussian-and-covariance
+  summary: "Equal-density contours of N(μ, Σ) are ellipses centered at μ with axes along the eigenvectors of Σ and semi-axes r√λⱼ; the enclosed area in 2-D is πr²|Σ|^(1/2)."
+  derivation: der-7-1-4
+
+- id: covariance-quartet
+  label: "Match the matrix to the cloud"
+  type: concept
+  field: probability
+  unit: u7-gaussian-discriminant-analysis
+  lesson: multivariate-gaussian-and-covariance
+  summary: "The L10 p.14 quartet with our matrices [[4,3],[3,4]], [[4,−3],[−3,4]], diag(4,1), diag(1,4): the off-diagonal sign sets the tilt, the eigenvalues (7 and 1, or 4 and 1) set the elongation."
+  derivation: der-7-1-5
+
 - id: gaussian-mixture
   label: "Gaussian mixture"
   type: concept
   field: probability
   unit: u7-gaussian-discriminant-analysis
+  lesson: multivariate-gaussian-and-covariance
+  summary: "p(x) = Σ_k π_k N(x; μ_k, Σ_k), a weighted sum of Gaussian densities (not of Gaussian variables). It is the marginal of a generative classifier over its label, p(x) = Σ_k P(Y=k) p(x|Y=k), with π_k = φ_k the class priors."
+  derivation: der-7-1-6
+
+# Lesson 7.2: gaussian-discriminant-analysis
+
+- id: gda-model
+  label: "GDA (QDA)"
+  type: method
+  field: ml
+  unit: u7-gaussian-discriminant-analysis
   lesson: gaussian-discriminant-analysis
-  summary: "p(x) = sum_k p(k) N(x; mu_k, sigma_k^2); with one component per class it becomes a generative classifier (GDA)."
+  summary: "Generative classifier with y ~ Categorical(φ) and x | y = k ~ N(μ_k, Σ_k), one full covariance per class (the slides' GDA, also called QDA); its marginal is a Gaussian mixture (der-7-1-6)."
+
+- id: gda-log-likelihood-decomposition
+  label: "GDA log-likelihood decomposition"
+  type: concept
+  field: ml
+  unit: u7-gaussian-discriminant-analysis
+  lesson: gaussian-discriminant-analysis
+  summary: "ℓ(θ) = Σ_i log φ_{y(i)} + Σ_k ℓ_k(μ_k, Σ_k): one prior term and one term per class, so each (μ_k, Σ_k) is fit from class k's examples alone."
+  derivation: der-7-2-2
+
+- id: gda-mle-mean
+  label: "GDA MLE of the class mean"
+  type: method
+  field: ml
+  unit: u7-gaussian-discriminant-analysis
+  lesson: gaussian-discriminant-analysis
+  summary: "μ̂_k is the class-k sample mean, from the gradient of the quadratic form; the Hessian −n_k Σ_k^{-1} is negative definite, so it is the unique maximum for every Σ_k."
+  derivation: der-7-2-4
+
+- id: gda-mle-covariance
+  label: "GDA MLE of the class covariance"
+  type: method
+  field: ml
+  unit: u7-gaussian-discriminant-analysis
+  lesson: gaussian-discriminant-analysis
+  summary: "Σ̂_k = (1/n_k) Σ_{i: y(i)=k} (x(i) − μ̂_k)(x(i) − μ̂_k)^T, via the trace trick and ∇log|Σ|, ∇tr(Σ^{-1}S); a global maximum by an eigenvalue argument (der-7-2-6)."
+  derivation: der-7-2-5
+
+- id: gda-prediction
+  label: "GDA prediction rule"
+  type: method
+  field: ml
+  unit: u7-gaussian-discriminant-analysis
+  lesson: gaussian-discriminant-analysis
+  summary: "ŷ = argmax_k [log φ_k − ½ log|Σ_k| − ½ (x − μ_k)^T Σ_k^{-1} (x − μ_k)]; the posterior is the softmax of these scores and the boundary is quadratic."
+  derivation: der-7-2-7
+
+- id: gda-covariance-bias
+  label: "Bias of the covariance MLE"
+  type: concept
+  field: statistics
+  unit: u7-gaussian-discriminant-analysis
+  lesson: gaussian-discriminant-analysis
+  summary: "E[Σ̂_k] = (n_k − 1)/n_k · Σ_k because spread is measured around the fitted mean; dividing by n_k − 1 is unbiased but is not the MLE."
+  derivation: der-7-2-8
+
+- id: gda-covariance-singularity
+  label: "Singular class covariance"
+  type: concept
+  field: ml
+  unit: u7-gaussian-discriminant-analysis
+  lesson: gaussian-discriminant-analysis
+  summary: "rank Σ̂_k ≤ n_k − 1, so a class with n_k ≤ d examples gives a singular Σ̂_k, an undefined density, and an unbounded likelihood; remedies are sharing, diagonalizing, or shrinking Σ."
+  derivation: der-7-2-9
+
+# Lesson 7.3: shared-covariance-and-logistic-regression (beyond the slides; course map L10 derivation gaps 2 and 3)
+
+- id: shared-covariance-gda
+  label: "Shared-covariance GDA (LDA)"
+  type: method
+  field: ml
+  unit: u7-gaussian-discriminant-analysis
+  lesson: shared-covariance-and-logistic-regression
+  summary: "GDA with one covariance matrix Σ for all classes: x | y = k ~ N(μ_k, Σ). The classes differ only in where their clouds sit, not in their shape."
+
+- id: gda-linear-boundary
+  label: "Shared Σ gives a linear boundary"
+  type: concept
+  field: ml
+  unit: u7-gaussian-discriminant-analysis
+  lesson: shared-covariance-and-logistic-regression
+  summary: "With a shared Σ the x^T Σ^{-1} x terms cancel, so the log-odds are w^T x + b with w = Σ^{-1}(μ_1 − μ_0); the boundary is a hyperplane."
+  derivation: der-7-3-1
+
+- id: gda-sigmoid-posterior
+  label: "GDA posterior is a sigmoid"
+  type: concept
+  field: ml
+  unit: u7-gaussian-discriminant-analysis
+  lesson: shared-covariance-and-logistic-regression
+  summary: "Affine log-odds give p(y = 1 | x) = σ(w^T x + b): shared-covariance GDA has the functional form of logistic regression."
+  derivation: der-7-3-2
+
+- id: pooled-covariance-mle
+  label: "Pooled-covariance MLE"
+  type: method
+  field: statistics
+  unit: u7-gaussian-discriminant-analysis
+  lesson: shared-covariance-and-logistic-regression
+  summary: "Σ̂ = (1/n) Σ_i (x_i − μ̂_{y_i})(x_i − μ̂_{y_i})^T = Σ_k (n_k/n) Σ̂_k: each example centered at its own class mean; singular when d > n − K."
+  derivation: der-7-3-3
+
+- id: qda-quadratic-boundary
+  label: "QDA log-odds are quadratic"
+  type: concept
+  field: ml
+  unit: u7-gaussian-discriminant-analysis
+  lesson: shared-covariance-and-logistic-regression
+  summary: "With a covariance Σ_k per class (the slides' GDA, gda-model, also called QDA), the log-odds keep ½ x^T(Σ_0^{-1} − Σ_1^{-1})x, so the boundary is a quadric."
+  derivation: der-7-3-4
+
+- id: gaussian-naive-bayes
+  label: "Gaussian Naive Bayes"
+  type: method
+  field: ml
+  unit: u7-gaussian-discriminant-analysis
+  lesson: shared-covariance-and-logistic-regression
+  summary: "GDA with diagonal Σ_k: the Gaussian factorizes into one 1-D Gaussian per feature, which is the Naive Bayes assumption. Full-covariance GDA is not Naive Bayes."
+  derivation: der-7-3-5
+
+- id: gda-vs-logistic-regression
+  label: "GDA vs logistic regression"
+  type: concept
+  field: ml
+  unit: u7-gaussian-discriminant-analysis
+  lesson: shared-covariance-and-logistic-regression
+  summary: "Same sigmoid form, different fit: GDA maximizes the joint likelihood, logistic regression the conditional. GDA implies the logistic form, not conversely."
+  derivation: der-7-3-6

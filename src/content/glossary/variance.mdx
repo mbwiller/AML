@@ -1,0 +1,12 @@
+---
+id: variance
+term: Variance
+aliases: [var, standard deviation, sigma squared]
+field: probability
+firstUsedIn: u1-linear-regression
+related: [expectation, covariance, gaussian, z-score]
+---
+
+**What it is.** The average squared distance of a random variable from its mean, $\mathrm{Var}(X) = \mathbb{E}\big[(X - \mathbb{E}X)^2\big] = \mathbb{E}[X^2] - (\mathbb{E}X)^2$. It is never negative, and it is zero only when $X$ is constant. Its square root $\sigma$ is the standard deviation, which has the units of $X$. Scaling and shifting obey $\mathrm{Var}(aX + b) = a^2\,\mathrm{Var}(X)$, and for a vector $x$ with covariance matrix $\Sigma$, $\mathrm{Var}(v^\top x) = v^\top \Sigma v$.
+
+**How ML uses it.** It measures spread: the noise level in regression, the width of a Gaussian $\mathcal{N}(\mu, \sigma^2)$ (whose second argument is a variance, not a standard deviation), and the diagonal of a covariance matrix. Its MLE from a sample divides by $n$; the unbiased estimate divides by $n - 1$.

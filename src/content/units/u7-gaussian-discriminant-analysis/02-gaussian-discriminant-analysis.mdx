@@ -1,0 +1,808 @@
+---
+title: "Gaussian discriminant analysis"
+unit: u7-gaussian-discriminant-analysis
+order: 2
+slug: gaussian-discriminant-analysis
+summary: "A Gaussian mixture with one component per class is a generative classifier. Its MLE, derived with the trace trick and matrix calculus: class proportions, class means, class covariances. Then the bias and singularity of Σ̂_k, and the prediction rule."
+lectures:
+  - { lecture: 9, pages: "44-46" }
+  - { lecture: 10, pages: "9-11" }
+  - { lecture: 10, pages: "15-21" }
+concepts:
+  - gda-model
+  - gda-log-likelihood-decomposition
+  - gda-mle-mean
+  - gda-mle-covariance
+  - gda-prediction
+  - gda-covariance-bias
+  - gda-covariance-singularity
+prerequisites:
+  - gaussian-mixture
+  - mvn-density
+  - covariance-matrix-properties
+  - gaussian
+  - multivariate-gaussian
+  - mixture-distribution
+  - covariance-matrix
+  - quadratic-form
+  - matrix-inverse
+  - determinant
+  - trace
+  - eigenvectors
+  - positive-semidefinite
+  - matrix-calculus-identities
+  - first-order-condition
+  - second-order-condition
+  - log-likelihood
+  - log-rules
+  - iid
+  - chain-rule-probability
+  - lagrange-multipliers
+  - argmax
+  - expectation
+  - unbiased-estimator
+  - categorical
+  - bayes-classifier
+  - generative-mle-factorization
+  - categorical-prior-mle
+  - softmax
+homework: [hw3]
+cases: [adverse]
+estimatedMinutes: 75
+status: review
+authors: [jide]
+---
+
+<Frame
+  data="labeled pairs $(x^{(i)}, y^{(i)})$ with $x^{(i)} \in \mathbb{R}^d$, $y^{(i)} \in \{1, \dots, K\}$"
+  model="$y \sim \mathrm{Categorical}(\phi)$, $x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma_k)$: a Gaussian mixture with one component per class"
+  objective="maximize the joint log-likelihood $\sum_i \log p_\theta(x^{(i)}, y^{(i)})$"
+  optimizer="closed form: class proportions, class means, class covariances"
+/>
+
+<Objectives>
+
+- Describe GDA as a Gaussian mixture with one component per class, whose marginal $p(x)$ is that mixture (der-7-1-6).
+- Decompose the GDA log-likelihood into one prior term and one term per class, so each $(\mu_k, \Sigma_k)$ is fit from class $k$ alone.
+- Derive $\hat\mu_k$ (the class mean) from the gradient of a quadratic form, and confirm a maximum with the Hessian $-n_k\Sigma_k^{-1}$.
+- Derive $\hat\Sigma_k$ (the class covariance, divided by $n_k$) with the trace trick and two matrix-calculus identities, and prove it is the global maximum.
+- Show that $\hat\Sigma_k$ is biased by the factor $\frac{n_k - 1}{n_k}$ and singular whenever $n_k \le d$.
+- Classify a new point with $\hat y = \argmax_k \big[\log\phi_k - \tfrac12\log|\Sigma_k| - \tfrac12(x - \mu_k)^\top\Sigma_k^{-1}(x - \mu_k)\big]$.
+
+</Objectives>
+
+<Hook>
+
+In the ADVERSE cohort, a drug-safety team wants to flag patients at risk of hyperkalemia within 90 days. Two recorded features are continuous: age and eGFR, a measure of kidney function. Bernoulli Naive Bayes (lesson 6.3) only models words that are present or absent; it has nothing to say about an eGFR.
+
+The generative recipe still applies. Picture the event patients as one cloud in the (age, eGFR) plane and everyone else as another. If each cloud is roughly an ellipse, a Gaussian describes it with a center, a spread, and a tilt. Which center, spread, and tilt fit best? The slides state the answer; this lesson derives it.
+
+{/* hook-figure: the gda-fitter widget below, on ADVERSE's (age, eGFR), is the hook's explorable */}
+
+</Hook>
+
+## A mixture with one Gaussian per class
+
+L9 and L10 reach GDA through mixtures <SlideRef lecture={9} pages="44-46" />. A single Gaussian has one bump. A weighted sum of Gaussians can have several, which is how the slides model a bumpy one-dimensional density (L10 p.9 shows four components).
+
+Lesson 7.1 defined the Gaussian mixture (def-7-1-3): a [[mixture-distribution|mixture]] $p(x) = \sum_k \pi_k\,\mathcal{N}(x; \mu_k, \Sigma_k)$ whose components are [[multivariate-gaussian|multivariate Gaussians]], or one-dimensional [[gaussian|Gaussians]] when $d = 1$, with mixture weights $\pi_k \ge 0$ that sum to 1. <SlideRef lecture={9} pages="44" />
+
+The slides then make one identification <SlideRef lecture={10} pages="11" />: let the number of components be the number of classes, let the weight $\pi_k$ be the class prior $P(Y = k)$, which we write $\phi_k$, and let component $k$ be the class-conditional $P(x \mid Y = k)$.
+
+<Definition id="def-7-2-2" title="Gaussian discriminant analysis" source="L10 p.15">
+
+A generative classifier with parameters $\theta = (\phi, \mu_1, \dots, \mu_K, \Sigma_1, \dots, \Sigma_K)$:
+
+$$P_\theta(y = k) = \phi_k, \qquad x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma_k).$$
+
+$\phi$ is a [[categorical]] prior on the simplex, $\mu_k \in \mathbb{R}^d$ is the center of class $k$, and $\Sigma_k$ is a symmetric positive definite $d \times d$ [[covariance-matrix|covariance matrix]], one per class. <SlideRef lecture={10} pages="15" />
+
+Also written as: $P(\mathbf{x} \mid Y = k) : N(\mathbf{x}; \mu_k, \Sigma_k)$ (the slides); QDA when the per-class covariances need to be distinguished from a shared one (lesson 7.3).
+
+</Definition>
+
+The phrase "mixture with one component per class" is a statement about the marginal $p(x)$, and der-7-1-6 already proved it: summing the joint over the label gives
+
+$$p_\theta(x) = \sum_{k=1}^{K}\phi_k\,\mathcal{N}(x; \mu_k, \Sigma_k).$$
+
+So the class priors are the mixture weights and the class-conditionals are the components. The difference from the mixtures of L9 p.45 is that in classification we **see** which component produced each training point: it is the label. That turns a hard fitting problem (the open question on L9 p.45, which needs EM) into a closed-form one.
+
+<Callout type="slide">
+
+Notation. L9 p.43 and L10 p.12 write the mean as $u$, as in $N(u, \sigma^2)$ and $N(\mathbf{u}, \Sigma)$; we write $\mu$. The second argument of $\mathcal{N}$ is a variance in one dimension and a covariance matrix in $d$ dimensions. The L10 p.9 labels, such as $N(-2.5, 0.85)$, do not say which; we read them as variances to match the slide's own $N(x; \mu_k, \sigma_k^2)$. L10 p.17 writes the prior as $\phi_K$; we write $\phi_k$.
+
+</Callout>
+
+<Check ids={["q-u7-l2-001", "q-u7-l2-002"]} />
+
+<Intuition>
+
+Take one feature and two classes. Fitting GDA means fitting a bell curve to each class separately: put its center at the class's average and its width at the class's spread. Scale each bell by its class's share of the data, $\phi_k$. The two scaled bells, added, are the mixture $p(x)$.
+
+Prediction asks which scaled bell is higher at the new point. Where the two curves $\phi_0\,\mathcal{N}(x; \mu_0, \sigma_0^2)$ and $\phi_1\,\mathcal{N}(x; \mu_1, \sigma_1^2)$ cross is the decision boundary. A rarer class has a lower bell, so it wins only nearer its own center. A wider class has a flatter bell, so it can win again far out in both tails, which is why per-class widths can give two cut-offs (lesson 7.3 works the troponin example).
+
+In $d$ dimensions, "the class's average" becomes a mean vector and "the class's spread" becomes a covariance matrix, which sets an ellipse's size, shape, and tilt. The derivations below show that maximum likelihood picks exactly these: the class mean and the class covariance.
+
+</Intuition>
+
+## Splitting the log-likelihood
+
+The slides fit GDA the way lesson 6.3 fit Naive Bayes: maximize the joint log-likelihood, and notice that it falls apart into independent pieces <SlideRef lecture={10} pages="16-18" />. Here is the split, with the Gaussian written out.
+
+<Derivation
+  id="der-7-2-2"
+  title="The GDA log-likelihood splits into a prior term and one term per class"
+  goalTex="\ell(\theta) = \sum_{i=1}^{n}\log p_\theta(x^{(i)}, y^{(i)}), \quad \theta = (\phi, \mu_1, \dots, \mu_K, \Sigma_1, \dots, \Sigma_K)"
+  resultTex="\ell(\theta) = \underbrace{\sum_{i=1}^{n}\log\phi_{y^{(i)}}}_{\ell_{\mathrm{prior}}(\phi)} + \sum_{k=1}^{K}\underbrace{\sum_{i:\,y^{(i)} = k}\Big[-\tfrac{d}{2}\log 2\pi - \tfrac12\log|\Sigma_k| - \tfrac12(x^{(i)} - \mu_k)^\top\Sigma_k^{-1}(x^{(i)} - \mu_k)\Big]}_{\ell_k(\mu_k, \Sigma_k)}"
+  source="L10 pp.16–19 (the split is shown on pp.16 and 18; the Gaussian is never substituted)"
+>
+
+<Chunk title="From the dataset to a sum of log joints">
+
+<Step justification="the examples are i.i.d., so the probability of the dataset is a product over examples, and its log is a sum (der-6-1-3 steps 1–4)" sticky="iid">
+$$\ell(\theta) = \log\prod_{i=1}^{n} p_\theta(x^{(i)}, y^{(i)}) = \sum_{i=1}^{n}\log p_\theta(x^{(i)}, y^{(i)})$$
+</Step>
+
+<Step justification="product rule $p(x, y) = p(x \mid y)\,p(y)$, then the log of a product is a sum of logs (L10 p.16, first line)" sticky="log-rules">
+$$\ell(\theta) = \sum_{i=1}^{n}\log p_\theta(x^{(i)} \mid y^{(i)}) + \sum_{i=1}^{n}\log p_\theta(y^{(i)})$$
+</Step>
+
+<Step justification="substitute the GDA model: example $i$ uses the Gaussian and the prior of its own label" fadeable>
+$$\ell(\theta) = \sum_{i=1}^{n}\log\mathcal{N}(x^{(i)}; \mu_{y^{(i)}}, \Sigma_{y^{(i)}}) + \sum_{i=1}^{n}\log\phi_{y^{(i)}}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Regroup by class and read off the separation">
+
+<Step justification="every example has exactly one label, so sorting the first sum into $K$ groups changes nothing (L10 p.16, second line)">
+$$\sum_{i=1}^{n}\log\mathcal{N}(x^{(i)}; \mu_{y^{(i)}}, \Sigma_{y^{(i)}}) = \sum_{k=1}^{K}\sum_{i:\,y^{(i)} = k}\log\mathcal{N}(x^{(i)}; \mu_k, \Sigma_k)$$
+</Step>
+
+<Step justification="name the pieces: $\ell_{\mathrm{prior}}$ holds every $\phi$, and the class-$k$ group $\ell_k$ holds every $\mu_k$ and $\Sigma_k$">
+$$\ell(\theta) = \ell_{\mathrm{prior}}(\phi) + \sum_{k=1}^{K}\ell_k(\mu_k, \Sigma_k), \qquad \ell_k(\mu_k, \Sigma_k) = \sum_{i:\,y^{(i)} = k}\log\mathcal{N}(x^{(i)}; \mu_k, \Sigma_k)$$
+</Step>
+
+<Step justification="$\mu_k$ and $\Sigma_k$ appear in $\ell_k$ and in no other term, so the other terms are constants when we maximize over them (L10 p.18)">
+$$\max_{\mu_k, \Sigma_k}\ell(\theta) \;\text{ is attained where }\; \ell_k(\mu_k, \Sigma_k) \text{ is maximal}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Write out the Gaussian (what L10 p.19 asks for)">
+
+<Step justification="take the log of the multivariate Gaussian density (lesson 7.1): the log of the normalizer plus the exponent; $\log|\Sigma|^{1/2} = \tfrac12\log|\Sigma|$" sticky="multivariate-gaussian">
+$$\log\mathcal{N}(x; \mu, \Sigma) = -\tfrac{d}{2}\log 2\pi - \tfrac12\log|\Sigma| - \tfrac12(x - \mu)^\top\Sigma^{-1}(x - \mu)$$
+</Step>
+
+<Step justification="substitute step 7 into the class-$k$ term of step 5" fadeable>
+$$\ell_k(\mu_k, \Sigma_k) = \sum_{i:\,y^{(i)} = k}\Big[-\tfrac{d}{2}\log 2\pi - \tfrac12\log|\Sigma_k| - \tfrac12(x^{(i)} - \mu_k)^\top\Sigma_k^{-1}(x^{(i)} - \mu_k)\Big]$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+This is der-6-1-3 with Gaussian class-conditionals. Fitting GDA is now $K + 1$ separate problems: one for the prior, and one per class that sees only that class's $n_k$ examples.
+
+<Theorem id="thm-7-2-1" title="The GDA maximum-likelihood estimates" source="L10 pp.17, 20 (stated: 'just the empirical means and covariances of each class')">
+
+If class $k$ has $n_k$ training examples and its residuals $x^{(i)} - \hat\mu_k$ span $\mathbb{R}^d$ (which needs $n_k \ge d + 1$), the joint log-likelihood is maximized by
+
+$$\hat\phi_k = \frac{n_k}{n}, \qquad \hat\mu_k = \frac{1}{n_k}\sum_{i:\,y^{(i)} = k} x^{(i)}, \qquad \hat\Sigma_k = \frac{1}{n_k}\sum_{i:\,y^{(i)} = k}(x^{(i)} - \hat\mu_k)(x^{(i)} - \hat\mu_k)^\top.$$
+
+<SlideRef lecture={10} pages="20" />
+
+</Theorem>
+
+<Callout type="beyond">
+
+L10 p.19 says to plug in the Gaussian, "compute the derivative and set it to zero", and p.20 states the result. Derivations der-7-2-4 to der-7-2-6 carry that out, and der-7-2-8 and der-7-2-9 (bias and singularity) are not on the slides at all (course map L10, derivation gap 1).
+
+</Callout>
+
+### The prior
+
+The prior term is the one lesson 6.3 already solved, because it does not care what the class-conditionals are.
+
+<Derivation
+  id="der-7-2-3"
+  title="The GDA prior is the class proportion"
+  goalTex="\max_{\phi}\;\ell_{\mathrm{prior}}(\phi) \quad \text{subject to } \sum_{k}\phi_k = 1"
+  resultTex="\hat\phi_k = \frac{n_k}{n}"
+  source="L10 p.17 (stated as φ_k / Σ_l φ_l = n_k / n); the Lagrange multiplier argument is der-6-3-5"
+>
+
+<Chunk title="Reduce to the Naive Bayes prior problem">
+
+<Step justification="the prior term of der-7-2-2: each example contributes the log-prior of its own label" sticky="categorical">
+$$\ell_{\mathrm{prior}}(\phi) = \sum_{i=1}^{n}\log\phi_{y^{(i)}}$$
+</Step>
+
+<Step justification="group by label: $\log\phi_k$ appears once for each of the $n_k$ class-$k$ examples" fadeable>
+$$\ell_{\mathrm{prior}}(\phi) = \sum_{k=1}^{K} n_k\log\phi_k$$
+</Step>
+
+<Step justification="this is the objective and simplex constraint of der-6-3-5 steps 2–3, whose Lagrange-multiplier solution is the class proportion" sticky="lagrange-multipliers" fadeable>
+$$\hat\phi_k = \frac{n_k}{n}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+L10 p.17 says this optimization "can be carried out independently for each label class". Strictly, the $\phi_k$ are tied together by $\sum_k\phi_k = 1$, so the problem is solved jointly; what is true is that the answer for $\phi_k$ depends only on $n_k$ and $n$ (see the pitfalls).
+
+<Check ids={["q-u7-l2-003", "q-u7-l2-004", "q-u7-l2-022"]} />
+
+## The mean: gradient of a quadratic form
+
+Fix a class $k$ and drop the subscript where it does not help: write $A = \Sigma_k^{-1}$ and sum over the class-$k$ examples only. Which center makes the class's points most probable?
+
+<Derivation
+  id="der-7-2-4"
+  title="The MLE of μ_k is the class mean"
+  goalTex="\max_{\mu_k}\;\ell_k(\mu_k, \Sigma_k) \text{ for fixed } \Sigma_k"
+  resultTex="\hat\mu_k = \frac{1}{n_k}\sum_{i:\,y^{(i)} = k} x^{(i)}, \qquad \nabla^2_{\mu_k}\ell_k = -n_k\Sigma_k^{-1} \prec 0"
+  source="L10 pp.19–20 (method and result stated; no calculus shown)"
+>
+
+<Chunk title="Keep the terms that involve μ_k">
+
+<Step justification="der-7-2-2 step 8; the first two terms in the bracket do not involve $\mu_k$, so they join the constant">
+$$\ell_k(\mu_k) = -\tfrac12\sum_{i:\,y^{(i)} = k}(x^{(i)} - \mu_k)^\top\Sigma_k^{-1}(x^{(i)} - \mu_k) + \text{const}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Differentiate one quadratic form">
+
+<Step justification="expand the product for one example, with $A = \Sigma_k^{-1}$; the two cross terms are equal because each is a scalar (its own transpose) and $A$ is symmetric" sticky="quadratic-form">
+$$(x - \mu)^\top A(x - \mu) = \mu^\top A\mu - 2x^\top A\mu + x^\top Ax$$
+</Step>
+
+<Step justification="differentiate term by term: $\nabla_\mu\,\mu^\top A\mu = 2A\mu$ for symmetric $A$, $\nabla_\mu\,(Ax)^\top\mu = Ax$, and $x^\top Ax$ does not involve $\mu$" sticky="matrix-calculus-identities">
+$$\nabla_\mu\,(x - \mu)^\top A(x - \mu) = 2A\mu - 2Ax = -2A(x - \mu)$$
+</Step>
+
+<Step justification="apply step 3 to every term of step 1 and multiply by $-\tfrac12$" fadeable>
+$$\nabla_{\mu_k}\ell_k = \Sigma_k^{-1}\sum_{i:\,y^{(i)} = k}(x^{(i)} - \mu_k)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Set the gradient to zero and solve">
+
+<Step justification="first-order condition, then multiply on the left by the invertible $\Sigma_k$" sticky="first-order-condition">
+$$\sum_{i:\,y^{(i)} = k}(x^{(i)} - \mu_k) = 0$$
+</Step>
+
+<Step justification="split the sum: $\mu_k$ is subtracted once for each of the $n_k$ class-$k$ examples" fadeable>
+$$\sum_{i:\,y^{(i)} = k}x^{(i)} - n_k\mu_k = 0$$
+</Step>
+
+<Step justification="divide by $n_k > 0$" fadeable>
+$$\hat\mu_k = \frac{1}{n_k}\sum_{i:\,y^{(i)} = k}x^{(i)}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Confirm a global maximum">
+
+<Step justification="differentiate step 4 once more: each of the $n_k$ terms contributes $-\Sigma_k^{-1}$">
+$$\nabla^2_{\mu_k}\ell_k = -n_k\Sigma_k^{-1}$$
+</Step>
+
+<Step justification="$\Sigma_k^{-1}$ is positive definite: for $v \ne 0$ put $u = \Sigma_k^{-1}v \ne 0$; then $v^\top\Sigma_k^{-1}v = u^\top\Sigma_k u > 0$" sticky="positive-semidefinite">
+$$v^\top\Sigma_k^{-1}v > 0 \quad \text{for all } v \ne 0$$
+</Step>
+
+<Step justification="so the Hessian is negative definite at every $\mu_k$; $\ell_k$ is strictly concave in $\mu_k$, and the stationary point is its unique global maximum" sticky="second-order-condition">
+$$v^\top\big(\nabla^2_{\mu_k}\ell_k\big)v = -n_k\,v^\top\Sigma_k^{-1}v < 0 \quad \text{for all } v \ne 0$$
+</Step>
+
+<Step justification="$\hat\mu_k$ does not depend on $\Sigma_k$, so it is the best mean for every covariance at once; we may substitute it before maximizing over $\Sigma_k$">
+$$\ell_k(\mu_k, \Sigma_k) \le \ell_k(\hat\mu_k, \Sigma_k) \quad \text{for every } \mu_k \text{ and every positive definite } \Sigma_k$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 5 has a direct reading: the residuals from the maximum-likelihood center sum to zero. The center balances the class's points, whatever the shape of the class's ellipse; $\Sigma_k^{-1}$ multiplies the whole sum and drops out. Step 11 is what licenses fitting the mean first and the covariance second.
+
+<Check ids={["q-u7-l2-005", "q-u7-l2-006"]} />
+
+## The covariance: the trace trick
+
+Now the shape. With $\hat\mu_k$ in place, collect each class's spread in one matrix.
+
+<Definition id="def-7-2-3" title="Class scatter matrix" source="beyond the slides (the numerator of the L10 p.20 formula)">
+
+For class $k$, with residuals $r^{(i)} = x^{(i)} - \hat\mu_k$,
+
+$$S_k = \sum_{i:\,y^{(i)} = k} r^{(i)} r^{(i)\top} = \sum_{i:\,y^{(i)} = k}(x^{(i)} - \hat\mu_k)(x^{(i)} - \hat\mu_k)^\top.$$
+
+It is a $d \times d$ sum of outer products: symmetric, with the summed squared deviations of each feature on the diagonal and summed cross-products off it.
+
+Also written as: the within-class sum of squares and cross-products (SSCP) matrix.
+
+</Definition>
+
+The obstacle is that $\Sigma_k$ sits inside a quadratic form, sandwiched between two vectors, $n_k$ times over. The [[trace]] trick turns that sum into a single expression in $\Sigma_k$.
+
+<Derivation
+  id="der-7-2-5"
+  title="The MLE of Σ_k is the class covariance, divided by n_k"
+  goalTex="\max_{\Sigma_k \succ 0}\;\ell_k(\hat\mu_k, \Sigma_k)"
+  resultTex="\hat\Sigma_k = \frac{S_k}{n_k} = \frac{1}{n_k}\sum_{i:\,y^{(i)} = k}(x^{(i)} - \hat\mu_k)(x^{(i)} - \hat\mu_k)^\top"
+  source="L10 pp.19–20 (method and result stated; no calculus shown)"
+>
+
+<Chunk title="Plug in the class mean and keep the terms with Σ_k">
+
+<Step justification="der-7-2-2 step 8 at $\mu_k = \hat\mu_k$ (allowed by der-7-2-4 step 11); $-\tfrac12\log|\Sigma_k|$ appears once per class-$k$ example, $n_k$ times in all" sticky="log-likelihood">
+$$\ell_k(\Sigma_k) = -\tfrac{n_k}{2}\log|\Sigma_k| - \tfrac12\sum_{i:\,y^{(i)} = k}r^{(i)\top}\Sigma_k^{-1}r^{(i)} + \text{const}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Turn the sum of quadratic forms into one trace">
+
+<Step justification="a $1 \times 1$ matrix is its own trace" sticky="trace">
+$$r^\top\Sigma_k^{-1}r = \mathrm{tr}\big(r^\top\Sigma_k^{-1}r\big)$$
+</Step>
+
+<Step justification="the trace is unchanged by a cyclic shift: move $r^\top$ from the front to the back" sticky="trace" fadeable>
+$$\mathrm{tr}\big(r^\top\Sigma_k^{-1}r\big) = \mathrm{tr}\big(\Sigma_k^{-1}rr^\top\big)$$
+</Step>
+
+<Step justification="the trace is linear, so the sum over examples moves inside it, where it builds $S_k$ (def-7-2-3)">
+$$\sum_{i:\,y^{(i)} = k}\mathrm{tr}\big(\Sigma_k^{-1}r^{(i)}r^{(i)\top}\big) = \mathrm{tr}\Big(\Sigma_k^{-1}\sum_{i:\,y^{(i)} = k}r^{(i)}r^{(i)\top}\Big) = \mathrm{tr}\big(\Sigma_k^{-1}S_k\big)$$
+</Step>
+
+<Step justification="substitute steps 2–4 into step 1">
+$$\ell_k(\Sigma_k) = -\tfrac{n_k}{2}\log|\Sigma_k| - \tfrac12\,\mathrm{tr}\big(\Sigma_k^{-1}S_k\big) + \text{const}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Differentiate with two matrix-calculus identities">
+
+<Step justification="gradient of the log-determinant, treating all $d^2$ entries as free and evaluating at symmetric $\Sigma$ (see the note after this derivation)" sticky="matrix-calculus-identities">
+$$\nabla_{\Sigma}\log|\Sigma| = \Sigma^{-1}$$
+</Step>
+
+<Step justification="gradient of the trace term, treating all $d^2$ entries as free and evaluating at symmetric $\Sigma$ and $S$ (see the note after this derivation)" sticky="matrix-calculus-identities">
+$$\nabla_{\Sigma}\,\mathrm{tr}\big(\Sigma^{-1}S\big) = -\Sigma^{-1}S\,\Sigma^{-1}$$
+</Step>
+
+<Step justification="apply steps 6 and 7 to step 5 and set the gradient to zero" sticky="first-order-condition">
+$$-\tfrac{n_k}{2}\Sigma_k^{-1} + \tfrac12\Sigma_k^{-1}S_k\Sigma_k^{-1} = 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Solve for Σ_k">
+
+<Step justification="multiply on the left by $2\Sigma_k$; $\Sigma_k\Sigma_k^{-1} = I$" sticky="matrix-inverse" fadeable>
+$$-n_k I + S_k\Sigma_k^{-1} = 0$$
+</Step>
+
+<Step justification="multiply on the right by $\Sigma_k$" fadeable>
+$$-n_k\Sigma_k + S_k = 0$$
+</Step>
+
+<Step justification="divide by $n_k$" fadeable>
+$$\hat\Sigma_k = \frac{S_k}{n_k} = \frac{1}{n_k}\sum_{i:\,y^{(i)} = k}(x^{(i)} - \hat\mu_k)(x^{(i)} - \hat\mu_k)^\top$$
+</Step>
+
+<Step justification="the answer is a legal covariance: each $rr^\top$ is symmetric, and $v^\top\hat\Sigma_k v$ is an average of squares; it is positive definite exactly when no $v \ne 0$ is orthogonal to every residual (der-7-2-9 step 6)" sticky="positive-semidefinite">
+$$\hat\Sigma_k = \hat\Sigma_k^\top, \qquad v^\top\hat\Sigma_k v = \frac{1}{n_k}\sum_{i:\,y^{(i)} = k}\big(v^\top r^{(i)}\big)^2 \ge 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Each entry of $\hat\Sigma_k$ is a familiar statistic. The diagonal entry $(\hat\Sigma_k)_{jj}$ is the class-$k$ variance of feature $j$, and the off-diagonal entry $(\hat\Sigma_k)_{jl}$ is the class-$k$ covariance of features $j$ and $l$, both computed around the class mean and divided by $n_k$.
+
+<Callout type="note">
+
+**All $d^2$ entries free, evaluated at a symmetric matrix.** For a general square matrix, $\nabla_\Sigma\log|\Sigma| = \Sigma^{-\top}$ and $\nabla_\Sigma\,\mathrm{tr}(\Sigma^{-1}S) = -\Sigma^{-\top}S^\top\Sigma^{-\top}$; for symmetric $\Sigma$ and $S$ these are steps 6 and 7. A covariance has only $d(d+1)/2$ free entries, though, because $\Sigma_{jl} = \Sigma_{lj}$. If $G$ is the gradient computed as though all $d^2$ entries were free, the gradient over the free entries is $2G - \diag(G)$: an off-diagonal entry appears twice in the matrix, a diagonal entry once. For symmetric $G$, $2G - \diag(G) = 0$ exactly when $G = 0$. Both conventions therefore have the same stationary points, and we may use the simpler one: treat all $d^2$ entries as free and evaluate at symmetric $\Sigma$.
+
+</Callout>
+
+<Callout type="beyond">
+
+**A cleaner route: differentiate in the precision matrix.** Write $\Lambda = \Sigma_k^{-1}$. Since $|\Sigma_k| = 1/|\Lambda|$, step 5 becomes
+
+$$\ell_k(\Lambda) = \tfrac{n_k}{2}\log|\Lambda| - \tfrac12\,\mathrm{tr}(\Lambda S_k) + \text{const}.$$
+
+The trace is now linear in $\Lambda$: $\mathrm{tr}(\Lambda S_k) = \sum_{j,l}\Lambda_{jl}(S_k)_{lj}$, so $\partial\,\mathrm{tr}(\Lambda S_k)/\partial\Lambda_{jl} = (S_k)_{lj}$ and the gradient is $S_k^\top = S_k$. With $\nabla_\Lambda\log|\Lambda| = \Lambda^{-1}$ the first-order condition reads $\tfrac{n_k}{2}\Lambda^{-1} - \tfrac12 S_k = 0$, so $\Lambda^{-1} = S_k/n_k$: the same $\hat\Sigma_k$, with no inverse to differentiate. Because the MLE of a one-to-one reparametrization is the reparametrized MLE, the two routes must agree.
+
+</Callout>
+
+The first-order condition finds a stationary point. Lesson 7.3 (der-7-3-3) leans on the fact that it is the global maximum, so here is the proof. It needs only that $\hat\Sigma_k$ is positive definite.
+
+<Derivation
+  id="der-7-2-6"
+  title="The stationary point Σ̂_k is the global maximum"
+  goalTex="\ell_k(\hat\mu_k, \Sigma) \le \ell_k(\hat\mu_k, \hat\Sigma_k) \text{ for every positive definite } \Sigma"
+  resultTex="\ell_k(\Sigma) - \ell_k(\hat\Sigma_k) = \tfrac{n_k}{2}\sum_{j=1}^{d}\big(\log\lambda_j - \lambda_j + 1\big) \le 0, \text{ with equality only at } \Sigma = \hat\Sigma_k"
+  source="beyond the slides (course map L10 derivation gap 1)"
+>
+
+<Chunk title="Compare any Σ with Σ̂_k">
+
+<Step justification="substitute $S_k = n_k\hat\Sigma_k$ (der-7-2-5 step 11) into der-7-2-5 step 5; the trace is linear, so $n_k$ comes out">
+$$\ell_k(\Sigma) = -\tfrac{n_k}{2}\Big[\log|\Sigma| + \mathrm{tr}\big(\Sigma^{-1}\hat\Sigma_k\big)\Big] + \text{const}$$
+</Step>
+
+<Step justification="evaluate step 1 at $\Sigma = \hat\Sigma_k$: $\mathrm{tr}(\hat\Sigma_k^{-1}\hat\Sigma_k) = \mathrm{tr}(I) = d$" fadeable>
+$$\ell_k(\hat\Sigma_k) = -\tfrac{n_k}{2}\Big[\log|\hat\Sigma_k| + d\Big] + \text{const}$$
+</Step>
+
+<Step justification="subtract step 2 from step 1; the constants cancel">
+$$\ell_k(\Sigma) - \ell_k(\hat\Sigma_k) = -\tfrac{n_k}{2}\Big[\log|\Sigma| - \log|\hat\Sigma_k| + \mathrm{tr}\big(\Sigma^{-1}\hat\Sigma_k\big) - d\Big]$$
+</Step>
+
+<Step justification="write $M = \Sigma^{-1}\hat\Sigma_k$; the determinant of a product is the product of determinants, and $|\Sigma^{-1}| = 1/|\Sigma|$" sticky="determinant">
+$$\log|M| = \log|\hat\Sigma_k| - \log|\Sigma|$$
+</Step>
+
+<Step justification="substitute step 4 into step 3 and distribute the minus sign">
+$$\ell_k(\Sigma) - \ell_k(\hat\Sigma_k) = \tfrac{n_k}{2}\Big[\log|M| - \mathrm{tr}(M) + d\Big]$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Reduce to the eigenvalues of M">
+
+<Step justification="factor $\hat\Sigma_k = LL^\top$ with $L$ invertible (for example $L = \hat\Sigma_k^{1/2}$ from the eigendecomposition); $M = (\Sigma^{-1}L)L^\top$ has the same eigenvalues as $L^\top\Sigma^{-1}L$, which is symmetric positive definite, so they are real and positive" sticky="eigenvectors">
+$$\text{eigenvalues of } M:\ \lambda_1, \dots, \lambda_d > 0$$
+</Step>
+
+<Step justification="the determinant is the product of the eigenvalues and the trace is their sum" sticky="determinant">
+$$\log|M| = \sum_{j=1}^{d}\log\lambda_j, \qquad \mathrm{tr}(M) = \sum_{j=1}^{d}\lambda_j$$
+</Step>
+
+<Step justification="substitute step 7 into step 5, writing $d = \sum_j 1$" fadeable>
+$$\ell_k(\Sigma) - \ell_k(\hat\Sigma_k) = \tfrac{n_k}{2}\sum_{j=1}^{d}\big(\log\lambda_j - \lambda_j + 1\big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="One scalar inequality finishes it">
+
+<Step justification="$\log$ is concave, so it lies below its tangent line at $\lambda = 1$, which is $\lambda - 1$; the two touch only at $\lambda = 1$">
+$$\log\lambda \le \lambda - 1 \quad \text{for all } \lambda > 0, \text{ with equality only at } \lambda = 1$$
+</Step>
+
+<Step justification="every term of step 8 is at most 0; equality needs every $\lambda_j = 1$, so the symmetric matrix $L^\top\Sigma^{-1}L$ is $I$, which means $\Sigma = LL^\top = \hat\Sigma_k$">
+$$\ell_k(\Sigma) \le \ell_k(\hat\Sigma_k), \qquad \text{with equality only at } \Sigma = \hat\Sigma_k$$
+</Step>
+
+<Step justification="chain step 10 with der-7-2-4 step 11: no $(\mu_k, \Sigma_k)$ does better than $(\hat\mu_k, \hat\Sigma_k)$">
+$$\ell_k(\mu_k, \Sigma_k) \le \ell_k(\hat\mu_k, \Sigma_k) \le \ell_k(\hat\mu_k, \hat\Sigma_k)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Together with der-7-2-2 and der-7-2-3, this proves thm-7-2-1. The proof also shows what goes wrong when $\hat\Sigma_k$ is singular: step 6 needs an invertible $L$. We return to that case below.
+
+<Check ids={["q-u7-l2-007", "q-u7-l2-008", "q-u7-l2-009", "q-u7-l2-010"]} />
+
+## Predicting with GDA
+
+Prediction is the Bayes classifier of lesson 6.1 with Gaussian class-conditionals <SlideRef lecture={10} pages="21" />. Working in logs gives each class a score.
+
+<Derivation
+  id="der-7-2-7"
+  title="The GDA prediction rule"
+  goalTex="\hat y = \argmax_k\; p_\theta(y = k \mid x) \text{ for the GDA model}"
+  resultTex="\hat y = \argmax_k\;\delta_k(x), \qquad \delta_k(x) = \log\phi_k - \tfrac12\log|\Sigma_k| - \tfrac12(x - \mu_k)^\top\Sigma_k^{-1}(x - \mu_k)"
+  source="L10 p.21 poll (c) (rule stated in words); L8 p.39 for the Bayes classifier (der-6-1-1)"
+>
+
+<Chunk title="From the Bayes classifier to a score per class">
+
+<Step justification="the Bayes classifier: $p(x)$ is the same for every class and drops out of the argmax (der-6-1-1)" sticky="argmax">
+$$\hat y = \argmax_k\; p_\theta(x \mid y = k)\,\phi_k$$
+</Step>
+
+<Step justification="$\log$ is increasing, so it does not change the argmax; the log of a product is a sum" sticky="log-rules" fadeable>
+$$\hat y = \argmax_k\;\Big[\log\phi_k + \log\mathcal{N}(x; \mu_k, \Sigma_k)\Big]$$
+</Step>
+
+<Step justification="substitute the log density, der-7-2-2 step 7" sticky="multivariate-gaussian">
+$$\hat y = \argmax_k\;\Big[\log\phi_k - \tfrac{d}{2}\log 2\pi - \tfrac12\log|\Sigma_k| - \tfrac12(x - \mu_k)^\top\Sigma_k^{-1}(x - \mu_k)\Big]$$
+</Step>
+
+<Step justification="$-\tfrac{d}{2}\log 2\pi$ is the same for every class, so it does not change the argmax; $\log|\Sigma_k|$ differs between classes and stays" fadeable>
+$$\hat y = \argmax_k\;\delta_k(x), \qquad \delta_k(x) = \log\phi_k - \tfrac12\log|\Sigma_k| - \tfrac12(x - \mu_k)^\top\Sigma_k^{-1}(x - \mu_k)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="The posterior, not just the label">
+
+<Step justification="Bayes' rule normalizes $\phi_k\,\mathcal{N}(x; \mu_k, \Sigma_k) = (2\pi)^{-d/2}e^{\delta_k(x)}$ over the classes; the common factor $(2\pi)^{-d/2}$ cancels, leaving a softmax of the scores" sticky="softmax">
+$$p_\theta(y = k \mid x) = \frac{e^{\delta_k(x)}}{\sum_{l=1}^{K}e^{\delta_l(x)}}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Read the score from right to left. The last term penalizes distance from the class center, measured in the class's own units: a step along a direction in which class $k$ is spread out costs little, a step across it costs a lot. The middle term penalizes a class for being spread out, because a wide Gaussian spreads its probability thinly. The first term is the prior. In code, compute the $\delta_k$ and use log-sum-exp for the softmax (lesson 6.3); never form $e^{\delta_k}$ directly.
+
+The boundary between classes $k$ and $l$ is the set where $\delta_k(x) = \delta_l(x)$. Each score is quadratic in $x$, and the quadratic parts $-\tfrac12 x^\top\Sigma_k^{-1}x$ differ between classes, so in general the boundary is a curved quadric. Lesson 7.3 shows that a shared covariance makes them cancel, leaving a straight boundary and a sigmoid posterior.
+
+<Check ids={["q-u7-l2-011", "q-u7-l2-012", "q-u7-l2-019", "q-u7-l2-020"]} />
+
+## How good is Σ̂_k?
+
+Maximum likelihood answered "which parameters make the data most probable?" Two further questions matter in practice. Is the answer right on average? And does it exist?
+
+### The 1/n_k makes it biased
+
+Condition on the labels, so that $n_k$ is fixed and the class-$k$ examples are i.i.d. draws with mean $\mu_k$ and covariance $\Sigma_k$. Write $m = n_k$, number those examples $x_1, \dots, x_m$, and write $\bar x = \hat\mu_k$.
+
+<Derivation
+  id="der-7-2-8"
+  title="The covariance MLE underestimates by the factor (n_k − 1)/n_k"
+  goalTex="\E\big[\hat\Sigma_k\big], \qquad \hat\Sigma_k = \frac{1}{m}\sum_{i=1}^{m}(x_i - \bar x)(x_i - \bar x)^\top"
+  resultTex="\E\big[\hat\Sigma_k\big] = \frac{n_k - 1}{n_k}\,\Sigma_k, \qquad \E\Big[\frac{S_k}{n_k - 1}\Big] = \Sigma_k"
+  source="beyond the slides (course map L10 derivation gap 1: 'discuss the biased 1/n_k normalizer')"
+>
+
+<Chunk title="Center at the true mean instead of the sample mean">
+
+<Step justification="add and subtract $\mu = \mu_k$">
+$$x_i - \bar x = (x_i - \mu) - (\bar x - \mu)$$
+</Step>
+
+<Step justification="expand the outer product of step 1 and sum over $i$; the last term does not depend on $i$, so it appears $m$ times">
+$$S_k = \sum_{i}(x_i - \mu)(x_i - \mu)^\top - \sum_{i}(x_i - \mu)(\bar x - \mu)^\top - \sum_{i}(\bar x - \mu)(x_i - \mu)^\top + m(\bar x - \mu)(\bar x - \mu)^\top$$
+</Step>
+
+<Step justification="by the definition of the mean, $\sum_i(x_i - \mu) = m\bar x - m\mu = m(\bar x - \mu)$; substitute it into both cross sums">
+$$\sum_{i}(x_i - \mu)(\bar x - \mu)^\top = \sum_{i}(\bar x - \mu)(x_i - \mu)^\top = m(\bar x - \mu)(\bar x - \mu)^\top$$
+</Step>
+
+<Step justification="substitute step 3 into step 2: $-m - m + m = -m$" fadeable>
+$$S_k = \sum_{i=1}^{m}(x_i - \mu)(x_i - \mu)^\top - m(\bar x - \mu)(\bar x - \mu)^\top$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Take expectations term by term">
+
+<Step justification="each $x_i$ has covariance $\Sigma = \Sigma_k$, by definition" sticky="covariance-matrix">
+$$\E\big[(x_i - \mu)(x_i - \mu)^\top\big] = \Sigma$$
+</Step>
+
+<Step justification="write $\bar x - \mu = \tfrac1m\sum_i(x_i - \mu)$, expand the outer product, and use linearity of expectation" sticky="expectation">
+$$\E\big[(\bar x - \mu)(\bar x - \mu)^\top\big] = \frac{1}{m^2}\sum_{i=1}^{m}\sum_{l=1}^{m}\E\big[(x_i - \mu)(x_l - \mu)^\top\big]$$
+</Step>
+
+<Step justification="for $i \ne l$ the examples are independent, so the expectation factors into $\E[x_i - \mu]\,\E[x_l - \mu]^\top = 0$; the $m$ terms with $i = l$ are each $\Sigma$ by step 5" sticky="iid" fadeable>
+$$\E\big[(\bar x - \mu)(\bar x - \mu)^\top\big] = \frac{1}{m^2}\cdot m\,\Sigma = \frac{\Sigma}{m}$$
+</Step>
+
+<Step justification="take the expectation of step 4 with steps 5 and 7" fadeable>
+$$\E[S_k] = m\Sigma - m\cdot\frac{\Sigma}{m} = (m - 1)\,\Sigma$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Read off the bias and the fix">
+
+<Step justification="divide step 8 by $m = n_k$" fadeable>
+$$\E\big[\hat\Sigma_k\big] = \frac{n_k - 1}{n_k}\,\Sigma_k$$
+</Step>
+
+<Step justification="divide step 8 by $m - 1$ instead: this estimator is unbiased" sticky="unbiased-estimator">
+$$\E\Big[\frac{S_k}{n_k - 1}\Big] = \Sigma_k$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Steps 4 and 7 explain the bias. Measuring spread around $\bar x$ instead of around $\mu$ loses exactly the spread of $\bar x$ itself, which is $\Sigma/m$ per example. The sample mean is fit to the data, so the data look closer to it than to the truth.
+
+Is the bias a problem? The factor $\frac{n_k - 1}{n_k}$ is 0.5 at $n_k = 2$ and 0.99 at $n_k = 100$; for any class with a reasonable number of examples it is negligible next to the estimate's sampling noise. The MLE is the estimate the slides state and the one GDA uses. Know which normalizer your tools use: `np.cov` divides by $n - 1$ unless you pass `bias=True`.
+
+### Too few examples make it singular
+
+<Derivation
+  id="der-7-2-9"
+  title="Σ̂_k is singular when n_k ≤ d, and then the likelihood has no maximum"
+  goalTex="\mathrm{rank}\big(\hat\Sigma_k\big) \text{ in terms of } n_k \text{ and } d"
+  resultTex="\mathrm{rank}\big(\hat\Sigma_k\big) \le n_k - 1, \quad \text{so } n_k \le d \Rightarrow |\hat\Sigma_k| = 0 \text{ and } \sup_{\Sigma_k}\ell_k(\hat\mu_k, \Sigma_k) = +\infty"
+  source="beyond the slides (course map L10 derivation gap 1; pedagogy reference Part B (12), pitfalls)"
+>
+
+<Chunk title="The residuals are not free">
+
+<Step justification="der-7-2-4 step 5: the residuals from the class mean sum to zero">
+$$\sum_{i:\,y^{(i)} = k} r^{(i)} = 0$$
+</Step>
+
+<Step justification="so any one residual is minus the sum of the others; the $n_k$ residuals span a space of dimension at most $n_k - 1$" fadeable>
+$$\dim\,\mathrm{span}\{r^{(i)} : y^{(i)} = k\} \le n_k - 1$$
+</Step>
+
+<Step justification="every column of $S_k$ is a combination of residuals: $S_k v = \sum_i r^{(i)}\big(r^{(i)\top}v\big)$; so the rank of $S_k$, and of $\hat\Sigma_k = S_k/n_k$, is at most that dimension" fadeable>
+$$\mathrm{rank}\big(\hat\Sigma_k\big) \le n_k - 1$$
+</Step>
+
+</Chunk>
+
+<Chunk title="When n_k ≤ d, the density breaks">
+
+<Step justification="if $n_k \le d$, the rank is below $d$, so some $v \ne 0$ has $\hat\Sigma_k v = 0$; a singular matrix has zero determinant and no inverse" sticky="matrix-inverse">
+$$n_k \le d \;\Longrightarrow\; \mathrm{rank}\big(\hat\Sigma_k\big) \le d - 1 \;\Longrightarrow\; |\hat\Sigma_k| = 0$$
+</Step>
+
+<Step justification="the Gaussian density divides by $|\hat\Sigma_k|^{1/2}$ and uses $\hat\Sigma_k^{-1}$; neither exists, so the plug-in density and the score $\delta_k$ are undefined" sticky="multivariate-gaussian">
+$$\mathcal{N}(x; \hat\mu_k, \hat\Sigma_k) = \frac{\exp\big(-\tfrac12(x - \hat\mu_k)^\top\hat\Sigma_k^{-1}(x - \hat\mu_k)\big)}{(2\pi)^{d/2}\,|\hat\Sigma_k|^{1/2}} \quad \text{is undefined}$$
+</Step>
+
+<Step justification="conversely, $v^\top S_k v = \sum_i(v^\top r^{(i)})^2$ is zero only if $v$ is orthogonal to every residual, so $\hat\Sigma_k$ is positive definite exactly when the residuals span $\mathbb{R}^d$, which needs $n_k \ge d + 1$" sticky="positive-semidefinite">
+$$\hat\Sigma_k \succ 0 \iff \mathrm{span}\{r^{(i)}\} = \mathbb{R}^d$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Worse: the likelihood is unbounded">
+
+<Step justification="try $\Sigma_\varepsilon = \hat\Sigma_k + \varepsilon I$, which is positive definite for $\varepsilon > 0$; it has the eigenvectors of $\hat\Sigma_k$ and eigenvalues $s_j + \varepsilon$, where $s_j \ge 0$ are those of $\hat\Sigma_k$; evaluate der-7-2-6 step 1 in that eigenbasis" sticky="eigenvectors">
+$$\ell_k(\Sigma_\varepsilon) = -\tfrac{n_k}{2}\sum_{j=1}^{d}\Big[\log(s_j + \varepsilon) + \frac{s_j}{s_j + \varepsilon}\Big] + \text{const}$$
+</Step>
+
+<Step justification="take $0 < \varepsilon < 1$; each fraction lies in $[0, 1]$, and when $n_k \le d$ at least one $s_j = 0$, whose term $-\log\varepsilon = \log\tfrac{1}{\varepsilon}$ is positive and grows without bound as $\varepsilon \to 0$ (any further zero eigenvalues add more positive terms)">
+$$\ell_k(\Sigma_\varepsilon) \ge -\tfrac{n_k}{2}\sum_{j:\,s_j > 0}\log(s_j + \varepsilon) - \tfrac{n_k}{2}\,d + \tfrac{n_k}{2}\log\tfrac{1}{\varepsilon} + \text{const} \;\xrightarrow[\varepsilon \to 0]{}\; +\infty$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Geometrically, $n_k \le d$ points always lie in a flat subspace of dimension at most $n_k - 1$: two points on a line, three in a plane. A Gaussian can squeeze its probability onto that flat subspace and make the density at the data as large as it likes, so the "best" Gaussian is degenerate and the MLE does not exist.
+
+This is a practical concern, not a corner case. With $d$ features, every class needs at least $d + 1$ examples, and in practice many more; a rare class in a wide feature set fails first. The usual remedies are to share one covariance across classes (lesson 7.3, which needs only $n - K \ge d$), to restrict $\Sigma_k$ to be diagonal (Gaussian Naive Bayes, also lesson 7.3), or to shrink, $\hat\Sigma_k + \lambda I$, as the proof above suggests.
+
+<Check ids={["q-u7-l2-013", "q-u7-l2-014", "q-u7-l2-015", "q-u7-l2-016"]} />
+
+## Explore
+
+<Widget
+  name="gda-fitter"
+  dataset="adverse"
+  features={["age", "egfr"]}
+  sharedCovariance={false}
+  showLogisticRegression={false}
+  challenge="Drag one event patient far from the others and watch the event class's ellipse stretch toward it: the mean moves a little, the covariance a lot. Then delete event patients until only two remain. What happens to the ellipse, and why does the fitter refuse to draw a boundary?"
+/>
+
+## Worked example
+
+{/* example-case: ADVERSE narrative only; the case's variables, prevalence, and n come from the case spec (pedagogy reference Part C, C2); no sampled numbers are used */}
+
+<Example case="adverse" title="ADVERSE: what each GDA estimate says about the cohort">
+
+The case records, for each patient, age (years), eGFR (mL/min/1.73 m²), and whether hyperkalemia occurred within 90 days ($y = 1$). Fit GDA on $x = (\text{age}, \text{eGFR})$, so $d = 2$ and $K = 2$.
+
+**The prior.** $\hat\phi_1 = n_1/n$ is the event rate in the training data (der-7-2-3). The case spec puts prevalence near 6%, so $\log\hat\phi_1$ is strongly negative, and every score $\delta_1(x)$ starts well behind $\delta_0(x)$. An event patient must look markedly unlike the typical non-event patient before the classifier says "event".
+
+**The means.** $\hat\mu_1$ is the average (age, eGFR) of the event patients and $\hat\mu_0$ that of everyone else (der-7-2-4). The case's generating model raises risk with age and with falling eGFR, so we expect $\hat\mu_1$ to sit at an older age and a lower eGFR than $\hat\mu_0$.
+
+**The covariances.** $\hat\Sigma_1$ is a $2 \times 2$ matrix computed from the event patients only, around their own mean, divided by $n_1$ (der-7-2-5). Its diagonal holds the within-class variances of age and of eGFR; its off-diagonal entry is their within-class covariance, and a negative value would mean that older event patients tend to have lower eGFR. $\hat\Sigma_0$ is the same computation on the non-event patients.
+
+**Is $\hat\Sigma_1$ safe?** With $n = 5{,}000$ and about 6% events, $n_1$ is in the hundreds, far above $d + 1 = 3$, so $\hat\Sigma_1$ is invertible (der-7-2-9) and its bias factor $\frac{n_1 - 1}{n_1}$ is within a fraction of a percent of 1 (der-7-2-8). Now imagine adding a dozen laboratory values and restricting to a small subgroup, such as patients on a particular co-medication: $n_1$ can fall toward $d$, and $\hat\Sigma_1$ becomes unstable and then singular.
+
+**Prediction.** For a new patient, compute $\delta_0(x)$ and $\delta_1(x)$ (der-7-2-7) and flag the larger. Because $\hat\Sigma_0 \ne \hat\Sigma_1$, the boundary in the (age, eGFR) plane is curved.
+
+**A caution the case builds in.** ADVERSE is generated from a logistic model with a sharp rise in risk below eGFR 30, not from two Gaussians. GDA's Gaussian class-conditionals are therefore an approximation here, and the event class's eGFR distribution may be skewed rather than elliptical. Lesson 7.3 asks when that misspecification hurts GDA relative to logistic regression.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u7-l2-017", "q-u7-l2-018", "q-u7-l2-021"]} />
+
+## Pitfalls
+
+<Pitfall title="φ_K on L10 p.17 means φ_k" misconception="phi-capital-k">
+
+L10 p.17 (like the Naive Bayes recap on pp.3–5) says "the optimal $\phi_K$ is the proportion of data points with class $k$". Read $\phi_K$ as $\phi_k$, the prior of class $k$. Taken literally, $\phi_K$ is the prior of the last class only, and the sentence would assign every class's proportion to it.
+
+</Pitfall>
+
+<Pitfall title="The slides' u is the mean μ" misconception="u-for-mu">
+
+L9 p.43 writes the Gaussian as $N(u, \sigma^2)$ and L10 p.12 writes $N(\mathbf{u}, \Sigma)$, with $\mathbf{u}$ "a vector of length $d$". This $u$ is the mean, which we write $\mu$ (and which L10 itself writes as $\mu_k$ from p.15 on). It is not a separate parameter, and it is unrelated to the $u$ used for other vectors in the derivations above.
+
+</Pitfall>
+
+<Pitfall title="Spot the error: 'empirical means and variances'" misconception="gda-variances-only">
+
+L10 p.15 says GDA fits "$\mu_k, \Sigma_k$ to be empirical means and variances of each label class". Variances alone would fill only the diagonal of $\Sigma_k$, which is Gaussian Naive Bayes (lesson 7.3). The MLE is the full class covariance matrix, off-diagonal covariances included (der-7-2-5), and L10 p.20 states it correctly. It also divides by $n_k$, not $n_k - 1$: the "empirical covariance" of a statistics package is often the unbiased version (der-7-2-8 step 10), which is not the MLE.
+
+</Pitfall>
+
+<Pitfall title="Use only class k, and divide by n_k" misconception="mean-divide-by-n">
+
+The belief: $\hat\mu_k = \frac1n\sum_{i:\,y^{(i)} = k}x^{(i)}$, or even the overall mean $\frac1n\sum_{i=1}^{n}x^{(i)}$. The fix: the class-$k$ sum has $n_k$ terms, so dividing by the total $n$ shrinks the mean toward the origin by the factor $\hat\phi_k$. der-7-2-4 step 6 subtracts $\mu_k$ once per class-$k$ example, $n_k$ times. Summing over all $n$ examples ignores the labels altogether and gives every class the same center. The same holds for $\hat\Sigma_k$: use only the class-$k$ examples, center them at $\hat\mu_k$, and divide by $n_k$.
+
+</Pitfall>
+
+<Pitfall title="Spot the error: the priors are not fit independently" misconception="prior-independent-fit">
+
+L10 p.17 says the optimization of the $\phi_k$ "can be carried out independently for each label class". It cannot: maximizing $\sum_k n_k\log\phi_k$ one $\phi_k$ at a time would push every $\phi_k$ to 1, because each term increases in its own $\phi_k$. The $\phi_k$ are coupled by the simplex constraint $\sum_k\phi_k = 1$, and the Lagrange multiplier of der-7-2-3 (der-6-3-5) enforces it jointly. What is true is that the answer, $\hat\phi_k = n_k/n$, depends only on the class counts. The means and covariances, by contrast, really do separate by class (der-7-2-2 step 6).
+
+</Pitfall>
+
+<Pitfall title="Fitting each class separately needs only the labels" misconception="class-split-reason">
+
+The belief: $\mu_k$ and $\Sigma_k$ can be fit from class $k$ alone because the features are conditionally independent, or because the classes share a covariance. The fix: neither is assumed. The split is exact bookkeeping (der-7-2-2 steps 4–6): every example has one label, so the class-conditional sum regroups by class, and $\mu_k, \Sigma_k$ appear only in the class-$k$ group. Full-covariance GDA keeps every within-class correlation and a separate $\Sigma_k$ per class. What the split does need is the labels; without them every point involves every component, which is why an unlabeled mixture needs EM.
+
+</Pitfall>
+
+<Pitfall title="The prior belongs in the prediction" misconception="ignore-prior">
+
+The belief: since $\log\phi_k$ does not depend on $x$, it can be dropped from the score, or prediction can pick the class whose Gaussian is highest at $x$. The fix: the GDA prediction is the Bayes classifier of lesson 6.1, $\argmax_k p(x \mid y = k)\,\phi_k$ (der-7-2-7 step 1). A term can be dropped only if it is the same for every class, and $\log\phi_k$ differs across classes. Dropping it treats a 6% class as if it were as common as a 94% class, and flags far too many patients.
+
+</Pitfall>
+
+<Pitfall title="The slides' GDA has a curved boundary" misconception="gda-is-linear">
+
+The belief: GDA, like logistic regression, draws a straight line between classes. The fix: with a covariance $\Sigma_k$ per class, as on L10 p.15, the scores $\delta_k(x)$ keep different quadratic terms $-\tfrac12 x^\top\Sigma_k^{-1}x$, and the boundary is a quadric. Only a covariance shared across classes makes it linear. Per-class GDA is what is usually called QDA; lesson 7.3 derives both boundaries.
+
+</Pitfall>
+
+<Pitfall title="log|Σ_k| cannot be dropped from the score" misconception="drop-logdet">
+
+The belief: like $-\tfrac{d}{2}\log 2\pi$, the term $-\tfrac12\log|\Sigma_k|$ is a normalizing constant and can be ignored at prediction time. The fix: it is constant in $x$ but not in $k$. A class with a larger covariance spreads its probability more thinly, and $-\tfrac12\log|\Sigma_k|$ charges it for that. Dropping it favors wide classes everywhere. It cancels only when all classes share one $\Sigma$ (lesson 7.3).
+
+</Pitfall>
+
+<Pitfall title="Σ̂_k is singular when n_k ≤ d" misconception="class-cov-singular">
+
+The belief: the class covariance can always be inverted. The fix: its rank is at most $n_k - 1$ (der-7-2-9), so a class with $d$ or fewer examples gives a singular $\hat\Sigma_k$, an undefined density, and a likelihood with no maximum. Check $n_k$ against $d$ for every class, and expect trouble well before the boundary. Share the covariance, make it diagonal, or shrink it.
+
+</Pitfall>
+
+<Pitfall title="Maximum likelihood is not always unbiased" misconception="mle-always-unbiased">
+
+The belief: the MLE is the "best" estimate, so it must be right on average. The fix: $\E[\hat\Sigma_k] = \frac{n_k - 1}{n_k}\Sigma_k$ (der-7-2-8). The MLE answers a different question: which parameters make the observed data most probable. The class mean happens to be unbiased; the class covariance is not, because it is measured around a fitted mean.
+
+</Pitfall>
+
+<Connections>
+
+- Before: 7.1 Multivariate Gaussian and covariance (the density, $|\Sigma|$, $\Sigma^{-1}$, and the ellipses that $\hat\Sigma_k$ draws); 6.1 Generative vs discriminative (der-6-1-1 for the Bayes classifier, der-6-1-3 for the split that der-7-2-2 specializes); 6.3 Naive Bayes (der-6-3-5 for $\hat\phi_k$, and the same "fit each class separately" pattern).
+- Next: 7.3 Shared covariance and logistic regression. Sharing one $\Sigma$ makes the boundary a hyperplane and the posterior a sigmoid; its pooled-covariance MLE (der-7-3-3) reuses der-7-2-5 and der-7-2-6 with $n_k \to n$.
+- Unit 9 (L11–L12): drop the labels and the Gaussian mixture of der-7-1-6 has to be fit without knowing which component made each point. That is the open question of L9 p.45, and EM answers it with a weighted version of thm-7-2-1.
+- Graph neighbors: [[mixture-distribution]], [[trace]], [[matrix-calculus-identities]], [[unbiased-estimator]].
+
+</Connections>
+
+<HomeworkBridge hw="hw3" skills={["gda-model", "gda-log-likelihood-decomposition", "gda-mle-mean", "gda-mle-covariance", "gda-prediction", "gda-covariance-singularity"]} />
+
+<Summary>
+
+- **GDA:** $y \sim \mathrm{Categorical}(\phi)$, $x \mid y = k \sim \mathcal{N}(\mu_k, \Sigma_k)$. Its marginal is the Gaussian mixture $p(x) = \sum_k\phi_k\,\mathcal{N}(x; \mu_k, \Sigma_k)$, with the labels telling us which component made each point.
+- **Split:** $\ell(\theta) = \sum_i\log\phi_{y^{(i)}} + \sum_k\ell_k(\mu_k, \Sigma_k)$, with $\ell_k = \sum_{i:\,y^{(i)} = k}\big[-\tfrac{d}{2}\log 2\pi - \tfrac12\log|\Sigma_k| - \tfrac12(x^{(i)} - \mu_k)^\top\Sigma_k^{-1}(x^{(i)} - \mu_k)\big]$.
+- **MLE:** $\hat\phi_k = \frac{n_k}{n}$; $\hat\mu_k = \frac{1}{n_k}\sum_{i:\,y^{(i)} = k}x^{(i)}$ (Hessian $-n_k\Sigma_k^{-1} \prec 0$); $\hat\Sigma_k = \frac{1}{n_k}\sum_{i:\,y^{(i)} = k}(x^{(i)} - \hat\mu_k)(x^{(i)} - \hat\mu_k)^\top$.
+- **Tools:** trace trick $\sum_i r^{(i)\top}\Sigma^{-1}r^{(i)} = \mathrm{tr}(\Sigma^{-1}S_k)$; $\nabla_\Sigma\log|\Sigma| = \Sigma^{-1}$; $\nabla_\Sigma\,\mathrm{tr}(\Sigma^{-1}S) = -\Sigma^{-1}S\Sigma^{-1}$, treating all $d^2$ entries as free and evaluating at symmetric $\Sigma$ (see the note after der-7-2-5). Global maximum via $\log\lambda \le \lambda - 1$ on the eigenvalues of $\Sigma^{-1}\hat\Sigma_k$.
+- **Bias:** $\E[\hat\Sigma_k] = \frac{n_k - 1}{n_k}\Sigma_k$; dividing by $n_k - 1$ is unbiased but is not the MLE.
+- **Singularity:** $\mathrm{rank}\,\hat\Sigma_k \le n_k - 1$, so $n_k \le d$ gives a singular $\hat\Sigma_k$ and an unbounded likelihood.
+- **Prediction:** $\hat y = \argmax_k\big[\log\phi_k - \tfrac12\log|\Sigma_k| - \tfrac12(x - \mu_k)^\top\Sigma_k^{-1}(x - \mu_k)\big]$; the posterior is the softmax of these scores; the boundary is quadratic.
+
+</Summary>
