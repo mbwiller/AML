@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { hasBaseline } from './baselines';
+
 const THEMES = ['light', 'dark'] as const;
 
 /**
@@ -24,8 +26,9 @@ for (const theme of THEMES) {
     expect(consoleErrors, 'console errors').toEqual([]);
 
     await page.screenshot({ path: `test-results/kitchen-sink-${theme}.png`, fullPage: true });
-    // Pixel comparison runs only in CI, where the Linux baselines are generated and committed.
-    if (process.env.CI) {
+    // Pixel comparison runs only in CI and only once a Linux baseline has been committed
+    // (seed them with the "Update e2e snapshots" workflow).
+    if (process.env.CI && hasBaseline(`kitchen-sink-${theme}.png`)) {
       await expect(page).toHaveScreenshot(`kitchen-sink-${theme}.png`, { fullPage: true });
     }
   });

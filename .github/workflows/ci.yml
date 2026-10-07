@@ -73,9 +73,9 @@ jobs:
         run: pnpm build
 
       - name: Playwright
-        # Missing baselines are written (and uploaded) rather than failing; commit them
-        # with the update-snapshots workflow.
-        run: pnpm test:e2e --update-snapshots=missing
+        # Pixel comparison only runs for screenshots with a committed baseline
+        # (seed or refresh them with the update-snapshots workflow).
+        run: pnpm test:e2e
 
       - uses: actions/upload-artifact@v4
         if: always()
