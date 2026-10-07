@@ -1,0 +1,12 @@
+---
+id: one-hot-encoding
+term: One-hot encoding
+aliases: [one-hot, dummy variables, indicator coding, get_dummies]
+field: ml
+firstUsedIn: u1-linear-regression
+related: [indicator-function, feature-map, sparse-matrix]
+---
+
+**What it is.** A way to turn a categorical value with $K$ possible categories into numbers: category $k$ becomes the vector $\phi(k) \in \{0, 1\}^K$ with a 1 in position $k$ and 0 elsewhere, $\phi_j(k) = \mathbb{1}[j = k]$. Five zip codes become five columns, and 10044 becomes $[0, 0, 0, 0, 1]$. Exactly one entry is 1, so the entries always sum to 1.
+
+**How ML uses it.** A linear model on one-hot features gives each category its own coefficient, $f_\theta(k) = \theta_k$, instead of forcing equally spaced, ordered predictions as a numeric code would. With an intercept, drop one column (`drop_first=True`): the $K$ columns sum to the intercept column, so the coefficients would not be unique. Bag-of-words for text applies the same idea to every vocabulary word.

@@ -115,3 +115,53 @@
 - { from: bernoulli-naive-bayes, to: gaussian-naive-bayes, type: contrasts }
 - { from: discriminative-model, to: gda-vs-logistic-regression, type: contrasts }
 - { from: generative-model, to: gda-vs-logistic-regression, type: uses }
+
+# ---------- Unit 1: Linear regression ----------
+
+# Lesson 1.1: components-of-a-learning-problem
+# Course map L2 seed edges between concepts taught in 1.1.
+- { from: five-ml-components, to: data-representation, type: requires }
+- { from: data-representation, to: attribute-types, type: requires }
+- { from: attribute-types, to: one-hot-encoding, type: requires }
+- { from: attribute-types, to: discretization, type: requires }
+- { from: attribute-types, to: feature-engineering, type: requires }
+- { from: one-hot-encoding, to: integer-codes-impose-spacing, type: contrasts }
+- { from: one-hot-encoding, to: dummy-variable-trap, type: requires }
+- { from: one-hot-encoding, to: discretization, type: requires }
+- { from: linear-in-parameters, to: feature-engineering, type: requires }
+- { from: feature-engineering, to: interaction-feature, type: requires }
+- { from: diabetes-dataset, to: data-representation, type: uses }
+
+# Lesson 1.2: datasets-models-and-model-classes
+# Course map L2 seed edges ("Concept-graph edges", docs/course-map/01-lectures-L1-L3.md):
+#   Attributes x^(i) -> Features φ(x^(i)) -> Design matrix X (L3)
+#   Target space Y -> Task taxonomy
+#   Dataset D -> iid sampling assumption (L3)
+#   Model f_θ -> Model class M -> Restricting hypothesis space
+#   Linear regression model -> Linear-model properties (independence, monotonicity, uniform effects)
+# Edges between concepts of the same lesson cannot be derived from frontmatter.
+
+# Within lesson 1.2
+- { from: supervised-dataset, to: supervised-task-types, type: requires }
+- { from: parametric-model, to: model-class, type: requires }
+- { from: model-class, to: restricting-model-class, type: requires }
+- { from: model-class, to: linear-model, type: requires }
+- { from: linear-model, to: vectorized-predictions, type: requires }
+- { from: supervised-dataset, to: vectorized-predictions, type: requires }
+- { from: design-matrix, to: vectorized-predictions, type: requires }
+- { from: linear-model, to: linear-uniform-effects, type: requires }
+- { from: linear-uniform-effects, to: linear-additive-effects, type: requires }
+- { from: linear-uniform-effects, to: linear-monotonicity, type: requires }
+
+# Toward glossary nodes and later units
+- { from: feature-map, to: design-matrix, type: uses }
+- { from: supervised-dataset, to: iid, type: uses }
+- { from: inductive-bias, to: restricting-model-class, type: uses }
+- { from: linear-uniform-effects, to: inductive-bias, type: uses }
+- { from: linear-additive-effects, to: inductive-bias, type: uses }
+- { from: linear-monotonicity, to: inductive-bias, type: uses }
+
+# Toward lesson 1.1
+- { from: five-ml-components, to: model-class, type: requires }
+- { from: five-ml-components, to: supervised-dataset, type: requires }
+- { from: interaction-feature, to: linear-additive-effects, type: contrasts }

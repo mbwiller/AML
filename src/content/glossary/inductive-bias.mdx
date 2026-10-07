@@ -1,0 +1,12 @@
+---
+id: inductive-bias
+term: Inductive bias
+aliases: [inductive biases, modeling assumptions, structural assumptions]
+field: ml
+firstUsedIn: u1-linear-regression
+related: [linear-function, feature-map]
+---
+
+**What it is.** The assumptions a learner brings before seeing data: the properties every model in its model class shares, whatever the parameters. Training chooses among the models; the inductive bias decides which models were on the table.
+
+**How ML uses it.** Without one, the training data say nothing about new inputs: many functions fit the same $n$ points and disagree everywhere else. A linear model's biases are additive feature effects, monotonicity in each feature, and the same change in output for the same change in input everywhere. A good bias matches the problem (dose-response curves saturate, so a straight line in dose does not); a bad one limits accuracy however much data you collect.

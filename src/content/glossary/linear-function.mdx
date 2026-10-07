@@ -1,0 +1,12 @@
+---
+id: linear-function
+term: Linear function
+aliases: [linearity, linear map]
+field: linear-algebra
+firstUsedIn: u1-linear-regression
+related: [design-matrix, inductive-bias]
+---
+
+**What it is.** A function $g : \mathbb{R}^d \to \mathbb{R}$ is linear when $g(u + v) = g(u) + g(v)$ and $g(c\,u) = c\,g(u)$ for all vectors $u, v$ and scalars $c$. Every such $g$ is an inner product, $g(x) = w^\top x = \sum_j w_j x_j$. Adding a constant gives an affine function, $w^\top x + b$; with the constant feature $x_0 = 1$ it becomes $\theta^\top x$ again.
+
+**How ML uses it.** A linear model $f_\theta(x) = \theta^\top x$ is linear in $x$ and also linear in $\theta$. Linearity in $x$ produces the model's inductive biases: the change $f_\theta(x + \Delta) - f_\theta(x) = \theta^\top \Delta$ does not depend on $x$. Linearity in $\theta$ is what keeps least squares solvable in closed form, even after a nonlinear feature map.

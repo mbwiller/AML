@@ -1,0 +1,12 @@
+---
+id: indicator-function
+term: Indicator function
+aliases: [indicator, Boolean feature, characteristic function, Iverson bracket]
+field: probability
+firstUsedIn: u1-linear-regression
+related: [one-hot-encoding, feature-map, bernoulli]
+---
+
+**What it is.** $\mathbb{1}[A]$ equals 1 when the condition $A$ is true and 0 when it is false. For example, $\mathbb{1}[\text{age} > 65]$ is 1 for patients over 65. Products of indicators are "and": $\mathbb{1}[A]\,\mathbb{1}[B] = \mathbb{1}[A \text{ and } B]$. The expectation of an indicator is a probability, $\mathbb{E}\big[\mathbb{1}[A]\big] = P(A)$.
+
+**How ML uses it.** Indicators are the simplest engineered features: a yes/no flag such as "old and male" (L2 p.12), a bin of a discretized lab value, or one entry of a one-hot vector. They also write counts compactly, as in $n_k = \sum_i \mathbb{1}[y^{(i)} = k]$, and define the 0/1 loss, $\mathbb{1}[\hat y \ne y]$. In code, a Boolean comparison such as `x > 0` is an indicator.

@@ -1,0 +1,517 @@
+# Quiz bank: Unit 1, Linear regression.
+# Format: docs/CONTENT_AUTHORING.md §7. Poll items carry source "L<n> p.<k> poll" and the
+# course map's suggested key (docs/course-map/01-lectures-L1-L3.md).
+
+# ---------- Lesson 1.1: components-of-a-learning-problem ----------
+# Poll items carry source "L2 p.<k> poll" (docs/course-map/01-lectures-L1-L3.md, L2 poll section).
+
+- id: q-u1-l1-001
+  lesson: components-of-a-learning-problem
+  concepts: [one-hot-encoding, integer-codes-impose-spacing]
+  type: mc
+  difficulty: 1
+  source: "L2 p.9 poll"
+  prompt: |
+    A column records each patient's zip code, one of 10040, 10041, 10042, 10043, 10044. How should you represent the 5 zip codes?
+  options:
+    - { text: "Convert to numerical values and use as is", misconception: integer-code-categorical }
+    - { text: "Convert to numerical values and standardize", misconception: standardize-fixes-codes }
+    - { text: "Represent using a binary vector of length 5 where each entry represents one zip code", correct: true }
+    - { text: "Any of the above works well in practice", misconception: integer-code-categorical }
+  explanation: |
+    One-hot encoding (L2 p.10). A linear model on the raw code predicts $f(k+1) - f(k) = \theta_1$ for every pair of neighboring zip codes (der-1-1-1 step 3), so the predictions are equally spaced and ordered by zip code. Standardizing is an affine change of the code and keeps that constraint (step 6). One-hot gives each zip code its own parameter, $f_\theta(k) = \theta_k$.
+  discriminates: [one-hot-encoding, integer-codes-impose-spacing]
+
+- id: q-u1-l1-002
+  lesson: components-of-a-learning-problem
+  concepts: [feature-engineering]
+  type: mc
+  difficulty: 2
+  source: "L2 p.13 poll"
+  prompt: |
+    Is it beneficial to maximize the number of input features in a machine learning model?
+  options:
+    - { text: "It depends on the model class: the more complex the model, the more features the better", misconception: more-features-always-better }
+    - { text: "It depends on the dataset size: the larger the dataset, the more features the better", misconception: more-features-always-better }
+    - { text: "It is always beneficial", misconception: more-features-always-better }
+    - { text: "It is never beneficial" }
+    - { text: "None of the above", correct: true }
+  explanation: |
+    The slides pose this as a discussion question with no stated answer; keying 'None of the above' is our reading. Each other option states a rule that fails. A feature helps when it carries signal and there are enough examples to estimate its coefficient; a noise feature still receives a coefficient fitted to training noise, however large the dataset or flexible the model. "Never" is also wrong: der-1-1-3 shows one engineered feature turning a model that cannot fit the dose-response into one that fits it exactly.
+
+- id: q-u1-l1-003
+  lesson: components-of-a-learning-problem
+  concepts: [five-ml-components]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    In the VASCO trial we predict the 8-week change in systolic blood pressure from dose and baseline pressure, consider all functions $\theta_0 + \theta_1 D + \theta_2 B$, score them by mean squared error, and pick the best with the closed-form least-squares solution. Which of the five components is "all functions $\theta_0 + \theta_1 D + \theta_2 B$"?
+  options:
+    - { text: "The model class", correct: true }
+    - { text: "The input data" }
+    - { text: "The loss function" }
+    - { text: "The learning rule" }
+  explanation: |
+    The model class $\mathcal{M}$ is the set of candidate functions (def-1-1-1). The input data are the dose and baseline values, the loss is the mean squared error, and the learning rule is the closed-form solution of lesson 1.4.
+
+- id: q-u1-l1-004
+  lesson: components-of-a-learning-problem
+  concepts: [integer-codes-impose-spacing]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    You code three categories as 1, 2, 3, standardize the code, and fit $f_\theta = \theta_0 + \theta_1 z$. Compared with fitting the unstandardized code, the set of prediction vectors $(f(1), f(2), f(3))$ the model can produce is
+  options:
+    - { text: "the same: still equally spaced and ordered", correct: true }
+    - { text: "larger: standardizing removes the arbitrary spacing", misconception: standardize-fixes-codes }
+    - { text: "smaller: standardizing loses information" }
+    - { text: "unrelated: the two models have different numbers of parameters" }
+  explanation: |
+    $z = (c - m)/s$ is affine in $c$, so $\theta'_0 + \theta'_1 z = (\theta'_0 - \theta'_1 m/s) + (\theta'_1/s)\,c$, a member of the original class (der-1-1-1 step 6). Any $\theta_0, \theta_1$ is reached by choosing $\theta'_1 = s\theta_1$, $\theta'_0 = \theta_0 + \theta_1 m$, so the classes are equal.
+
+- id: q-u1-l1-005
+  lesson: components-of-a-learning-problem
+  concepts: [dummy-variable-trap, one-hot-encoding]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A categorical attribute with $K = 6$ categories is one-hot encoded for a linear model that also has an intercept. How many one-hot columns should the feature matrix contain?
+  answer: 5
+  tolerance: 0
+  seeded: { K: [3, 4, 5, 6, 8] }
+  formula: "K - 1"
+  explanation: |
+    The $K$ one-hot columns sum to the intercept column (der-1-1-1 step 11), so one of them must be dropped, leaving $K - 1$. The dropped category becomes the reference, and each remaining coefficient is that category's prediction minus the reference's (step 14).
+
+- id: q-u1-l1-006
+  lesson: components-of-a-learning-problem
+  concepts: [dummy-variable-trap]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A model has an intercept and all $K$ one-hot columns of a categorical attribute. What goes wrong?
+  options:
+    - { text: "Adding any $c$ to the intercept and subtracting $c$ from every category coefficient leaves all predictions unchanged, so the coefficients are not unique", correct: true }
+    - { text: "Nothing: one-hot encoding always uses one column per category", misconception: all-k-columns-with-intercept }
+    - { text: "The model can no longer give each category its own prediction" }
+    - { text: "The predictions become equally spaced, as with an integer code", misconception: integer-code-categorical }
+  explanation: |
+    The one-hot columns sum to 1 for every example, which is the intercept column (der-1-1-1 steps 11 and 12). The predictions are fine; the parameters are not identified, and lesson 1.4 shows the normal equations become singular. Drop one category or drop the intercept.
+
+- id: q-u1-l1-007
+  lesson: components-of-a-learning-problem
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-1-1-1
+  corrupt: { step: 2, replaceTex: 'f_\theta(k'') - f_\theta(k) = \theta_0 + \theta_1\,(c_{k''} - c_k)', explanation: 'Both predictions contain $\theta_0$, so it cancels in the difference. Keeping it would make the gap between two categories depend on the intercept, and two copies of the same category ($k'' = k$) would differ by $\theta_0$ instead of 0.' }
+
+- id: q-u1-l1-008
+  lesson: components-of-a-learning-problem
+  concepts: [discretization]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Toy numbers: a lab value is discretized into low, normal, and high, and a linear model with one coefficient per bin (no intercept) is fit by least squares. The three training patients in the "high" bin have targets 120, 150, and 210. What is $\hat\theta_{\text{high}}$?
+  answer: 160
+  tolerance: 0.01
+  formula: "(120 + 150 + 210) / 3"
+  explanation: |
+    Least squares on a step-function feature map sets each coefficient to the mean target of its bin (der-1-1-2 step 12): $(120 + 150 + 210)/3 = 160$. Patients in the other bins do not affect it, because only bin-high terms of the MSE contain $\theta_{\text{high}}$ (step 9).
+
+- id: q-u1-l1-009
+  lesson: components-of-a-learning-problem
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-1-1-2
+  corrupt: { step: 12, replaceTex: '\hat\theta_b = \frac{1}{n}\sum_{i \in S_b} y^{(i)}', explanation: 'Step 11 has $n_b\theta_b$, the number of examples in bin $b$ times $\theta_b$, so we divide by $n_b$, not by the total $n$. Dividing by $n$ shrinks every bin mean toward 0 by the factor $n_b/n$.' }
+
+- id: q-u1-l1-010
+  lesson: components-of-a-learning-problem
+  concepts: [discretization]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Which is the best reason to replace a raw red-blood-cell count by the flags low, normal, and high?
+  options:
+    - { text: "Different labs process blood differently, so the same raw count can mean different things, while each lab's flag is comparable across labs", correct: true }
+    - { text: "Binning removes noise without losing any information", misconception: discretization-lossless }
+    - { text: "A linear model cannot use a continuous feature" }
+    - { text: "Fewer distinct values always means a better model", misconception: discretization-lossless }
+  explanation: |
+    This is the L2 p.11 argument. Binning does lose information: values in the same bin get the same prediction (der-1-1-2 step 6). It pays off when the raw scale is not comparable or the relation is a threshold or U-shape (step 5).
+
+- id: q-u1-l1-011
+  lesson: components-of-a-learning-problem
+  concepts: [feature-engineering, linear-in-parameters]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    With the engineered feature $\phi(D) = (1, D/(6 + D))$ and $\theta = (-3, -22)$, what does the model predict, in mmHg, for a dose of $D = 12$ mg? Give two decimals.
+  answer: -17.67
+  tolerance: 0.01
+  formula: "-3 - 22 * 12 / (6 + 12)"
+  explanation: |
+    $f_\theta(12) = -3 - 22 \cdot 12/18 = -3 - 14.67 = -17.67$ (der-1-1-3 step 7). The effect relative to placebo, $-14.67$, is less than twice the effect at 6 mg, $-11$: doubling the dose does not double the effect, which no line in raw $D$ can reproduce (step 9).
+
+- id: q-u1-l1-012
+  lesson: components-of-a-learning-problem
+  concepts: [linear-in-parameters]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Which model is NOT linear in its parameters $\theta$?
+  options:
+    - { text: "$\\theta_0 + \\theta_1\\,D/(\\theta_2 + D)$", correct: true }
+    - { text: "$\\theta_0 + \\theta_1 \\log(1 + D)$", misconception: linear-means-straight-line }
+    - { text: "$\\theta_0 + \\theta_1 x + \\theta_2 x^2$", misconception: linear-means-straight-line }
+    - { text: "$\\theta_0 + \\theta_1 a + \\theta_2 s + \\theta_3\\,a\\,s$", misconception: linear-means-straight-line }
+  explanation: |
+    $f_\theta = \theta^\top\phi(x)$ is linear in $\theta$ for any fixed $\phi$ (der-1-1-3 step 2), however curved $\phi$ is in $x$. In the first model $\theta_2$ sits inside the feature, so doubling $\theta$ does not double $f$; it needs iterative fitting instead of the closed form of lesson 1.4.
+
+- id: q-u1-l1-013
+  lesson: components-of-a-learning-problem
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-1-1-3
+  corrupt: { step: 12, replaceTex: 'f_\theta(a{=}1, s) - f_\theta(a{=}0, s) = \theta_1', explanation: 'The product term $\theta_3\,a\,s$ equals $\theta_3 s$ when $a = 1$ and 0 when $a = 0$, so it survives the subtraction. Dropping it erases the reason for engineering the interaction: the effect of $a$ would no longer depend on $s$.' }
+
+- id: q-u1-l1-014
+  lesson: components-of-a-learning-problem
+  concepts: [feature-engineering, interaction-feature]
+  type: code-trace
+  difficulty: 1
+  source: "L2 p.12 (companion notebook cell 6)"
+  prompt: |
+    Row 0 of the diabetes data has `age = 0.038076` and `sex = 0.050680`. What does this line store in row 0's `old_man`?
+    ```python
+    diabetes_X['old_man'] = (diabetes_X['sex'] > 0) & (diabetes_X['age'] > 0.05)
+    ```
+  options:
+    - { text: "`False`", correct: true }
+    - { text: "`True`", misconception: scaled-units-as-raw }
+    - { text: "`0.038076`" }
+    - { text: "An error, because `&` needs Python's `and`" }
+  explanation: |
+    `sex > 0` is `True` but `age > 0.05` is `False` ($0.038 \lt 0.05$), and `&` is elementwise "and" on Boolean columns, the product of two indicators. The notebook output shows `False` for row 0; only row 2 (age 0.085299) is `True` among the first five.
+
+- id: q-u1-l1-015
+  lesson: components-of-a-learning-problem
+  concepts: [integer-codes-impose-spacing, dummy-variable-trap]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of der-1-1-1 in order.
+  items:
+    - 'Evaluate the linear model at the numeric code: $f_\theta(k) = \theta_0 + \theta_1 c_k$.'
+    - 'Subtract two predictions: the gap is $\theta_1(c_{k''} - c_k)$, so consecutive codes give equal steps.'
+    - 'Show that standardizing the code is absorbed into $\theta_0$ and $\theta_1$.'
+    - 'One-hot encode and show $f_\theta(k) = \theta_k$, one free parameter per category.'
+    - 'Note that the one-hot columns sum to 1, the intercept column, so coefficients are not unique.'
+    - 'Drop a reference category and solve for $\theta_k = f_\theta(k) - f_\theta(1)$.'
+  explanation: |
+    Constrain first (numeric code, then standardized code), free with one-hot, then repair the redundancy that one-hot plus an intercept creates.
+
+- id: q-u1-l1-016
+  lesson: components-of-a-learning-problem
+  concepts: [diabetes-dataset]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    In the scikit-learn diabetes data, the condition `age > 0.05` selects patients whose age is
+  options:
+    - { text: "more than about one standard deviation above the mean age", correct: true }
+    - { text: "more than 0.05 years", misconception: scaled-units-as-raw }
+    - { text: "in the oldest 5% of the cohort", misconception: scaled-units-as-raw }
+    - { text: "above 50 years" , misconception: scaled-units-as-raw }
+  explanation: |
+    Each column is centered and divided by its standard deviation times $\sqrt{n}$, with $n = 442$. A scaled age of $0.05$ is $0.05\sqrt{442} \approx 1.05$ standard deviations above the mean (the lesson's worked example).
+
+- id: q-u1-l1-017
+  lesson: components-of-a-learning-problem
+  concepts: [diabetes-dataset]
+  type: mc
+  difficulty: 1
+  source: "L2 p.5 (slide error)"
+  prompt: |
+    In the scikit-learn diabetes data, what is column s5 ("ltg")?
+  options:
+    - { text: "Possibly the log of the serum triglycerides level", correct: true }
+    - { text: "Lamotrigine, an anticonvulsant drug", misconception: diabetes-variable-glosses }
+    - { text: "Low-density lipoproteins" }
+    - { text: "Blood sugar level" }
+  explanation: |
+    The dataset description (companion notebook, cell 2) gives s5 = ltg, possibly log of serum triglycerides. L2 p.5 expands it as "lamotrigine"; it also mislabels s1 (total serum cholesterol, not T-cells) and s4 (total cholesterol / HDL, not thyroid stimulating hormone). LDL is s2 and blood sugar is s6.
+
+# ---------- Lesson 1.2: datasets-models-and-model-classes ----------
+# The L2 p.9 zipcode and L2 p.13 feature-count polls belong to lesson 1.1
+# (q-u1-l1-001, q-u1-l1-002). q-u1-l2-005 was removed as a duplicate of q-u1-l1-002;
+# its id is retired.
+
+- id: q-u1-l2-001
+  lesson: datasets-models-and-model-classes
+  concepts: [supervised-dataset]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    In the diabetes dataset, which object is a single training example?
+  options:
+    - { text: 'The pair $(x^{(i)}, y^{(i)})$: patient $i$''s 10 measurements and that patient''s disease-progression score', correct: true }
+    - { text: 'The column of BMI values for all $n$ patients' }
+    - { text: 'The vector $x^{(i)}$ alone' }
+    - { text: 'The set $\mathcal{D}$' }
+  explanation: |
+    def-1-2-3: $\mathcal{D} = \{(x^{(i)}, y^{(i)})\}_{i=1}^{n}$, and each pair is one training example. A column of BMI values is one feature across all examples (a column of the design matrix). $x^{(i)}$ alone has no target, so it cannot supervise anything.
+  discriminates: [supervised-dataset]
+
+- id: q-u1-l2-002
+  lesson: datasets-models-and-model-classes
+  concepts: [supervised-task-types]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A model tags each incoming news article with every topic it covers, from a list of 30 topics (politics, health, sports, …). Which task is this?
+  options:
+    - { text: 'Multilabel classification', correct: true }
+    - { text: 'Multiclass classification', misconception: multiclass-vs-multilabel }
+    - { text: 'Regression' }
+    - { text: 'Binary classification' }
+  explanation: |
+    An article can be about health and politics at once, so the categories are not mutually exclusive and the target is a subset of the 30 topics, $y \in \{0, 1\}^{30}$ (L2 p.17). Multiclass would force exactly one topic per article.
+  discriminates: [supervised-task-types]
+
+- id: q-u1-l2-003
+  lesson: datasets-models-and-model-classes
+  concepts: [parametric-model, model-class]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    L3 p.4 draws the line $45 + 4x$ through the BMI scatter. Which statement is correct?
+  options:
+    - { text: 'It is one model; the set $\{f_\theta(x) = \theta_0 + \theta_1 x : \theta_0, \theta_1 \in \mathbb{R}\}$ is the model class it belongs to', correct: true }
+    - { text: 'It is a model class, because it is a family of predictions for every $x$' }
+    - { text: 'It is the model class, and $\theta = (45, 4)$ is its training data' }
+    - { text: 'It is neither: a model must be fitted by an optimizer before it counts as a model' }
+  explanation: |
+    A model is one function $f_\theta$ (def-1-2-4); fixing $\theta = (45, 4)$ picks one. The model class is the set of all such functions as $\theta$ ranges over $\mathbb{R}^2$ (def-1-2-5). Any member is a model, fitted or not; training only chooses which member to keep.
+  discriminates: [parametric-model, model-class]
+
+- id: q-u1-l2-004
+  lesson: datasets-models-and-model-classes
+  concepts: [restricting-model-class]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    L2 p.24 says we must restrict the model class in order to generalize. The class of all lines $\theta_0 + \theta_1 x$ is restricted because
+  options:
+    - { text: 'every member shares the same shape, so the data pin down predictions at new inputs', correct: true }
+    - { text: 'it contains only finitely many models', misconception: restriction-means-finite }
+    - { text: 'its parameters must be integers' }
+    - { text: 'it contains only the models that fit the training data exactly' }
+  explanation: |
+    The linear class has a continuum of members, one per $(\theta_0, \theta_1) \in \mathbb{R}^2$. What restricts it is that every member is a line: two points with different inputs determine the line, so the training data constrain its value everywhere. The unrestricted class (the collapsed proof in the lesson) contains a perfect fit that predicts any value at all at a new input.
+  discriminates: [restricting-model-class]
+
+- id: q-u1-l2-006
+  lesson: datasets-models-and-model-classes
+  concepts: [vectorized-predictions]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    The diabetes dataset has $n = 442$ patients and $d = 10$ features. With the intercept absorbed as $x_0 = 1$, what are the shapes of the design matrix $X$ and of $\theta$?
+  options:
+    - { text: '$X$ is $442 \times 11$ and $\theta$ is $11 \times 1$', correct: true }
+    - { text: '$X$ is $442 \times 10$ and $\theta$ is $10 \times 1$', misconception: forget-intercept-column }
+    - { text: '$X$ is $11 \times 442$ and $\theta$ is $11 \times 1$' }
+    - { text: '$X$ is $442 \times 11$ and $\theta$ is $442 \times 1$' }
+  explanation: |
+    Rows of $X$ are examples, so $X$ has 442 rows; the 10 features plus the column of ones give 11 columns (def-1-2-7). $\theta$ has one entry per column, so $X\theta$ is $442 \times 1$, one prediction per patient.
+  discriminates: [vectorized-predictions]
+
+- id: q-u1-l2-007
+  lesson: datasets-models-and-model-classes
+  concepts: [vectorized-predictions, linear-model]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A row of the design matrix (intercept absorbed) is $(1,\ 23.81)$, the second patient of the lesson's worked example, and $\theta = (45, 4)$. What is the corresponding entry of $X\theta$?
+  answer: 140.24
+  tolerance: 0.005
+  formula: "45 + 4 * 23.81"
+  explanation: |
+    Entry $i$ of $X\theta$ is row $i$ of $X$ times $\theta$ (der-1-2-1 step 5): $1 \cdot 45 + 23.81 \cdot 4 = 140.24$. The patient's target is 91, so the residual is $140.24 - 91 = 49.24$.
+
+- id: q-u1-l2-008
+  lesson: datasets-models-and-model-classes
+  concepts: [vectorized-predictions]
+  type: code-trace
+  difficulty: 2
+  source: "original"
+  prompt: |
+    What does the last line print?
+    ```python
+    import numpy as np
+    bmi = np.array([27.34, 23.81, 25.33, 23.78, 23.97])
+    X = np.c_[np.ones(5), bmi]
+    theta = np.array([45.0, 4.0])
+    print(X.shape, (X @ theta).shape)
+    ```
+  options:
+    - { text: "`(5, 2) (5,)`", correct: true }
+    - { text: "`(2, 5) (2,)`" }
+    - { text: "`(5, 2) (2,)`" }
+    - { text: "A shape error, because `theta` must be multiplied on the left as `theta @ X`" }
+  explanation: |
+    `np.c_` stacks its arguments as columns, so `X` has one row per patient and two columns (the ones and BMI). `X @ theta` multiplies a $(5, 2)$ matrix by a length-2 vector and returns one prediction per row, shape `(5,)`: this is $\hat y = X\theta$. `theta @ X` would fail, since a length-2 vector cannot multiply a matrix with 5 rows.
+
+- id: q-u1-l2-009
+  lesson: datasets-models-and-model-classes
+  concepts: [vectorized-predictions]
+  type: order
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Put the moves of der-1-2-1 (predictions as $X\theta$) in order.
+  items:
+    - 'Write one prediction as $\theta_0 + \sum_{j=1}^{d}\theta_j x^{(i)}_j$.'
+    - 'Absorb the intercept with $x^{(i)}_0 = 1$, giving $\sum_{j=0}^{d}\theta_j x^{(i)}_j$.'
+    - 'Recognize the sum as a row times a column, $(x^{(i)})^\top\theta$.'
+    - 'Stack the $n$ predictions into one column vector.'
+    - 'Recognize the stacked rows as the matrix-vector product $X\theta$.'
+    - 'Subtract $y$ to get the residual vector $X\theta - y$.'
+  explanation: |
+    One prediction first, then the intercept trick that makes it a single inner product, then the stacking that turns $n$ inner products into one matrix-vector product, and finally the residuals that lesson 1.3 measures.
+
+- id: q-u1-l2-010
+  lesson: datasets-models-and-model-classes
+  concepts: [linear-uniform-effects]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A linear model is $f_\theta(x) = 7 + 2x_1 - 3x_2$. At the base point $x = (x_1, x_2) = (10, 4)$, move the input by $\Delta = (\Delta_1, \Delta_2) = (1.5, 2)$. By how much does the prediction change, $f_\theta(x + \Delta) - f_\theta(x)$?
+  answer: -3
+  tolerance: 0
+  seeded: { a: [0.5, 1, 1.5, 2, 3], b: [-1, 1, 2, 4] }
+  formula: "2 * a - 3 * b"
+  explanation: |
+    By der-1-2-2 step 5 the change is $\sum_j\theta_j\Delta_j = 2\Delta_1 - 3\Delta_2$; the base point and intercept play no role. That is the uniform-effects bias.
+
+- id: q-u1-l2-011
+  lesson: datasets-models-and-model-classes
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-1-2-2
+  corrupt: { step: 2, replaceTex: 'f_\theta(x + \Delta) = \theta^\top x + \Delta', explanation: 'The inner product distributes over the sum, so $\theta^\top(x + \Delta) = \theta^\top x + \theta^\top\Delta$. Dropping $\theta$ adds a vector to a scalar, and the change would no longer depend on the coefficients at all.' }
+
+- id: q-u1-l2-012
+  lesson: datasets-models-and-model-classes
+  concepts: [linear-additive-effects]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    BMI and blood pressure are strongly correlated across diabetes patients. Does that violate the "independence" property of a linear model on these two features?
+  options:
+    - { text: 'No: independence means the effect of changing one feature does not depend on the value of the other, and that holds for any data', correct: true }
+    - { text: 'Yes: independence requires the features to be statistically independent', misconception: independence-means-uncorrelated }
+    - { text: 'Yes, but only if the correlation is above 0.5', misconception: independence-means-uncorrelated }
+    - { text: 'No, because a linear model ignores one of two correlated features' }
+  explanation: |
+    der-1-2-3 proves that the interaction $\big[f(x + b e_k + a e_j) - f(x + b e_k)\big] - \big[f(x + a e_j) - f(x)\big]$ is zero for every linear model; no property of the data enters. Correlated features cause a different problem, unstable coefficient estimates, which ridge regression addresses in Unit 5.
+  discriminates: [linear-additive-effects]
+
+- id: q-u1-l2-013
+  lesson: datasets-models-and-model-classes
+  concepts: [linear-additive-effects, linear-uniform-effects]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Consider $g(x) = \theta_0 + \theta_1 x_1 + \theta_2 x_2 + \theta_{12}\,x_1 x_2$ with $\theta_{12} \ne 0$, viewed as a function of the two raw inputs $x_1, x_2$. Adding $a$ to $x_1$ changes $g$ by
+  options:
+    - { text: '$a(\theta_1 + \theta_{12}\,x_2)$, which depends on $x_2$; so independence fails', correct: true }
+    - { text: '$a\,\theta_1$, the same at every input' }
+    - { text: '$a(\theta_1 + \theta_{12})$, the same at every input' }
+    - { text: '$a\,\theta_{12}\,x_1 x_2$' }
+  explanation: |
+    $g(x + a e_1) - g(x) = \theta_1 a + \theta_{12}\,a\,x_2$. Its dependence on $x_2$ is the interaction, $\theta_{12}\,a\,b$ when $x_2$ moves by $b$ (the remark after der-1-2-3). The model is still linear in $\theta$, and in the features $(x_1, x_2, x_1 x_2)$; the bias fails only with respect to the raw inputs, which is how an engineered feature such as `old_man` adds an interaction.
+  discriminates: [linear-additive-effects]
+
+- id: q-u1-l2-014
+  lesson: datasets-models-and-model-classes
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-1-2-4
+  corrupt: { step: 1, replaceTex: 'f_\theta(x + t\,e_j) - f_\theta(x + s\,e_j) = t\,\theta_j', explanation: 'From the base point $x + s\,e_j$ the step to $x + t\,e_j$ has size $t - s$, not $t$. With $t\,\theta_j$ the difference would not vanish when $s = t$, and the sign argument of step 2 would no longer use $s < t$.' }
+
+- id: q-u1-l2-015
+  lesson: datasets-models-and-model-classes
+  concepts: [linear-uniform-effects, linear-model]
+  type: predict
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A linear model for the VASCO trial predicts the change in systolic blood pressure as $f_\theta(D) = -5 - 0.4\,D$ mmHg, with dose $D$ in mg. Predict the change in the prediction from 0 to 10 mg, and from 10 to 20 mg.
+  options:
+    - { text: '$-4$ mmHg for both steps', correct: true }
+    - { text: '$-4$ mmHg, then a smaller drop, because the drug''s effect saturates' }
+    - { text: '$-9$ mmHg, then $-4$ mmHg' }
+    - { text: 'Cannot be predicted without the data' }
+  explanation: |
+    Uniform effects (der-1-2-2 step 7): a step of 10 mg changes the prediction by $10\,\theta_1 = -4$ at every starting dose. The true Emax curve does saturate (the lesson's second worked example), but a straight line cannot; that mismatch is a property of the model class.
+  discriminates: [linear-uniform-effects]
+
+- id: q-u1-l2-016
+  lesson: datasets-models-and-model-classes
+  concepts: [linear-monotonicity]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Income rises and then falls with age (L2 p.25). A linear model uses the features $\text{age}$ and $\text{age}^2$: $f_\theta = \theta_0 + \theta_1\,\text{age} + \theta_2\,\text{age}^2$. Which statement is correct?
+  options:
+    - { text: 'With $\theta_2 < 0 < \theta_1$, the prediction can rise and then fall in age; the model is still linear in $\theta$ and in its features', correct: true }
+    - { text: 'Impossible: monotonicity forces the prediction to move in one direction as age grows', misconception: bias-applies-to-attributes }
+    - { text: 'Possible, but only because the model is no longer a linear model' }
+    - { text: 'Possible only if $\theta_1 = 0$' }
+  explanation: |
+    Monotonicity (der-1-2-4) holds along each feature with the other features fixed. Age and $\text{age}^2$ cannot be moved independently, so the prediction as a function of age is a parabola, $\theta_0 + \theta_1\,\text{age} + \theta_2\,\text{age}^2$, which peaks at $\text{age} = -\theta_1 / (2\theta_2)$ when $\theta_2 < 0 < \theta_1$. A feature map changes what the biases constrain.
+  discriminates: [linear-monotonicity]
+
+- id: q-u1-l2-017
+  lesson: datasets-models-and-model-classes
+  concepts: [linear-uniform-effects]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A linear model of VASCO blood-pressure change has $\theta_{\text{dose}} = -0.4$ per mg and $\theta_{\text{baseline}} = 0.15$ per mmHg. You refit with dose recorded in grams instead of milligrams. What happens?
+  options:
+    - { text: '$\theta_{\text{dose}}$ becomes $-400$ per gram and every prediction stays the same', correct: true }
+    - { text: '$\theta_{\text{dose}}$ stays $-0.4$, so dose is still the more important feature', misconception: coefficient-size-is-importance }
+    - { text: '$\theta_{\text{dose}}$ becomes $-0.0004$ per gram' }
+    - { text: 'The predictions shrink by a factor of 1,000' }
+  explanation: |
+    $\theta_j$ is the change in prediction per unit of feature $j$ (der-1-2-2 step 7). One gram is 1,000 mg, so the per-gram effect is $1000 \times (-0.4) = -400$. The product $\theta_{\text{dose}} \cdot D$ is unchanged, so are the predictions. Coefficient sizes say nothing about importance until the features share a scale.
+  discriminates: [linear-uniform-effects]

@@ -1,0 +1,12 @@
+---
+id: design-matrix
+term: Design matrix
+aliases: [data matrix, feature matrix, X]
+field: linear-algebra
+firstUsedIn: u1-linear-regression
+related: [feature-map, linear-function, sparse-matrix]
+---
+
+**What it is.** The dataset's inputs stacked into one matrix $X \in \mathbb{R}^{n \times d}$: row $i$ is $(x^{(i)})^\top$, one example; column $j$ is feature $j$ across all $n$ examples. To absorb an intercept, give every example the constant feature $x_0 = 1$; $X$ then gains a column of ones and has $d + 1$ columns.
+
+**How ML uses it.** A linear model's predictions on all $n$ examples are a single matrix-vector product, $\hat y = X\theta$, and the residuals are $X\theta - y$. Least squares, ridge, and logistic regression are all written in terms of $X$; in code it is the array `X` with shape `(n, d)`, rows first.

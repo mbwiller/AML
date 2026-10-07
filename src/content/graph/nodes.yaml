@@ -446,3 +446,184 @@
   lesson: shared-covariance-and-logistic-regression
   summary: "Same sigmoid form, different fit: GDA maximizes the joint likelihood, logistic regression the conditional. GDA implies the logistic form, not conversely."
   derivation: der-7-3-6
+
+# ---------- Unit 1: Linear regression ----------
+# Seeded from docs/course-map/01-lectures-L1-L3.md, "Concept-graph edges" (L2, L3).
+
+# Lesson 1.1: components-of-a-learning-problem
+# Seeded from docs/course-map/01-lectures-L1-L3.md, L2 "Concept-graph edges" (five components, attribute types, encodings).
+# one-hot-encoding and indicator-function are glossary terms (nodes automatically) and are not repeated here.
+
+- id: five-ml-components
+  label: "Five components of a learning problem"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: components-of-a-learning-problem
+  summary: "Input data, output (task and targets), model class, loss function, learning rule: the recipe every supervised problem specifies (L2 p.4)."
+
+- id: data-representation
+  label: "Data representation"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: components-of-a-learning-problem
+  summary: "Turning raw attributes into numeric features; the choice decides which functions a model class can express."
+
+- id: attribute-types
+  label: "Attribute types"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: components-of-a-learning-problem
+  summary: "Discrete (ordered), continuous, and categorical (names with no order or spacing) attributes; each calls for a different representation."
+
+- id: integer-codes-impose-spacing
+  label: "Numeric codes impose order and spacing"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: components-of-a-learning-problem
+  summary: "A linear model on a numeric code c_k predicts f(k') − f(k) = θ_1(c_k' − c_k): equally spaced codes give equally spaced, ordered predictions, even after standardizing."
+  derivation: der-1-1-1
+
+- id: dummy-variable-trap
+  label: "Dummy-variable trap"
+  type: concept
+  field: linear-algebra
+  unit: u1-linear-regression
+  lesson: components-of-a-learning-problem
+  summary: "The K one-hot columns sum to the intercept column, so coefficients are not unique; drop one reference category and θ_k becomes f(k) − f(reference)."
+  derivation: der-1-1-1
+
+- id: discretization
+  label: "Discretization"
+  type: method
+  field: ml
+  unit: u1-linear-regression
+  lesson: components-of-a-learning-problem
+  summary: "Bin a continuous value and one-hot the bin: a step-function feature map whose least-squares fit is the mean target in each bin."
+  derivation: der-1-1-2
+
+- id: feature-engineering
+  label: "Feature engineering"
+  type: method
+  field: ml
+  unit: u1-linear-regression
+  lesson: components-of-a-learning-problem
+  summary: "Designing the feature map φ by hand from domain knowledge, such as D/(6 + D) for an Emax dose-response or an old_man indicator."
+  derivation: der-1-1-3
+
+- id: linear-in-parameters
+  label: "Linear in θ, not in x"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: components-of-a-learning-problem
+  summary: "f_θ(x) = θ^T φ(x) is linear in θ for every feature map φ, so nonlinear relations in x stay inside the linear model class."
+  derivation: der-1-1-3
+
+- id: interaction-feature
+  label: "Interaction feature"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: components-of-a-learning-problem
+  summary: "A product feature such as a·s makes the effect of a depend on s (θ_1 + θ_3 s) while the model stays linear in θ."
+  derivation: der-1-1-3
+
+- id: diabetes-dataset
+  label: "Diabetes dataset (sklearn)"
+  type: dataset
+  field: ml
+  unit: u1-linear-regression
+  lesson: components-of-a-learning-problem
+  summary: "442 patients, 10 baseline attributes (each centered and scaled to unit sum of squares), target = disease progression after one year."
+
+# Lesson 1.2: datasets-models-and-model-classes
+# Course map L2 pp.13-26 and L3 pp.4, 10-11, 24. The glossary term `design-matrix`
+# (new) is a node automatically and is not repeated here.
+
+- id: supervised-dataset
+  label: "Supervised dataset"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: datasets-models-and-model-classes
+  summary: "D = {(x^(i), y^(i))}, i = 1..n: n training examples, each an input x^(i) in the attribute space X and a target y^(i) in the target space Y."
+
+- id: supervised-task-types
+  label: "Task types from the target space"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: datasets-models-and-model-classes
+  summary: "The target space decides the task: regression (Y = R), binary, multiclass (one of K), multilabel (any subset of K), structured prediction."
+
+- id: parametric-model
+  label: "Parametric model f_θ"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: datasets-models-and-model-classes
+  summary: "A model is a function f: X → Y; a parametric model f_θ is indexed by parameters θ in a parameter space Θ, e.g. f_θ(x) = θ_0 + θ_1 x."
+
+- id: model-class
+  label: "Model class"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: datasets-models-and-model-classes
+  summary: "A set of models M = {f_θ | θ ∈ Θ} ⊆ {f: X → Y} (the hypothesis space). The modeler picks the class; training picks a member."
+
+- id: restricting-model-class
+  label: "Why the model class must be restricted"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: datasets-models-and-model-classes
+  summary: "An unrestricted class contains perfect fits that predict any value at a new input, so the data say nothing about it. Restricted means a shared shape, not a finite list."
+
+- id: linear-model
+  label: "Linear model"
+  type: method
+  field: ml
+  unit: u1-linear-regression
+  lesson: datasets-models-and-model-classes
+  summary: "f_θ(x) = θ_0 + Σ_j θ_j x_j = θ^T x with the constant feature x_0 = 1, θ ∈ R^(d+1); the model class of linear regression."
+
+- id: vectorized-predictions
+  label: "Predictions as Xθ"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: datasets-models-and-model-classes
+  summary: "Stacking f_θ(x^(i)) = (x^(i))^T θ over all n examples gives ŷ = Xθ, with rows (x^(i))^T and a column of ones; the residuals are Xθ − y."
+  derivation: der-1-2-1
+
+- id: linear-uniform-effects
+  label: "Uniform effects (linear models)"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: datasets-models-and-model-classes
+  summary: "f_θ(x + Δ) − f_θ(x) = Σ_j θ_j Δ_j for every x: the same input change gives the same output change everywhere; ∂f_θ/∂x_j = θ_j."
+  derivation: der-1-2-2
+
+- id: linear-additive-effects
+  label: "Independence (no interactions)"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: datasets-models-and-model-classes
+  summary: "In a linear model the effect of changing x_j does not depend on any other feature x_k, and a joint change is the sum of single-feature changes."
+  derivation: der-1-2-3
+
+- id: linear-monotonicity
+  label: "Monotonicity (linear models)"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: datasets-models-and-model-classes
+  summary: "Along feature j a linear model moves in the direction of sign(θ_j) at every base point, and without bound: f_θ(x + t e_j) − f_θ(x + s e_j) = (t − s) θ_j."
+  derivation: der-1-2-4

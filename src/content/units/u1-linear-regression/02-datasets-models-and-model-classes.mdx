@@ -1,0 +1,566 @@
+---
+title: "Datasets, models, and model classes"
+unit: u1-linear-regression
+order: 2
+slug: datasets-models-and-model-classes
+summary: "Write a dataset, a model, and a model class in set notation; stack a linear model's predictions into Xθ; and prove the three inductive biases of linear models (independence, monotonicity, uniform effects) from linearity."
+lectures:
+  - { lecture: 2, pages: "14-26" }
+  - { lecture: 3, pages: "4" }
+  - { lecture: 3, pages: "10-11" }
+  - { lecture: 3, pages: "24" }
+concepts:
+  - supervised-dataset
+  - supervised-task-types
+  - parametric-model
+  - model-class
+  - restricting-model-class
+  - linear-model
+  - vectorized-predictions
+  - linear-uniform-effects
+  - linear-additive-effects
+  - linear-monotonicity
+  - design-matrix
+prerequisites:
+  - five-ml-components
+  - feature-map
+  - linear-function
+companions:
+  - { notebook: "Code Companions/Lecture2code_companion.ipynb", cells: "7-16" }
+estimatedMinutes: 40
+status: review
+authors: [jide]
+---
+
+{/* no-case-frontmatter: the hook, the linear-bias-probe widget, and the second worked example use the VASCO dose-finding trial (docs/reference/pedagogy-and-curriculum.md Part C, C1), but src/content/cases/vasco.mdx does not exist yet. Add `cases: [vasco]` when it does. The Emax numbers come from the C1 specification, as in lesson 1.1. */}
+
+<Frame
+  data="a supervised dataset $\mathcal{D} = \{(x^{(i)}, y^{(i)})\}_{i=1}^{n}$, $x^{(i)} \in \mathbb{R}^d$, $y^{(i)} \in \mathbb{R}$"
+  model="the linear model class $\mathcal{M} = \{f_\theta(x) = \theta^\top x : \theta \in \mathbb{R}^{d+1}\}$, intercept via $x_0 = 1$"
+  objective="chosen in 1.3 (MAE, MSE); this lesson fixes only the class"
+  optimizer="closed form in 1.4; gradient descent in Unit 2"
+/>
+
+<Objectives>
+
+- Write a supervised dataset, a parametric model $f_\theta$, and a model class $\mathcal{M}$ in set notation, and say which part of a learning problem each one is.
+- Classify a prediction task by its target space: regression, binary, multiclass, multilabel, or structured.
+- Explain why a model class must be restricted before data can say anything about new inputs, and why restricted does not mean finite.
+- Stack a linear model's predictions on all $n$ examples into the matrix-vector product $X\theta$.
+- Prove the three inductive biases of linear models (uniform effects, independence, monotonicity) from linearity alone, and recognize when each fails.
+
+</Objectives>
+
+<Hook>
+
+The VASCO trial gives a new antihypertensive at 0, 2.5, 5, 10, 20, or 40 mg and records each patient's change in systolic blood pressure after 8 weeks. Suppose you decide, before looking at any outcome, to predict that change with a straight line in dose.
+
+You have already committed to an answer to a clinical question you never asked: going from 0 to 10 mg and going from 10 to 20 mg must lower blood pressure by exactly the same amount. Lesson 1.1 showed that no line in dose can follow this drug's dose–response (der-1-1-3 step 9). Which beliefs does choosing a model class build in before the data arrive, and can you list them?
+
+{/* hook-figure: the linear-bias-probe widget later in the lesson is the hook's explorable */}
+
+</Hook>
+
+## Datasets
+
+Lesson 1.1 split a learning problem into its components and turned raw patient records into numbers. We now give those numbers names, so that every later formula in the course can refer to them.
+
+<Definition id="def-1-2-1" title="Attributes and attribute space" source="L2 p.14">
+
+For example $i$ (the $i$-th patient), the attribute vector is the column of $d$ measurements
+
+$$x^{(i)} = \begin{bmatrix} x^{(i)}_1 \\ x^{(i)}_2 \\ \vdots \\ x^{(i)}_d \end{bmatrix} \in \mathcal{X}.$$
+
+The superscript $(i)$ indexes examples; the subscript $j$ indexes components. The attribute space $\mathcal{X}$ is the set of all values the attributes can take, often $\mathcal{X} = \mathbb{R}^d$. <SlideRef lecture={2} pages="14" />
+
+Also written as: $x_i$ or $\mathbf{x}_i$ (many textbooks, and L3 p.12).
+
+</Definition>
+
+When the model works on a representation of the attributes, a [[feature-map]] $\phi : \mathcal{X} \to \mathbb{R}^p$ turns them into features. Lesson 1.1 defined it (def-1-1-5), together with the course's convention on "attributes" versus "features"; from here on $x^{(i)}$ may stand for either.
+
+<Definition id="def-1-2-2" title="Targets and target space" source="L2 p.18">
+
+The target of example $i$ is $y^{(i)} \in \mathcal{Y}$, the quantity we want to predict; $\mathcal{Y}$ is the target space. From here on $y^{(i)}$ is a scalar. <SlideRef lecture={2} pages="18" />
+
+</Definition>
+
+The target space decides the task <SlideRef lecture={2} pages="16-17" />:
+
+| Task | Target space $\mathcal{Y}$ | Example |
+|---|---|---|
+| Regression | continuous, or many ordered values; $\mathcal{Y} = \mathbb{R}$ | change in systolic blood pressure; days since last admission |
+| Binary classification | two values; $\mathcal{Y} = \{0, 1\}$ | diabetes or not; spam or not |
+| Multiclass classification | one of $K \ge 3$ categories | which of 10 digits |
+| Multilabel classification | any subset of $K$ categories; $\mathcal{Y} = \{0,1\}^K$ | the topics of a news article |
+| Structured prediction | a sentence, image, graph, or molecule | machine translation |
+
+Multiclass picks exactly one label; multilabel can pick several at once, because the categories are not mutually exclusive.
+
+<Definition id="def-1-2-3" title="Supervised learning dataset" source="L2 p.19">
+
+A supervised dataset is a set of $n$ input-target pairs,
+
+$$\mathcal{D} = \{(x^{(i)}, y^{(i)}) \mid i = 1, 2, \dots, n\}, \qquad x^{(i)} \in \mathcal{X},\; y^{(i)} \in \mathcal{Y}.$$
+
+Each pair $(x^{(i)}, y^{(i)})$ is a training example: the measurements of patient $i$ and that patient's outcome. <SlideRef lecture={2} pages="19" />
+
+Also written as: $\mathcal{D} = \{(x^{(i)}, y^{(i)})\}_{i=1}^{n}$; $(\mathbf{x}_i, y_i)$ in many textbooks.
+
+</Definition>
+
+## Models and model classes
+
+L2 p.20 plots 20 patients from the diabetes data, body mass index against a disease-progression score, and remarks that the cloud looks linear <SlideRef lecture={2} pages="20" />. Deciding to explain it with a line is a choice, made before fitting. The next two definitions name what was chosen.
+
+<Definition id="def-1-2-4" title="Model and parametric model" source="L2 p.22">
+
+A model is a function from inputs to targets, $f : \mathcal{X} \to \mathcal{Y}$. A parametric model is indexed by a parameter vector $\theta$ from a parameter space $\Theta$; we write $f_\theta : \mathcal{X} \to \mathcal{Y}$. In one-dimensional linear regression,
+
+$$f_\theta(x) = \theta_0 + \theta_1 x, \qquad \theta = (\theta_0, \theta_1) \in \mathbb{R}^2,$$
+
+and $\theta_0 = 0$, $\theta_1 = 1$ picks out one particular model, the line $f(x) = x$. <SlideRef lecture={2} pages="22" />
+
+Also written as: $f(x; \theta)$ (L3 p.42), $h_\theta(x)$ (CS229), $w$ for $\theta$ (L3 p.18).
+
+</Definition>
+
+<Definition id="def-1-2-5" title="Model class" source="L2 p.23">
+
+A model class (hypothesis space) is a set of models, $\mathcal{M} \subseteq \{f \mid f : \mathcal{X} \to \mathcal{Y}\}$. For a parametric family it is $\mathcal{M} = \{f_\theta \mid \theta \in \Theta\}$. The running example is
+
+$$\mathcal{M} = \{f_\theta \mid f_\theta(x) = \theta_0 + \theta_1 x,\; \theta_0, \theta_1 \in \mathbb{R}\}.$$
+
+Learning selects the model in $\mathcal{M}$ that fits the data best. <SlideRef lecture={2} pages="23" /> <SlideRef lecture={3} pages="4" />
+
+Also written as: $\mathcal{H}$ (hypothesis class, many textbooks), $\mathcal{F}$.
+
+</Definition>
+
+A model is one function; a model class is a set of functions. L3 p.4 draws three candidate lines through the BMI scatter, $45 + 4x$, $47 + 3.5x$, and $43 + 3x$ <SlideRef lecture={3} pages="4" />: each is a model, a hypothesis about the truth, and all three belong to the same class. Choosing the class is a modeling decision. Choosing a model inside the class is what training does.
+
+With the dataset and the class in hand, the learning problem has the four parts that organize the rest of Unit 1 <SlideRef lecture={3} pages="24" />:
+
+| Component | Question it answers | For linear regression |
+|---|---|---|
+| Data | what do we learn from? | $\mathcal{D} = \{(x^{(i)}, y^{(i)})\}_{i=1}^{n}$ |
+| Model class | which functions are allowed? | $\{f_\theta(x) = \theta^\top x\}$ (this lesson) |
+| Objective | what does "fits best" mean? | MAE or MSE (lesson 1.3) |
+| Optimizer | how do we find the best $\theta$? | closed form (1.4), gradient descent (Unit 2) |
+
+<Callout type="slide">
+
+L2 p.4 lists five components: input data, output (targets), model class, loss function, and optimizer. L3 p.24 groups the inputs and the targets into one "Dataset" and calls model class, objective, and optimizer together the "Learning Algorithm". The four rows above are that grouping; nothing is dropped.
+
+</Callout>
+
+<Check ids={["q-u1-l2-001", "q-u1-l2-002", "q-u1-l2-003"]} />
+
+## Why a model class must be restricted
+
+Why not let $\mathcal{M}$ contain every function from $\mathcal{X}$ to $\mathcal{Y}$, so that the best fit is as good as it can be? Because then the training data stop constraining predictions on new inputs <SlideRef lecture={2} pages="24" />. In the slide's words, without assumptions, the current data are not informative of unseen future data.
+
+<Callout type="beyond">
+
+The slide states this without an argument. Here is one.
+
+</Callout>
+
+<Proof collapsed title="An unrestricted class cannot generalize" keyIdea="for any value c, some function fits every training example exactly and predicts c at a new input">
+
+Let the inputs $x^{(1)}, \dots, x^{(n)}$ be distinct, and let $x^\star$ be a new input that is not among them. For any number $c \in \mathcal{Y}$, define
+
+$$f_c(x) = \begin{cases} y^{(i)} & \text{if } x = x^{(i)} \text{ for some } i, \\ c & \text{otherwise.} \end{cases}$$
+
+Every $f_c$ is a function from $\mathcal{X}$ to $\mathcal{Y}$, so every $f_c$ belongs to the unrestricted class. Every $f_c$ reproduces all $n$ training targets exactly, so no loss computed on $\mathcal{D}$ can prefer one over another. Yet $f_c(x^\star) = c$, and $c$ was arbitrary. The training data are therefore consistent with every possible prediction at $x^\star$: they say nothing about it.
+
+A restricted class breaks this tie. If $\mathcal{M}$ contains only lines, then with at least two distinct inputs, the least-squares line is unique, so its value at $x^\star$ is determined by $\mathcal{D}$.
+
+</Proof>
+
+Restricted does not mean finite. The linear class has a continuum of members, one for every $(\theta_0, \theta_1) \in \mathbb{R}^2$. What restricts it is the shape every member shares. The assumptions that shape encodes are the class's [[inductive-bias|inductive biases]], and each model class has its own <SlideRef lecture={2} pages="24-25" />.
+
+<Check ids={["q-u1-l2-004"]} />
+
+## Linear models
+
+<Definition id="def-1-2-6" title="Linear model and the intercept feature" source="L2 p.22, L3 p.12">
+
+With $d$ features, a linear model predicts
+
+$$f_\theta(x) = \theta_0 + \theta_1 x_1 + \cdots + \theta_d x_d.$$
+
+Append the constant feature $x_0 = 1$ to every input, so that $x = (1, x_1, \dots, x_d) \in \mathbb{R}^{d+1}$ and $\theta = (\theta_0, \theta_1, \dots, \theta_d) \in \mathbb{R}^{d+1}$. Then the model is a [[linear-function|linear function]] of $x$:
+
+$$f_\theta(x) = \sum_{j=0}^{d} \theta_j x_j = \theta^\top x.$$
+
+The linear model class is $\mathcal{M} = \{f_\theta(x) = \theta^\top x \mid \theta \in \mathbb{R}^{d+1}\}$. <SlideRef lecture={2} pages="22" /> <SlideRef lecture={3} pages="12" />
+
+Also written as: $w^\top x + b$ with the intercept $b$ kept separate.
+
+</Definition>
+
+<Definition id="def-1-2-7" title="Design matrix" source="L3 p.11">
+
+The [[design-matrix]] stacks the $n$ inputs as rows:
+
+$$X = \begin{bmatrix} x^{(1)}_1 & x^{(1)}_2 & \cdots & x^{(1)}_d \\ x^{(2)}_1 & x^{(2)}_2 & \cdots & x^{(2)}_d \\ \vdots & \vdots & & \vdots \\ x^{(n)}_1 & x^{(n)}_2 & \cdots & x^{(n)}_d \end{bmatrix} = \begin{bmatrix} (x^{(1)})^\top \\ (x^{(2)})^\top \\ \vdots \\ (x^{(n)})^\top \end{bmatrix} \in \mathbb{R}^{n \times d}.$$
+
+Row $i$ is example $i$; column $j$ is feature $j$ across all examples. The targets stack into $y = (y^{(1)}, \dots, y^{(n)})^\top \in \mathbb{R}^n$. With the intercept absorbed, $X$ gains a first column of ones and becomes $n \times (d+1)$. <SlideRef lecture={3} pages="11" />
+
+</Definition>
+
+<Callout type="slide">
+
+L3 p.11 draws $X$ with $d$ columns and no column of ones; L3 p.12 then adds "with $x_0 = 1$". Both are right once you say which $X$ you mean. In this course, $X \in \mathbb{R}^{n \times d}$ holds the raw features, and whenever the intercept is absorbed we say so and write the extra column explicitly, giving $n \times (d+1)$. The slides' matrix form of the least-squares objective is discussed in lesson 1.4.
+
+</Callout>
+
+<Check ids={["q-u1-l2-006"]} />
+
+<Intuition>
+
+Take one feature, dose $D$, and the model $f_\theta(D) = \theta_0 + \theta_1 D$. Its graph is a line with slope $\theta_1$. Pick any starting dose and add 10 mg: the prediction moves by $10\,\theta_1$. It moves by the same amount whether you start at 0 mg or at 30 mg, because a line has the same slope everywhere. That is the bias called uniform effects.
+
+The same picture gives monotonicity. If $\theta_1 < 0$, every step to the right goes down, so the prediction falls with dose everywhere and never turns around. A line also keeps falling forever, so the model predicts ever larger reductions at doses far outside the trial.
+
+Add a second feature, baseline blood pressure $B$: $f_\theta(D, B) = \theta_0 + \theta_1 D + \theta_2 B$. The graph is now a tilted plane. Walking 10 mg in the dose direction changes the height by $10\,\theta_1$ whether the patient's baseline is 140 or 170 mmHg. The effect of dose does not depend on the value of $B$. That is the independence bias. In the widget below, drag the base point anywhere on the plane and apply the same step; the change in height is always the same number.
+
+</Intuition>
+
+## Stacking predictions: $\hat y = X\theta$
+
+We will need the predictions on all $n$ examples at once: the losses in 1.3 compare them with the targets, and 1.4 solves for $\theta$ in one matrix equation. The design matrix turns $n$ separate inner products into one product.
+
+<Derivation
+  id="der-1-2-1"
+  title="A linear model's predictions on the whole dataset are Xθ"
+  goalTex="\hat y = \begin{bmatrix} f_\theta(x^{(1)}) \\ \vdots \\ f_\theta(x^{(n)}) \end{bmatrix} \text{ as one matrix-vector product}"
+  resultTex="\hat y = X\theta, \qquad \hat y - y = X\theta - y, \qquad X \in \mathbb{R}^{n \times (d+1)} \text{ with first column } \mathbf{1}"
+  source="L3 pp.11-12 (X and x_0 = 1 stated; the product Xθ is not shown)"
+>
+
+<Chunk title="Write one prediction as a row times a column">
+
+<Step justification="definition of the linear model (def-1-2-6), at input $x^{(i)}$">
+$$f_\theta(x^{(i)}) = \theta_0 + \sum_{j=1}^{d} \theta_j x^{(i)}_j$$
+</Step>
+
+<Step justification="absorb the intercept: set $x^{(i)}_0 = 1$, so that $\theta_0 = \theta_0 x^{(i)}_0$ joins the sum" fadeable>
+$$f_\theta(x^{(i)}) = \sum_{j=0}^{d} \theta_j x^{(i)}_j$$
+</Step>
+
+<Step justification="a sum of products of matching entries is a row vector times a column vector" sticky="linear-function">
+$$f_\theta(x^{(i)}) = (x^{(i)})^\top \theta$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Stack the n predictions and recognize a matrix-vector product">
+
+<Step justification="collect the $n$ predictions into one column vector $\hat y \in \mathbb{R}^n$, using step 3 in each entry">
+$$\hat y = \begin{bmatrix} f_\theta(x^{(1)}) \\ \vdots \\ f_\theta(x^{(n)}) \end{bmatrix} = \begin{bmatrix} (x^{(1)})^\top \theta \\ \vdots \\ (x^{(n)})^\top \theta \end{bmatrix}$$
+</Step>
+
+<Step justification="entry $i$ of a matrix-vector product is row $i$ of the matrix times the vector, and row $i$ of $X$ is $(x^{(i)})^\top$" sticky="design-matrix" fadeable>
+$$\hat y = X\theta$$
+</Step>
+
+<Step justification="subtract the target vector entry by entry; entry $i$ is the residual $f_\theta(x^{(i)}) - y^{(i)}$">
+$$\hat y - y = X\theta - y$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+\hat y = X\theta \tag{1.2.1} \htmlId{eq-1-2-1}{}
+$$
+
+Check the shapes: $X$ is $n \times (d+1)$ and $\theta$ is $(d+1) \times 1$, so $X\theta$ is $n \times 1$, one prediction per example. The order matters. The parameters multiply the design matrix from the right, because each row of $X$ is an example and each prediction is that row dotted with $\theta$. In NumPy, with `X` of shape `(n, d + 1)` and `theta` of shape `(d + 1,)`, the predictions are `X @ theta`.
+
+<Check ids={["q-u1-l2-007", "q-u1-l2-008", "q-u1-l2-009"]} />
+
+## The three inductive biases of linear models
+
+L2 p.25 lists three properties of linear regression <SlideRef lecture={2} pages="25" />:
+
+- **Independence.** Each feature exerts an independent effect on the prediction.
+- **Monotonicity.** Increasing a feature makes $f(x)$ go up always or down always. (The slide's counterexample: income rises and then falls with age.)
+- **Uniform effects.** Moving the input from $x$ to $x + \Delta_1$ changes the output by a corresponding amount $\Delta_2$, wherever $x$ is. (The slide's counterexample: an extra \$10,000 of income buys less happiness the richer you are.)
+
+The slide states them as facts about the class. They are not extra assumptions layered on top of the model; they follow from the single fact that $f_\theta$ is linear in $x$. We prove them in an order where each proof reuses the previous one.
+
+<Proposition id="prop-1-2-1" title="Inductive biases of linear models" source="L2 p.25 (stated)">
+
+Let $f_\theta(x) = \theta^\top x$ with $x_0 = 1$, and let $e_j$ be the $j$-th standard basis vector, $j \in \{1, \dots, d\}$. For every input $x$ and every perturbation $\Delta$ of the features ($\Delta_0 = 0$):
+
+1. **Uniform effects.** $f_\theta(x + \Delta) - f_\theta(x) = \sum_{j=1}^{d} \theta_j \Delta_j$, which does not depend on $x$. In particular $\partial f_\theta / \partial x_j = \theta_j$ everywhere.
+2. **Independence (additivity).** The effect of changing $x_j$ does not depend on any other feature $x_k$, and the effect of a joint change is the sum of the single-feature effects.
+3. **Monotonicity.** Along each feature $j$, $f_\theta$ is strictly increasing if $\theta_j > 0$, strictly decreasing if $\theta_j < 0$, and constant if $\theta_j = 0$, at every base point.
+
+</Proposition>
+
+### Uniform effects
+
+Which quantity should we compute? The slide's $\Delta_2$, the change in output when the input moves by $\Delta_1$. Call the input step $\Delta$ and compute $f_\theta(x + \Delta) - f_\theta(x)$ directly.
+
+<Derivation
+  id="der-1-2-2"
+  title="The change in a linear model's output does not depend on where you start"
+  goalTex="f_\theta(x + \Delta) - f_\theta(x) \text{ for an arbitrary base point } x"
+  resultTex="f_\theta(x + \Delta) - f_\theta(x) = \sum_{j=1}^{d} \theta_j \Delta_j \;\text{ for every } x, \qquad \frac{\partial f_\theta}{\partial x_j} = \theta_j"
+  source="L2 p.25 (uniform effects stated as 'x → x + Δ1 changes the output by Δ2'; no proof)"
+>
+
+<Chunk title="Expand the prediction at the moved point">
+
+<Step justification="definition of the linear model at the input $x + \Delta$; since $\Delta_0 = 0$, the moved input still has $x_0 = 1$">
+$$f_\theta(x + \Delta) = \theta^\top (x + \Delta)$$
+</Step>
+
+<Step justification="linearity: the inner product distributes over vector addition" sticky="linear-function" fadeable>
+$$f_\theta(x + \Delta) = \theta^\top x + \theta^\top \Delta$$
+</Step>
+
+<Step justification="$\theta^\top x$ is the prediction at the base point">
+$$f_\theta(x + \Delta) = f_\theta(x) + \theta^\top \Delta$$
+</Step>
+
+<Step justification="subtract $f_\theta(x)$ from both sides" fadeable>
+$$f_\theta(x + \Delta) - f_\theta(x) = \theta^\top \Delta$$
+</Step>
+
+<Step justification="write out the inner product; the $j = 0$ term is $\theta_0 \Delta_0 = 0$" fadeable>
+$$f_\theta(x + \Delta) - f_\theta(x) = \sum_{j=1}^{d} \theta_j \Delta_j$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Read off the uniform effect and the slope along one feature">
+
+<Step justification="the right side of step 5 contains $\theta$ and $\Delta$ but no $x$, so it takes the same value at any two base points $x$ and $x'$">
+$$f_\theta(x + \Delta) - f_\theta(x) = f_\theta(x' + \Delta) - f_\theta(x')$$
+</Step>
+
+<Step justification="step 5 with $\Delta = t\,e_j$, a change of $t$ units in feature $j$ alone: only the $j$-th term survives" fadeable>
+$$f_\theta(x + t\,e_j) - f_\theta(x) = t\,\theta_j$$
+</Step>
+
+<Step justification="definition of the partial derivative, with step 7 in the numerator; the $t$ cancels before the limit is taken">
+$$\frac{\partial f_\theta}{\partial x_j}(x) = \lim_{t \to 0} \frac{f_\theta(x + t\,e_j) - f_\theta(x)}{t} = \lim_{t \to 0} \frac{t\,\theta_j}{t} = \theta_j$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+f_\theta(x + \Delta) - f_\theta(x) = \sum_{j=1}^{d} \theta_j \Delta_j \tag{1.2.2} \htmlId{eq-1-2-2}{}
+$$
+
+Two readings of <EqRef id="eq-1-2-2" />. First, $\theta_j$ is the change in prediction per unit of feature $j$, the same at every input. Second, that "unit" is whatever unit feature $j$ is measured in: record dose in grams instead of milligrams and $\theta_{\text{dose}}$ is multiplied by 1,000, while the model's predictions do not change at all.
+
+### Independence
+
+The slide's independence is a statement about effects, not about the features themselves. Fix two different features $j \ne k$. Does the effect of changing $x_j$ depend on the current value of $x_k$? Compare the effect of the same change in $x_j$ at two base points that differ only in $x_k$.
+
+<Derivation
+  id="der-1-2-3"
+  title="In a linear model, features do not interact"
+  goalTex="\big[f_\theta(x + b\,e_k + a\,e_j) - f_\theta(x + b\,e_k)\big] - \big[f_\theta(x + a\,e_j) - f_\theta(x)\big] \quad (j \ne k)"
+  resultTex="\big[f_\theta(x + b\,e_k + a\,e_j) - f_\theta(x + b\,e_k)\big] - \big[f_\theta(x + a\,e_j) - f_\theta(x)\big] = 0, \qquad \theta^\top \Delta = \sum_{\ell=1}^{d} \big[f_\theta(x + \Delta_\ell e_\ell) - f_\theta(x)\big]"
+  source="L2 p.25 (independence stated as 'each feature exerts an independent effect'; no proof)"
+>
+
+<Chunk title="The effect of x_j is the same whatever x_k is">
+
+<Step justification="der-1-2-2 step 7 with $t = a$: the effect of adding $a$ to feature $j$ at base point $x$">
+$$f_\theta(x + a\,e_j) - f_\theta(x) = a\,\theta_j$$
+</Step>
+
+<Step justification="der-1-2-2 step 7 again, now at the base point $x + b\,e_k$, where feature $k$ has been moved by $b$; step 7 holds at every base point" fadeable>
+$$f_\theta(x + b\,e_k + a\,e_j) - f_\theta(x + b\,e_k) = a\,\theta_j$$
+</Step>
+
+<Step justification="subtract step 1 from step 2: the interaction, how much the effect of $x_j$ changes when $x_k$ changes, is zero" fadeable>
+$$\big[f_\theta(x + b\,e_k + a\,e_j) - f_\theta(x + b\,e_k)\big] - \big[f_\theta(x + a\,e_j) - f_\theta(x)\big] = a\,\theta_j - a\,\theta_j = 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="A joint change is the sum of single-feature changes">
+
+<Step justification="der-1-2-2 step 5: the effect of a general step $\Delta$ is a sum over features, indexed by $\ell$ to keep $j$ and $k$ free">
+$$f_\theta(x + \Delta) - f_\theta(x) = \sum_{\ell=1}^{d} \theta_\ell \Delta_\ell$$
+</Step>
+
+<Step justification="der-1-2-2 step 7 with $t = \Delta_\ell$ rewrites each term as the effect of moving feature $\ell$ alone">
+$$f_\theta(x + \Delta) - f_\theta(x) = \sum_{\ell=1}^{d} \big[f_\theta(x + \Delta_\ell e_\ell) - f_\theta(x)\big]$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Compare a model with an interaction term, $g(x) = \theta_0 + \theta_1 x_1 + \theta_2 x_2 + \theta_{12}\, x_1 x_2$. The same computation gives an interaction of $\theta_{12}\, a\, b$, which is not zero: the effect of $x_1$ now depends on $x_2$. This is why lesson 1.1 built the `old_man` feature by hand <SlideRef lecture={2} pages="12" />. A linear model cannot discover that age matters more for men than for women; you can give it that interaction only as a new column.
+
+### Monotonicity
+
+Does the prediction always move the same way as one feature grows? Compare two values $s < t$ of a step along feature $j$.
+
+<Derivation
+  id="der-1-2-4"
+  title="A linear model is monotone in each feature, and unbounded"
+  goalTex="\operatorname{sign}\big(f_\theta(x + t\,e_j) - f_\theta(x + s\,e_j)\big) \text{ for } s < t"
+  resultTex="f_\theta(x + t\,e_j) - f_\theta(x + s\,e_j) = (t - s)\,\theta_j, \;\text{ whose sign is } \operatorname{sign}(\theta_j) \text{ for every } x \text{ and every } s < t"
+  source="L2 p.25 (monotonicity stated; unboundedness is beyond the slides)"
+>
+
+<Chunk title="The sign of a change is the sign of its coefficient">
+
+<Step justification="der-1-2-2 step 7 at the base point $x + s\,e_j$, with step size $t - s$; the two moves along $e_j$ add, $s\,e_j + (t - s)\,e_j = t\,e_j$">
+$$f_\theta(x + t\,e_j) - f_\theta(x + s\,e_j) = (t - s)\,\theta_j$$
+</Step>
+
+<Step justification="$s < t$ makes $t - s > 0$, and a positive factor does not change the sign of a product" fadeable>
+$$\operatorname{sign}\big(f_\theta(x + t\,e_j) - f_\theta(x + s\,e_j)\big) = \operatorname{sign}(\theta_j)$$
+</Step>
+
+<Step justification="step 2 holds for every base point $x$ and every pair $s < t$, so the direction never reverses: strictly increasing if $\theta_j > 0$, strictly decreasing if $\theta_j < 0$, constant if $\theta_j = 0$">
+$$\theta_j > 0 \;\Longrightarrow\; f_\theta(x + s\,e_j) < f_\theta(x + t\,e_j) \quad \text{for all } x \text{ and all } s < t$$
+</Step>
+
+</Chunk>
+
+<Chunk title="A monotone line never levels off">
+
+<Step justification="step 1 with $s = 0$, rearranged" fadeable>
+$$f_\theta(x + t\,e_j) = f_\theta(x) + t\,\theta_j$$
+</Step>
+
+<Step justification="if $\theta_j \ne 0$, the term $t\,\theta_j$ grows without bound in absolute value as $t \to \infty$, while $f_\theta(x)$ is fixed">
+$$\theta_j \ne 0 \;\Longrightarrow\; \lvert f_\theta(x + t\,e_j) \rvert \to \infty \quad \text{as } t \to \infty$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+<Callout type="beyond">
+
+Step 5 of der-1-2-4 is the extrapolation bias. Inside the data, a line may approximate a curve well; outside it, a linear model keeps going at the same rate forever. A dose-response line fitted on 0–40 mg predicts that 400 mg lowers blood pressure ten times as much as 40 mg does beyond the 0 mg baseline. No antihypertensive behaves that way.
+
+</Callout>
+
+<Callout type="slide">
+
+L2 p.25 writes "increasing $x_i$" for a feature and $f(\boldsymbol{x} + \boldsymbol{\Delta}_1) \to f(\boldsymbol{x}) + \boldsymbol{\Delta}_2$ for uniform effects, with bold vectors. We write $x_j$ (the letter $i$ is reserved for examples) and state uniform effects as the equation <EqRef id="eq-1-2-2" />, which says exactly what "a corresponding amount" means: $\Delta_2 = \sum_j \theta_j \Delta_{1,j}$, the same for every $x$.
+
+</Callout>
+
+All three biases are about the features the model sees, not about the raw attributes. Through a [[feature-map]], a linear model can fit a curve: with features $\phi(\text{age}) = (\text{age}, \text{age}^2)$, the prediction $\theta_0 + \theta_1\,\text{age} + \theta_2\,\text{age}^2$ can rise and then fall with age, as income does. The model is still linear in $\phi(x)$ and in $\theta$, and the proposition still holds for each feature with the others held fixed. What fails is the premise: you cannot change age while holding $\text{age}^2$ fixed.
+
+<Widget
+  name="linear-bias-probe"
+  dataset="vasco"
+  features={["dose", "baseline_sbp"]}
+  showTruth={true}
+  showInteraction={false}
+  challenge="Apply a +10 mg step at 0 mg and again at 20 mg. Does the linear plane's change differ? Does the true Emax curve's? Then turn on the interaction term and repeat the step at two different baselines."
+/>
+
+<Example title="Predictions and residuals as Xθ on five diabetes patients">
+
+The L2 companion notebook's training set (<Notebook path="Code Companions/Lecture2code_companion.ipynb" cells="8" />) begins with five patients whose rescaled BMI and disease-progression score are, to two decimals, $(27.34, 233)$, $(23.81, 91)$, $(25.33, 111)$, $(23.78, 152)$, and $(23.97, 120)$. Take the candidate line $45 + 4x$ drawn on L3 p.4, so $\theta = (45, 4)$.
+
+Absorb the intercept with a column of ones (def-1-2-7):
+
+$$X = \begin{bmatrix} 1 & 27.34 \\ 1 & 23.81 \\ 1 & 25.33 \\ 1 & 23.78 \\ 1 & 23.97 \end{bmatrix}, \qquad \theta = \begin{bmatrix} 45 \\ 4 \end{bmatrix}, \qquad y = \begin{bmatrix} 233 \\ 91 \\ 111 \\ 152 \\ 120 \end{bmatrix}.$$
+
+By <EqRef id="eq-1-2-1" />, each prediction is a row of $X$ times $\theta$; the first is $1 \cdot 45 + 27.34 \cdot 4 = 154.36$. All five:
+
+$$\hat y = X\theta = \begin{bmatrix} 154.36 \\ 140.24 \\ 146.32 \\ 140.12 \\ 140.88 \end{bmatrix}, \qquad X\theta - y = \begin{bmatrix} -78.64 \\ 49.24 \\ 35.32 \\ -11.88 \\ 20.88 \end{bmatrix}.$$
+
+The line under-predicts the first patient by 78.64 and over-predicts the second by 49.24. Lesson 1.3 turns this residual vector into one number, the loss, so that candidate lines can be compared; the line that sklearn fits in the notebook (cell 15), on all 20 training patients, is the one that minimizes the sum of the squared residuals.
+
+</Example>
+
+<Example title="What a straight line in dose must get wrong">
+
+A linear model in dose, $f_\theta(D) = \theta_0 + \theta_1 D$, must predict the same change, $10\,\theta_1$, for the step from 0 to 10 mg and for the step from 10 to 20 mg (der-1-2-2 step 7). That is uniform effects. VASCO's mean dose–response, the Emax curve of lesson 1.1, does not have this property: der-1-1-3 step 9 shows that doubling the dose from 6 to 12 mg does not double its effect, so no line in $D$ equals it.
+
+Because this is a property of the model class, more patients cannot fix it; the line will overstate the benefit of high doses or understate the benefit of low ones. A feature map can: with $\phi(D) = (1, D/(6 + D))$, der-1-1-3 puts the Emax curve inside a linear model, in a feature that bends.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u1-l2-010", "q-u1-l2-011", "q-u1-l2-012", "q-u1-l2-013", "q-u1-l2-014", "q-u1-l2-015", "q-u1-l2-016", "q-u1-l2-017"]} />
+
+## Pitfalls
+
+<Pitfall title="Independence of effects is not independence of features" misconception="independence-means-uncorrelated">
+
+The belief: the independence bias assumes the features are statistically independent, or at least uncorrelated. The fix: it is a statement about the model's response, proved in der-1-2-3 for any data at all. BMI and blood pressure can be strongly correlated across patients; a linear model still adds their effects, $\theta_{\text{bmi}}\Delta_{\text{bmi}} + \theta_{\text{bp}}\Delta_{\text{bp}}$, with no term that depends on both. Correlated features cause a different problem, unstable coefficients, which returns with ridge regression in Unit 5.
+
+</Pitfall>
+
+<Pitfall title="The biases constrain features, not raw attributes" misconception="bias-applies-to-attributes">
+
+The belief: a linear model can only draw straight lines in the raw measurements, so it can never capture an effect that rises and then falls. The fix: the proposition is about the features $x_j$ the model receives. With $\phi(\text{age}) = (\text{age}, \text{age}^2)$, the fitted curve in age can be a parabola. Monotonicity holds for each feature with the others fixed, and $\text{age}^2$ cannot stay fixed while age changes.
+
+</Pitfall>
+
+<Pitfall title="A larger coefficient does not mean a more important feature" misconception="coefficient-size-is-importance">
+
+The belief: if $\lvert\theta_{\text{dose}}\rvert > \lvert\theta_{\text{baseline}}\rvert$, dose matters more. The fix: by <EqRef id="eq-1-2-2" />, $\theta_j$ is the change per unit of feature $j$, so it depends on the unit. Measuring dose in grams multiplies its coefficient by 1,000 without changing a single prediction. Compare coefficients only after putting features on a common scale (standardization, Unit 2).
+
+</Pitfall>
+
+<Pitfall title="Restricted does not mean finite" misconception="restriction-means-finite">
+
+The belief: restricting the model class means choosing among a short list of candidate models. The fix: the linear class has one member for every $\theta \in \mathbb{R}^{d+1}$, infinitely many (L2 p.24). What restricts it is the shared shape, the inductive biases, not the count.
+
+</Pitfall>
+
+Whether more features are always better (the L2 p.13 poll) is a pitfall of lesson 1.1, "More features are not always better".
+
+<Pitfall title="Forgetting the column of ones forces the line through the origin" misconception="forget-intercept-column">
+
+The belief: the design matrix is just the data table, so $X\theta$ already includes the intercept. The fix: $X\theta$ has no constant term unless $X$ has a constant column. Without the column of ones, every model in the class predicts 0 at $x = 0$. For the diabetes data with $n = 442$ and $d = 10$, $X$ is $442 \times 11$ once the intercept is absorbed.
+
+</Pitfall>
+
+<Pitfall title="Multiclass is not multilabel" misconception="multiclass-vs-multilabel">
+
+The belief: a task with several categories is multiclass. The fix: multiclass means exactly one category per example (which digit); multilabel means any subset (the topics of a news article). The target spaces differ, $\{1, \dots, K\}$ against $\{0, 1\}^K$, and so do the models and losses built on them.
+
+</Pitfall>
+
+<Connections>
+
+- Previous: 1.1 The components of a learning problem (`components-of-a-learning-problem`) built the numeric features, including the `old_man` interaction, that fill the design matrix here.
+- Next: 1.3 Loss functions chooses the objective: MAE, MSE, and RMSE turn the residual vector $X\theta - y$ into one number.
+- Then: 1.4 Least squares minimizes $\lVert X\theta - y\rVert_2^2$ in closed form, using <EqRef id="eq-1-2-1" />.
+- Notebook: <Notebook path="Code Companions/Lecture2code_companion.ipynb" cells="7-16" /> loads the 20 training patients and plots four members of the linear model class.
+- Later: Unit 5 returns to restricting the class (regularization, model selection); neural networks contain linear models as a special case (L2 p.26).
+- Graph neighbors: [[feature-map]], [[design-matrix]], [[linear-function]], [[inductive-bias]].
+
+</Connections>
+
+{/* no-homework-bridge: src/content/homework/hw1.mdx does not exist yet. When it lands, add <HomeworkBridge hw="hw1" skills={["vectorized-predictions", "linear-model"]} /> here. */}
+
+<Summary>
+
+- **Dataset:** $\mathcal{D} = \{(x^{(i)}, y^{(i)})\}_{i=1}^{n}$, $x^{(i)} \in \mathcal{X}$ (often $\mathbb{R}^d$), $y^{(i)} \in \mathcal{Y}$. The target space decides the task: regression, binary, multiclass, multilabel, structured.
+- **Model:** $f_\theta : \mathcal{X} \to \mathcal{Y}$ with $\theta \in \Theta$. **Model class:** $\mathcal{M} = \{f_\theta \mid \theta \in \Theta\}$. Training picks a model; the modeler picks the class.
+- **Restriction:** an unrestricted class fits the data and predicts anything at a new input; restricted is not the same as finite.
+- **Linear model:** $f_\theta(x) = \theta^\top x$ with $x_0 = 1$, $\theta \in \mathbb{R}^{d+1}$.
+- **Design matrix:** rows $(x^{(i)})^\top$; predictions $\hat y = X\theta$, residuals $X\theta - y$.
+- **Uniform effects:** $f_\theta(x + \Delta) - f_\theta(x) = \sum_{j \ge 1} \theta_j \Delta_j$ for every $x$; $\partial f_\theta/\partial x_j = \theta_j$.
+- **Independence:** the effect of $x_j$ does not depend on $x_k$; a joint change is the sum of single-feature changes.
+- **Monotonicity:** along feature $j$ the prediction moves in the direction of $\operatorname{sign}(\theta_j)$ everywhere, and without bound when $\theta_j \ne 0$.
+
+</Summary>

@@ -1,0 +1,547 @@
+---
+title: "The components of a learning problem and data representation"
+unit: u1-linear-regression
+order: 1
+slug: components-of-a-learning-problem
+summary: "The five components every learning problem names, then the first one in depth: why one-hot beats integer codes, discretization as a step-function feature map, and feature engineering that stays linear in θ."
+lectures:
+  - { lecture: 2, pages: "4-13" }
+  - { lecture: 2, pages: "15" }
+  - { lecture: 3, pages: "3" }
+concepts:
+  - five-ml-components
+  - data-representation
+  - attribute-types
+  - one-hot-encoding
+  - integer-codes-impose-spacing
+  - dummy-variable-trap
+  - discretization
+  - feature-engineering
+  - linear-in-parameters
+  - interaction-feature
+  - diabetes-dataset
+prerequisites:
+  - feature-map
+  - indicator-function
+  - z-score
+  - first-order-condition
+  - second-order-condition
+companions:
+  - { notebook: "Code Companions/Lecture2code_companion.ipynb", cells: "2-6" }
+estimatedMinutes: 50
+status: review
+authors: [jide]
+---
+
+{/* no-case-frontmatter: the hook and der-1-1-3 use the VASCO dose-finding trial (docs/reference/pedagogy-and-curriculum.md Part C, C1), but src/content/cases/vasco.mdx does not exist yet. Add `cases: [vasco]` when it does. Numbers below come from the C1 specification (E0 = -3, Emax = -22 mmHg, ED50 = 6 mg), not from a generated dataset. */}
+
+<Frame
+  data="attribute vectors $x^{(i)} \in \mathcal{X}$ with targets $y^{(i)}$, turned into features $\phi(x^{(i)}) \in \mathbb{R}^p$"
+  model="a linear model on features, $f_\theta(x) = \theta^\top \phi(x)$"
+  objective="mean squared error $\frac{1}{n}\sum_i \big(f_\theta(x^{(i)}) - y^{(i)}\big)^2$ (lesson 1.3)"
+  optimizer="closed form (lesson 1.4); gradient descent (Unit 2)"
+/>
+
+<Objectives>
+
+- Name the five components of a learning problem and identify each one in a clinical example.
+- Classify an attribute as discrete, continuous, or categorical, and choose a representation for it.
+- Prove that a numeric code for a categorical attribute forces a linear model to space and order the categories, and that one-hot encoding removes the constraint.
+- Explain the dummy-variable trap and fix it by dropping one column.
+- Write discretization as a step-function feature map and derive its least-squares fit, the bin means.
+- Build engineered features, including an interaction, and show the model stays linear in $\theta$.
+
+</Objectives>
+
+<Hook>
+
+The VASCO trial randomizes patients to six dose arms, 0, 2.5, 5, 10, 20, and 40 mg, and records the change in systolic blood pressure after eight weeks. Before any model is fit, someone decides what "dose" looks like to the computer. One number per patient? Six yes/no columns, one per arm? The value $D/(6 + D)$?
+
+The three choices feed the same linear model, yet they let it express different dose–response curves. One of them cannot express the curve this drug actually follows. By the end of this lesson you can say which, and prove it.
+
+{/* hook-figure: none; the encoding-explorer widget after der-1-1-1 is the explorable for this question */}
+
+</Hook>
+
+## Five components, one recipe
+
+Every supervised learning problem in this course is specified by the same five choices <SlideRef lecture={2} pages="4" />. The list returns verbatim at the start of the next lecture <SlideRef lecture={3} pages="3" />, and the lessons of Units 1 and 2 take the components one at a time.
+
+<Definition id="def-1-1-1" title="The five components of a learning problem" source="L2 p.4">
+
+1. **Input data**: what we observe about each example, the attribute vector $x^{(i)}$.
+2. **Output**: the task and the target values $y^{(i)}$ we want to predict.
+3. **Model class** $\mathcal{M}$: the set of candidate functions $f_\theta$ we are willing to consider.
+4. **Loss function** (objective): a number that says how badly $f_\theta$ fits the data.
+5. **Learning rule** (optimizer): the procedure that searches $\mathcal{M}$ for the $\theta$ with the smallest loss.
+
+<SlideRef lecture={2} pages="4" />
+
+Also written as: "data, model, objective, optimizer" (four components, with input and output merged), as in the strip at the top of every lesson on this site.
+
+</Definition>
+
+In VASCO: the input is a patient's dose, baseline blood pressure, age, and sex; the output is the change in systolic blood pressure, a regression target; the model class might be all functions $\theta_0 + \theta_1 D$; the loss is the mean squared error; and the optimizer is the closed-form least-squares solution of lesson 1.4. This lesson is about the first component. "The amount of signal that you will be able to extract highly depends on the preprocessing steps" <SlideRef lecture={2} pages="8" />, and the rest of the lesson shows exactly how.
+
+<Check ids={["q-u1-l1-003"]} />
+
+## The diabetes data
+
+The slides' running example is the scikit-learn diabetes dataset <SlideRef lecture={2} pages="5-7" />: $n = 442$ patients, $d = 10$ baseline attributes, and a target that measures disease progression one year after baseline. The attributes are age, sex, body mass index (bmi), average blood pressure (bp), and six blood serum measurements s1 to s6. Their meanings, from the dataset's own description (printed in the companion notebook, cell 2):
+
+| Column | Meaning |
+|---|---|
+| s1 | tc, total serum cholesterol |
+| s2 | ldl, low-density lipoproteins |
+| s3 | hdl, high-density lipoproteins |
+| s4 | tch, total cholesterol / HDL |
+| s5 | ltg, possibly the log of the serum triglycerides level |
+| s6 | glu, blood sugar level |
+
+Each patient becomes a vector $x^{(i)} = (x^{(i)}_1, \dots, x^{(i)}_{10})$ with $x_1$ = age, $x_2$ = sex, $x_3$ = bmi, $x_4$ = bp <SlideRef lecture={2} pages="6" />. Every column has already been transformed: "mean centered and scaled by the standard deviation times the square root of n_samples (i.e. the sum of squares of each column totals 1)." So an age of $0.038$ is not 0.038 years. It means $(\text{age} - \overline{\text{age}})/(\sigma_{\text{age}} \sqrt{442}) = 0.038$, where $\sigma_{\text{age}}$ is the standard deviation of age.
+
+<Callout type="slide">
+
+L2 p.5 glosses s1 as "T-Cells", s4 as "thyroid stimulating hormone", and s5 as "lamotrigine". The dataset description says total serum cholesterol, total cholesterol/HDL, and log serum triglycerides. We use the dataset description; see the Pitfalls.
+
+</Callout>
+
+<Check ids={["q-u1-l1-017"]} />
+
+## Kinds of attributes
+
+<Definition id="def-1-1-2" title="Attribute types" source="L2 p.8">
+
+- **Discrete**: finitely or countably many values whose order matters, such as age in whole years.
+- **Continuous**: real-valued measurements, such as lab values.
+- **Categorical**: values that name a group, with no meaningful order or spacing, such as zip code.
+
+<SlideRef lecture={2} pages="8" />
+
+Also written as: "ordinal" for discrete-with-order, "nominal" for categorical (statistics texts).
+
+</Definition>
+
+A categorical attribute can be stored as numbers without becoming numeric. The slides' example is a column of five zip codes, 10040 to 10044 <SlideRef lecture={2} pages="8" />. They are integers, and consecutive ones, but the difference $10044 - 10040 = 4$ means nothing about the neighborhoods. The poll on L2 p.9 asks how to represent them.
+
+<Check ids={["q-u1-l1-001"]} />
+
+## One-hot encoding
+
+<Definition id="def-1-1-3" title="One-hot encoding" source="L2 p.10">
+
+For a categorical attribute with $K$ categories, numbered $1, \dots, K$, the [[one-hot-encoding|one-hot encoding]] of category $k$ is the vector $\phi(k) \in \{0, 1\}^K$ with a 1 in position $k$ and 0 elsewhere:
+
+$$
+\phi_j(k) = \mathbb{1}[j = k], \qquad j = 1, \dots, K.
+\tag{1.1.1} \htmlId{eq-1-1-1}{}
+$$
+
+Each entry is an [[indicator-function|indicator]]. For the five zip codes, $10044 \mapsto [0, 0, 0, 0, 1]$. <SlideRef lecture={2} pages="10" />
+
+Also written as: dummy variables, indicator coding; `OneHotEncoder` and `pd.get_dummies` in code.
+
+</Definition>
+
+The slides state the answer without the reason. The reason is a fact about linear models: whatever numbers you feed them, they treat as quantities. The derivation below makes that precise.
+
+<Intuition>
+
+Draw the five zip codes on a number line at 10040, 10041, ..., 10044 and fit any straight line above them. The line's heights at the five points are evenly spaced: each step to the right adds the same slope. If 10042 is the neighborhood with the highest diabetes risk, no line can say so, because a line that rises from 10040 to 10042 keeps rising to 10044.
+
+Now give each zip code its own column. The model has five separate dials, one height per zip code, and nothing ties them together. The price is more parameters: five instead of two.
+
+</Intuition>
+
+<Derivation
+  id="der-1-1-1"
+  title="A numeric code fixes the spacing between categories; one-hot frees it"
+  goalTex="\text{numeric code } c_k:\ f_\theta(k+1) - f_\theta(k) = ? \qquad \text{one-hot } \phi(k):\ f_\theta(k) = ?"
+  resultTex="f_\theta(k') - f_\theta(k) = \theta_1\,(c_{k'} - c_k) \ \text{(numeric code)}, \qquad f_\theta(k) = \theta_k \ \text{(one-hot)}, \qquad \textstyle\sum_{j}\phi_j(k) = 1 \Rightarrow \text{drop one column when there is an intercept}"
+  source="L2 pp.9-10 (poll and answer stated; the reason is not on the slides)"
+>
+
+<Chunk title="Feed a numeric code to a linear model">
+
+<Step justification="the one-feature linear model $f_\theta(x) = \theta_0 + \theta_1 x$ (L2 p.22), evaluated at the numeric code $x = c_k$ of category $k$">
+$$f_\theta(k) = \theta_0 + \theta_1 c_k$$
+</Step>
+
+<Step justification="subtract the predictions for two categories; $\theta_0$ cancels" fadeable>
+$$f_\theta(k') - f_\theta(k) = \theta_1\,(c_{k'} - c_k)$$
+</Step>
+
+<Step justification="use the zip codes as is: $c_k = 10039 + k$, so neighboring codes differ by 1" fadeable>
+$$f_\theta(k+1) - f_\theta(k) = \theta_1, \qquad k = 1, \dots, 4$$
+</Step>
+
+<Step justification="every neighbor difference equals the same $\theta_1$, so the predictions are equally spaced and ordered by zip code: increasing if $\theta_1 > 0$, decreasing if $\theta_1 \lt 0$">
+$$f_\theta(2) - f_\theta(1) = f_\theta(3) - f_\theta(2) = f_\theta(4) - f_\theta(3) = f_\theta(5) - f_\theta(4)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Standardizing the code does not change the model class">
+
+<Step justification="the poll's second option: replace the code by its z-score with mean $m$ and standard deviation $s > 0$, then fit the same linear model" sticky="z-score">
+$$f_{\theta'}(k) = \theta'_0 + \theta'_1\,\frac{c_k - m}{s}$$
+</Step>
+
+<Step justification="expand and regroup: this is step 1 with $\theta_0 = \theta'_0 - \theta'_1 m/s$ and $\theta_1 = \theta'_1/s$, so steps 2 to 4 still hold">
+$$f_{\theta'}(k) = \Big(\theta'_0 - \frac{\theta'_1 m}{s}\Big) + \frac{\theta'_1}{s}\,c_k$$
+</Step>
+
+</Chunk>
+
+<Chunk title="One-hot gives each category its own parameter">
+
+<Step justification="one-hot encoding, equation (1.1.1)" sticky="one-hot-encoding">
+$$\phi(k) = \big(\mathbb{1}[1 = k],\ \mathbb{1}[2 = k],\ \dots,\ \mathbb{1}[K = k]\big)$$
+</Step>
+
+<Step justification="linear model on the $K$ features $\phi(k)$, with no intercept" sticky="feature-map">
+$$f_\theta(k) = \sum_{j=1}^{K} \theta_j\,\mathbb{1}[j = k]$$
+</Step>
+
+<Step justification="every term except $j = k$ is multiplied by 0" fadeable>
+$$f_\theta(k) = \theta_k$$
+</Step>
+
+<Step justification="choose $\theta_k = m_k$: any $K$ target values, in any order, are reachable, while the numeric code reaches only equally spaced ones (step 4)">
+$$\big(f_\theta(1), \dots, f_\theta(K)\big) = (m_1, \dots, m_K) \quad \text{for every } (m_1, \dots, m_K) \in \mathbb{R}^K$$
+</Step>
+
+</Chunk>
+
+<Chunk title="With an intercept, drop one column">
+
+<Step justification="exactly one of the $K$ indicators is 1 for any category" sticky="indicator-function">
+$$\sum_{j=1}^{K} \phi_j(k) = 1 \quad \text{for every } k$$
+</Step>
+
+<Step justification="add $c$ to the intercept and subtract $c$ from every $\theta_j$: the change is $c - c\sum_j \phi_j(k) = 0$ by step 11, so infinitely many $\theta$ give the same predictions">
+$$\theta_0 + \sum_{j=1}^{K}\theta_j\phi_j(k) = (\theta_0 + c) + \sum_{j=1}^{K}(\theta_j - c)\,\phi_j(k) \quad \text{for every } c \in \mathbb{R}$$
+</Step>
+
+<Step justification="delete the column of a reference category, here $j = 1$; category 1 then has every remaining indicator equal to 0">
+$$f_\theta(1) = \theta_0, \qquad f_\theta(k) = \theta_0 + \theta_k \quad (k \ge 2)$$
+</Step>
+
+<Step justification="solve step 13 for the parameters: each one is fixed by the predictions, so the redundancy of step 12 is gone">
+$$\theta_0 = f_\theta(1), \qquad \theta_k = f_\theta(k) - f_\theta(1) \quad (k \ge 2)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 12 is the **dummy-variable trap**. In the matrix of features that lesson 1.2 calls the design matrix, it says that the intercept column (all ones) is the sum of the $K$ one-hot columns. The columns are linearly dependent, and lesson 1.4 shows that the least-squares solution is then not unique. Dropping one column, as `pd.get_dummies(drop_first=True)` and `OneHotEncoder(drop="first")` do, restores uniqueness, and step 14 says what the remaining parameters mean: the difference between each category and the reference category.
+
+A binary attribute is the case $K = 2$. After dropping one column, a single 0/1 column remains, and any two-valued numeric code is an affine function of it (step 6 again). That is why the diabetes data can store sex as one number, $0.050680$ or $-0.044642$, without harm.
+
+<Widget
+  name="encoding-explorer"
+  categories={["10040", "10041", "10042", "10043", "10044"]}
+  encodings={["integer", "standardized", "one-hot", "one-hot-drop-first"]}
+  challenge="Make 10042 the highest-risk zip code. Which encodings can fit it exactly? Then switch to one-hot with an intercept and no dropped column, and watch what happens to the coefficients."
+/>
+
+<Check ids={["q-u1-l1-004", "q-u1-l1-005", "q-u1-l1-006", "q-u1-l1-007", "q-u1-l1-015"]} />
+
+## Discretization
+
+Some continuous attributes are more meaningful as categories. Whether a red blood cell count is normal depends on how the blood was processed: different labs use different volumes and technology, so the same raw number can mean different things <SlideRef lecture={2} pages="11" />. Each lab reports a flag instead, normal, abnormal, low, or high, that is comparable across labs.
+
+<Definition id="def-1-1-4" title="Discretization" source="L2 p.11">
+
+Replacing a continuous attribute $x$ by the bin it falls in. Choose thresholds $t_1 \lt t_2 \lt \dots \lt t_{B-1}$ and set $t_0 = -\infty$, $t_B = +\infty$; bin $b$ is the interval $t_{b-1} \le x \lt t_b$. The bin label is a categorical attribute, usually one-hot encoded. <SlideRef lecture={2} pages="11" />
+
+Also written as: binning, bucketing; `KBinsDiscretizer`, `pd.cut`.
+
+</Definition>
+
+<Derivation
+  id="der-1-1-2"
+  title="Discretization is a step-function feature map, and its least-squares fit is the bin means"
+  goalTex="f_\theta(x) = \theta^\top \phi(x) \text{ with bin indicators } \phi_b(x); \quad \hat\theta_b = ?"
+  resultTex="f_\theta(x) = \theta_b \ \text{ for } t_{b-1} \le x \lt t_b, \qquad \hat\theta_b = \frac{1}{n_b}\sum_{i \in S_b} y^{(i)}"
+  source="L2 p.11 (discretization motivated, not formalized); MSE from L2 p.31"
+>
+
+<Chunk title="Write the bins as a feature map">
+
+<Step justification="discretize (L2 p.11), then one-hot encode the bin label (L2 p.10): one indicator per bin" sticky="indicator-function">
+$$\phi_b(x) = \mathbb{1}[t_{b-1} \le x \lt t_b], \qquad b = 1, \dots, B$$
+</Step>
+
+<Step justification="the bins cover the real line without overlapping, so $x$ lies in exactly one of them">
+$$\sum_{b=1}^{B} \phi_b(x) = 1$$
+</Step>
+
+<Step justification="linear model on $\phi(x)$ with no intercept, since step 2 is the dummy-variable trap of der-1-1-1 steps 11–12" sticky="feature-map">
+$$f_\theta(x) = \sum_{b=1}^{B} \theta_b\,\phi_b(x)$$
+</Step>
+
+<Step justification="only the indicator of the bin containing $x$ is nonzero: a step function with jumps at the thresholds" fadeable>
+$$f_\theta(x) = \theta_b \quad \text{for } t_{b-1} \le x \lt t_b$$
+</Step>
+
+</Chunk>
+
+<Chunk title="What a step function can and cannot express">
+
+<Step justification="with bins low, normal, high ($B = 3$), choose $\theta_1 > \theta_2$ and $\theta_3 > \theta_2$: risk is raised at both extremes, a U-shape that no line $a + b\,x$ can produce, because a line's slope has one sign">
+$$f_\theta(\text{low}) > f_\theta(\text{normal}) \lt f_\theta(\text{high})$$
+</Step>
+
+<Step justification="step 4 applied to two values in the same bin: within a bin, the model cannot tell them apart">
+$$t_{b-1} \le x,\, x' \lt t_b \ \Longrightarrow\ f_\theta(x) = f_\theta(x')$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Fit the step function by least squares">
+
+<Step justification="mean squared error (L2 p.31; lesson 1.3 studies it as an objective)">
+$$\mathrm{MSE}(\theta) = \frac{1}{n}\sum_{i=1}^{n}\big(f_\theta(x^{(i)}) - y^{(i)}\big)^2$$
+</Step>
+
+<Step justification="group the examples by bin, with $S_b = \{i : t_{b-1} \le x^{(i)} \lt t_b\}$, and replace each prediction by step 4" fadeable>
+$$\mathrm{MSE}(\theta) = \frac{1}{n}\sum_{b=1}^{B}\ \sum_{i \in S_b}\big(\theta_b - y^{(i)}\big)^2$$
+</Step>
+
+<Step justification="only the terms of bin $b$ contain $\theta_b$; differentiate each square with the chain rule">
+$$\frac{\partial\,\mathrm{MSE}}{\partial \theta_b} = \frac{2}{n}\sum_{i \in S_b}\big(\theta_b - y^{(i)}\big)$$
+</Step>
+
+<Step justification="first-order condition: set the derivative to 0" sticky="first-order-condition">
+$$\frac{2}{n}\sum_{i \in S_b}\big(\theta_b - y^{(i)}\big) = 0$$
+</Step>
+
+<Step justification="multiply by $n/2$ and split the sum; the sum of $n_b = |S_b|$ copies of $\theta_b$ is $n_b\theta_b$" fadeable>
+$$n_b\,\theta_b - \sum_{i \in S_b} y^{(i)} = 0$$
+</Step>
+
+<Step justification="divide by $n_b$, assuming the bin contains at least one training example" fadeable>
+$$\hat\theta_b = \frac{1}{n_b}\sum_{i \in S_b} y^{(i)}$$
+</Step>
+
+<Step justification="second-order condition: the Hessian is diagonal (no term contains two different $\theta_b$) with positive entries, so step 12 is the minimum" sticky="second-order-condition">
+$$\frac{\partial^2\,\mathrm{MSE}}{\partial \theta_b^2} = \frac{2n_b}{n} > 0, \qquad \frac{\partial^2\,\mathrm{MSE}}{\partial \theta_b\,\partial \theta_{b'}} = 0 \quad (b \ne b')$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Two consequences. First, a discretized model predicts the average target in each bin, so it is only as good as the bins: thresholds chosen too coarsely blur real differences (step 6), and a bin with no training examples has no estimate at all (step 12). Second, steps 8 to 12 apply to any one-hot feature, not only to bins. Fit VASCO with one column per dose arm and no intercept, and least squares returns the six arm means; with an intercept and placebo as the reference, the coefficients are each arm's mean minus the placebo mean, by der-1-1-1 step 14.
+
+<Check ids={["q-u1-l1-008", "q-u1-l1-009", "q-u1-l1-010"]} />
+
+## Feature engineering
+
+<Definition id="def-1-1-5" title="Features and feature engineering" source="L2 pp.12, 15">
+
+A **feature** is a representation of the attributes: a [[feature-map|feature map]] $\phi : \mathcal{X} \to \mathbb{R}^p$ sends the attribute vector $x^{(i)}$ to $\phi(x^{(i)})$, and $\phi(x^{(i)})_j$ is its $j$-th feature <SlideRef lecture={2} pages="15" />. **Feature engineering** is designing $\phi$ by hand from domain knowledge, such as an indicator for "old and male" when older men are thought to be at higher risk <SlideRef lecture={2} pages="12" />.
+
+Also written as: "attributes" for the raw $x^{(i)}$ and "features" for $\phi(x^{(i)})$; most authors, and this course after L2, call both "features" and say "attributes" only to disambiguate.
+
+</Definition>
+
+<Callout type="slide">
+
+L2 p.15 writes $\phi(x^{(i)})$ as a column of the $d$ entries $\phi(x^{(i)}_1), \dots, \phi(x^{(i)}_d)$, one per attribute, while also saying $\phi$ maps to $\mathbb{R}^p$. The column has $d$ entries, so it is well typed only when $p = d$ and $\phi$ acts on each attribute separately. One-hot encoding (one attribute becomes $K$ features) and the interaction below (two attributes become one feature) are not of that form. We read $\phi$ as a general map from the whole vector $x^{(i)}$ to $\mathbb{R}^p$.
+
+</Callout>
+
+The point of a feature map is that the model can be nonlinear in the attributes and still linear in the parameters. That is what "linear" in linear regression refers to, and it is what lesson 1.4 needs for a closed-form solution.
+
+<Derivation
+  id="der-1-1-3"
+  title="A feature map makes a nonlinear relation linear in θ"
+  goalTex="\text{a nonlinear } \mu(D) \text{ written as } \theta^\top\phi(D), \text{ with the model linear in } \theta"
+  resultTex="\mu(D) = -3 - 22\,\frac{D}{6 + D} = \theta^\top\phi(D) \ \text{ with } \ \phi(D) = \Big(1,\ \frac{D}{6 + D}\Big),\ \theta = (-3, -22)"
+  source="L2 pp.12, 15, 22 (feature map, linear model); the VASCO Emax curve is from the case specification, not the slides"
+>
+
+<Chunk title="A model built on features is linear in θ">
+
+<Step justification="linear model on a feature map $\phi : \mathcal{X} \to \mathbb{R}^p$ (L2 pp.15, 22)" sticky="feature-map">
+$$f_\theta(x) = \theta^\top\phi(x) = \sum_{j=1}^{p}\theta_j\,\phi_j(x)$$
+</Step>
+
+<Step justification="substitute $a\theta + b\theta'$ and distribute the sum; nothing about $\phi$ is assumed, so $f$ is linear in $\theta$ for every feature map" fadeable>
+$$f_{a\theta + b\theta'}(x) = a\,f_\theta(x) + b\,f_{\theta'}(x)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Make VASCO's dose–response linear in θ">
+
+<Step justification="VASCO's mean change in systolic pressure at dose $D$ (Emax model, case specification C1), at baseline 150 mmHg where the baseline term vanishes">
+$$\mu(D) = E_0 + \frac{E_{\max}\,D}{ED_{50} + D}, \qquad E_0 = -3,\ E_{\max} = -22,\ ED_{50} = 6$$
+</Step>
+
+<Step justification="engineer the feature $D/(6 + D)$ and keep a constant feature for the intercept">
+$$\phi(D) = \Big(1,\ \frac{D}{6 + D}\Big)$$
+</Step>
+
+<Step justification="step 1 with this feature map">
+$$f_\theta(D) = \theta_0 + \theta_1\,\frac{D}{6 + D}$$
+</Step>
+
+<Step justification="match coefficients with step 3: $\theta_0 = E_0$, $\theta_1 = E_{\max}$, so the true mean is a member of this model class" fadeable>
+$$f_{(-3,\,-22)}(D) = -3 - 22\,\frac{D}{6 + D} = \mu(D)$$
+</Step>
+
+<Step justification="evaluate step 3 at $D = 0, 6, 12$ mg">
+$$\mu(0) = -3, \qquad \mu(6) = -3 - 11 = -14, \qquad \mu(12) = -3 - \frac{44}{3} = -\frac{53}{3}$$
+</Step>
+
+<Step justification="subtract $\mu(0)$: doubling the dose from 6 to 12 mg does not double the effect">
+$$\mu(12) - \mu(0) = -\frac{44}{3} \approx -14.67, \qquad 2\big(\mu(6) - \mu(0)\big) = -22$$
+</Step>
+
+<Step justification="der-1-1-1 step 2 with codes $0, 6, 12$: every line in raw dose has $g(12) - g(0) = 12\theta_1 = 2\big(g(6) - g(0)\big)$, which step 8 shows $\mu$ violates, so no line in $D$ equals $\mu$" fadeable>
+$$g(D) = \theta_0 + \theta_1 D \ \Longrightarrow\ g(12) - g(0) = 2\big(g(6) - g(0)\big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Engineer an interaction">
+
+<Step justification="two indicators on the diabetes attributes; the slide's `old_man` feature is their product (L2 p.12)" sticky="indicator-function">
+$$a = \mathbb{1}[\text{age} > 0.05], \qquad s = \mathbb{1}[\text{sex} > 0], \qquad \phi(x) = (1,\ a,\ s,\ a\,s)$$
+</Step>
+
+<Step justification="step 1 with this feature map">
+$$f_\theta(x) = \theta_0 + \theta_1 a + \theta_2 s + \theta_3\,a\,s$$
+</Step>
+
+<Step justification="subtract the predictions for $a = 1$ and $a = 0$ at the same $s$: the effect of being older now depends on sex, although $f$ is still linear in $\theta$">
+$$f_\theta(a{=}1, s) - f_\theta(a{=}0, s) = \theta_1 + \theta_3\,s$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Steps 3 to 9 answer the hook. A raw dose column gives the class of lines in $D$, which step 9 shows cannot follow the Emax curve. Six one-hot columns, one per arm, fit any six arm means (der-1-1-1 step 10), so they contain the truth at the six doses studied but say nothing about a dose between arms. The engineered feature $D/(6 + D)$ contains the truth with only two parameters, at every dose, but only because we knew $ED_{50} = 6$.
+
+<Callout type="beyond">
+
+If $ED_{50}$ is unknown, it sits inside the feature, and $\theta_0 + \theta_1 D/(\theta_2 + D)$ is not linear in $\theta_2$. Step 2 fails, and with it the closed form of lesson 1.4; such models are fit iteratively (nonlinear least squares, or the gradient descent of Unit 2). A common compromise is a fixed feature with a similar shape, such as $\log(1 + D)$: the model is linear in $\theta$ again, at the price of fitting the curve only approximately. Lesson 1.4's residual plot shows the gap.
+
+</Callout>
+
+Step 12 is the reason to engineer an interaction. Lesson 1.2 proves that a linear model on the raw attributes gives each attribute an effect that does not depend on the others. The product feature $a\,s$ breaks that, on purpose, while staying inside the linear model class.
+
+<Example title="The old_man feature on the first five diabetes patients">
+
+The companion notebook (cell 6) adds the feature with
+
+```python
+diabetes_X['old_man'] = (diabetes_X['sex'] > 0) & (diabetes_X['age'] > 0.05)
+```
+
+and prints the first five rows <SlideRef lecture={2} pages="12" />. The two inputs and the result:
+
+| Row | age | sex | $s = \mathbb{1}[\text{sex} > 0]$ | $a = \mathbb{1}[\text{age} > 0.05]$ | old_man $= a\,s$ |
+|---|---|---|---|---|---|
+| 0 | 0.038076 | 0.050680 | 1 | 0 | False |
+| 1 | −0.001882 | −0.044642 | 0 | 0 | False |
+| 2 | 0.085299 | 0.050680 | 1 | 1 | True |
+| 3 | −0.089063 | −0.044642 | 0 | 0 | False |
+| 4 | 0.005383 | −0.044642 | 0 | 0 | False |
+
+Sex takes only two values in the whole dataset, $0.050680$ and $-0.044642$, so `sex > 0` is a one-column encoding of a binary attribute (der-1-1-1 with $K = 2$). Which sex code is "man" is not recorded in the dataset description; the slide's reading assumes the positive code.
+
+What does the threshold $0.05$ on age mean? The scaling divides the centered age by $\sigma_{\text{age}}\sqrt{n}$, where $\sigma_{\text{age}}$ is the standard deviation of age and $n = 442$. A scaled age of $0.05$ is therefore a centered age of
+
+$$0.05 \times \sqrt{442} \times \sigma_{\text{age}} \approx 0.05 \times 21.02 \times \sigma_{\text{age}} \approx 1.05\,\sigma_{\text{age}},$$
+
+about one standard deviation above the mean age. Row 0's scaled age of $0.038$ is about $0.80\,\sigma_{\text{age}}$ above the mean, which is not old enough, so its `old_man` is False even though $s = 1$. Only row 2 has both indicators on.
+
+</Example>
+
+<Check ids={["q-u1-l1-011", "q-u1-l1-012", "q-u1-l1-013", "q-u1-l1-014", "q-u1-l1-016"]} />
+
+## How many features?
+
+Feature engineering invites a question the slides pose as a poll <SlideRef lecture={2} pages="13" />: is it beneficial to maximize the number of input features? Every feature adds a parameter, and der-1-1-1 step 10 shows what extra parameters buy: $K$ free parameters can match any $K$ values, so the model can match more patterns in the training data, including patterns that are noise. A feature that carries no signal still gets a coefficient fitted to the training noise. More features help when they carry signal the model could not otherwise express and there are enough examples to estimate their parameters. Lesson 1.2 explains why the model class must be restricted at all, and Unit 5 measures the cost of too many features (overfitting) and controls it (regularization).
+
+<Check ids={["q-u1-l1-002"]} />
+
+## Pitfalls
+
+<Pitfall title="Spot the error: L2 p.5 mislabels three diabetes variables" misconception="diabetes-variable-glosses">
+
+The slide expands s1 as "tc, T-Cells", s4 as "tch, thyroid stimulating hormone", and s5 as "ltg, lamotrigine". The abbreviations are right; the expansions are not. The dataset description (companion notebook, cell 2; Efron et al., 2004) gives s1 = total serum cholesterol, s4 = total cholesterol / HDL, and s5 = possibly the log of the serum triglycerides level. All six s-columns are blood serum measurements, which a T-cell count, a hormone, and an anticonvulsant drug are not.
+
+</Pitfall>
+
+<Pitfall title="Numbers that name categories are not quantities" misconception="integer-code-categorical">
+
+The belief: zip codes are already numbers, so a model can use them as is. The fix: der-1-1-1 steps 2 to 4. A linear model on a numeric code predicts equally spaced values ordered by the code, so it cannot make a middle zip code the riskiest. One-hot encoding gives each category its own parameter (step 9).
+
+</Pitfall>
+
+<Pitfall title="Standardizing a code does not fix it" misconception="standardize-fixes-codes">
+
+The belief: subtracting the mean and dividing by the standard deviation turns a code into a proper numeric feature (the poll's second option). The fix: standardizing is an affine change of the code, and a linear model absorbs it into $\theta_0$ and $\theta_1$ (der-1-1-1 step 6). The predictions stay equally spaced and ordered.
+
+</Pitfall>
+
+<Pitfall title="All K one-hot columns plus an intercept is one column too many" misconception="all-k-columns-with-intercept">
+
+The belief: one-hot encoding means one column per category, always. The fix: the $K$ columns sum to the all-ones intercept column (der-1-1-1 step 11), so adding any $c$ to the intercept and subtracting it from every category coefficient leaves the predictions unchanged (step 12). Drop one category, or drop the intercept. With six VASCO dose arms and an intercept, that is five dose columns.
+
+</Pitfall>
+
+<Pitfall title="Discretizing is not free" misconception="discretization-lossless">
+
+The belief: binning a continuous value only removes noise. The fix: within a bin, the model gives the same prediction to every value (der-1-1-2 step 6), and each bin costs a parameter estimated from that bin's examples only (step 12). Bin when the raw number is not comparable across sources, as with the lab flags of L2 p.11, or when the relation is a threshold. Choose the thresholds without looking at the test set ([[train-test-split]]).
+
+</Pitfall>
+
+<Pitfall title="A linear model is not limited to straight lines in the inputs" misconception="linear-means-straight-line">
+
+The belief: linear regression can only fit a straight line through the raw attribute. The fix: it is linear in $\theta$, not in $x$ (der-1-1-3 step 2). The Emax curve, a step function, and an interaction are all linear models on suitable features. What linearity in $\theta$ rules out is a parameter inside a feature, such as an unknown $ED_{50}$.
+
+</Pitfall>
+
+<Pitfall title="The diabetes attributes are not in their original units" misconception="scaled-units-as-raw">
+
+The belief: `age > 0.05` selects patients older than 0.05 years, or older than 5% of something. The fix: every column is centered and divided by $\sigma\sqrt{442}$, with $\sigma$ that column's standard deviation, so $0.05$ is about one standard deviation above the mean age (the worked example). Read thresholds on this dataset in those units, or reload with `scaled=False` to get the raw values.
+
+</Pitfall>
+
+<Pitfall title="More features are not always better" misconception="more-features-always-better">
+
+The belief: give the model every feature you can build. The fix: each feature adds a parameter fitted to the training data, noise included. Whether a feature helps depends on whether it carries signal and on whether there are enough examples to estimate it, not on a rule such as "complex models want more features". This is the L2 p.13 poll; Unit 5 makes the trade-off quantitative.
+
+</Pitfall>
+
+<Connections>
+
+- Companion: <Notebook path="Code Companions/Lecture2code_companion.ipynb" cells="2-6" /> loads the diabetes data, prints its description (the correct variable meanings), and builds the `old_man` feature.
+- Next: 1.2 Datasets, models, and model classes formalizes $\mathcal{D}$, $f_\theta$, and $\mathcal{M}$, and proves the three inductive biases of linear models that der-1-1-3 step 12 works around.
+- Then: 1.3 Loss functions (MAE, MSE, RMSE, $R^2$) studies the objective used in der-1-1-2, and 1.4 Least squares stacks the features $\phi(x^{(i)})$ into the design matrix, derives the normal equations, and explains why the dummy-variable trap makes them singular.
+- Unit 2 standardizes features again, this time for gradient descent: dose in mg next to blood pressure in mmHg slows it down ([[z-score]]).
+- Unit 6 builds a feature map for text: bag-of-words is one-hot encoding applied to every word of a vocabulary, stored as a [[sparse-matrix]].
+
+</Connections>
+
+{/* no-homework-bridge: Unit 1 feeds HW1, which is past (due 2026-09-16), and src/content/homework/hw1.mdx does not exist yet. Add <HomeworkBridge hw="hw1" skills={["one-hot-encoding", "feature-engineering"]} /> when it does. */}
+
+<Summary>
+
+- **Five components:** input data, output (task and targets), model class $\mathcal{M}$, loss function, learning rule. This lesson is the first one.
+- **Attribute types:** discrete (ordered), continuous, categorical (names, no order or spacing).
+- **Numeric code** $c_k$ in a linear model: $f_\theta(k') - f_\theta(k) = \theta_1(c_{k'} - c_k)$, so equally spaced codes give equally spaced, ordered predictions. Standardizing the code changes nothing.
+- **One-hot encoding:** $\phi_j(k) = \mathbb{1}[j = k]$, so $f_\theta(k) = \theta_k$, one free parameter per category.
+- **Dummy-variable trap:** $\sum_j \phi_j(k) = 1$ equals the intercept column; with an intercept, drop one category. Then $\theta_k = f_\theta(k) - f_\theta(\text{reference})$.
+- **Discretization:** $\phi_b(x) = \mathbb{1}[t_{b-1} \le x \lt t_b]$ gives a step function; least squares sets $\hat\theta_b = \frac{1}{n_b}\sum_{i \in S_b} y^{(i)}$, the bin mean.
+- **Feature engineering:** $f_\theta(x) = \theta^\top\phi(x)$ is linear in $\theta$ for any $\phi$. With $\phi(D) = (1, D/(6+D))$ the Emax curve is in the class; no line in raw $D$ is. An interaction $a\,s$ makes the effect of $a$ depend on $s$.
+
+</Summary>
