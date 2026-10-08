@@ -1,0 +1,149 @@
+/*
+ * line-fit-playground (prefix .lfp-). Tokens only (STYLE_GUIDE.md §4).
+ * Imported by Widget.tsx, so it ships in the widget's own CSS chunk.
+ */
+
+.lfp {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1.25rem;
+}
+
+@media (width >= 640px) {
+  .lfp {
+    grid-template-columns: minmax(0, 1.5fr) minmax(220px, 1fr);
+    align-items: start;
+  }
+  .lfp-controls {
+    grid-column: 1 / -1;
+  }
+}
+
+.lfp-plot {
+  min-width: 0;
+}
+
+.lfp-svg {
+  display: block;
+  max-width: 100%;
+  font-family: var(--font-sans);
+}
+
+.lfp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.375rem 0 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.lfp-legend span {
+  white-space: nowrap;
+}
+
+.lfp-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.lfp-math {
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  overflow-x: auto;
+}
+
+.lfp-math .katex-display {
+  margin: 0.25em 0;
+  font-size: 0.95em;
+}
+
+.lfp-headline {
+  margin: 0;
+  font-size: var(--text-ui-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.lfp-headline-best {
+  font-weight: 400;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.lfp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-ui-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.lfp-table th,
+.lfp-table td {
+  padding: 0.125rem 0.375rem;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+
+.lfp-table thead th {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.lfp-table tbody th {
+  text-align: left;
+  font-weight: 600;
+}
+
+.lfp-table abbr {
+  text-decoration: none;
+}
+
+.lfp-row-active th,
+.lfp-row-active td {
+  background: var(--surface-2);
+}
+
+.lfp-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.lfp-theta {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.lfp-actions,
+.lfp-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.lfp-actions .widget-btn {
+  min-height: 2.75rem;
+}
+
+.lfp-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem 1.5rem;
+}
+
+@media (width >= 640px) {
+  .lfp-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+}
