@@ -9,6 +9,7 @@ import { manifest as bowNbScorer } from './bow-nb-scorer/manifest';
 import { manifest as gaussian2dCovariance } from './gaussian-2d-covariance/manifest';
 import { manifest as gdaFitter } from './gda-fitter/manifest';
 import { manifest as gd1dQuadratic } from './gd-1d-quadratic/manifest';
+import { manifest as gd2dEigen } from './gd-2d-eigen/manifest';
 import type { ParamsSchema, WidgetManifest } from './types';
 
 export const manifests: Readonly<Record<string, WidgetManifest>> = {
@@ -16,6 +17,7 @@ export const manifests: Readonly<Record<string, WidgetManifest>> = {
   [gaussian2dCovariance.name]: gaussian2dCovariance as WidgetManifest<ParamsSchema>,
   [gdaFitter.name]: gdaFitter as WidgetManifest<ParamsSchema>,
   [gd1dQuadratic.name]: gd1dQuadratic as WidgetManifest<ParamsSchema>,
+  [gd2dEigen.name]: gd2dEigen as WidgetManifest<ParamsSchema>,
 };
 
 export function getManifest(name: string): WidgetManifest | undefined {
