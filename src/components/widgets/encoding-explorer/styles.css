@@ -1,0 +1,177 @@
+/* encoding-explorer (prefix encx-); tokens only. Imported by Widget.tsx so it ships in the widget's chunk. */
+
+.encx {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1.25rem;
+  font-size: var(--text-ui);
+  color: var(--fg);
+}
+
+@media (width >= 640px) {
+  .encx {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .encx-controls,
+  .encx-targets {
+    grid-column: 1 / -1;
+  }
+}
+
+.encx-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.25rem 2rem;
+}
+
+.encx-matrix-block,
+.encx-chart-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.encx-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.encx-matrix,
+.encx-summary {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-ui-sm);
+}
+
+.encx-matrix caption,
+.encx-summary caption {
+  padding-bottom: 0.25rem;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+  text-align: left;
+}
+
+.encx-matrix th,
+.encx-matrix td {
+  padding: 0.125rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.encx-matrix thead th {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.encx-matrix tbody th {
+  font-weight: 500;
+  text-align: left;
+}
+
+.encx-col-intercept {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.encx-one {
+  font-weight: 700;
+}
+
+.encx-col-y {
+  border-left: 1px solid var(--border);
+}
+
+.encx-hint {
+  margin: 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.encx-shape {
+  margin: 0;
+  font-weight: 600;
+}
+
+.encx-math {
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  overflow-x: auto;
+}
+
+.encx-math .katex-display {
+  margin: 0.25em 0;
+  font-size: 0.95em;
+}
+
+.encx-note {
+  margin: 0;
+  font-size: var(--text-ui-sm);
+}
+
+.encx-chart {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+  height: auto;
+}
+
+.encx-bar {
+  transition:
+    y var(--duration-reveal) var(--ease-standard),
+    height var(--duration-reveal) var(--ease-standard);
+}
+
+.encx-dot {
+  transition: cy var(--duration-reveal) var(--ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .encx-bar,
+  .encx-dot {
+    transition: none;
+  }
+}
+
+.encx-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.encx-summary {
+  width: 100%;
+}
+
+.encx-summary th,
+.encx-summary td {
+  padding: 0.125rem 0.375rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.encx-summary thead th {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.encx-summary tbody th {
+  font-weight: 500;
+}
+
+.encx-summary .encx-active {
+  background: var(--math-hl);
+}
+
+.encx-targets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0 1.25rem;
+}

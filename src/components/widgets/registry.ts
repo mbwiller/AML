@@ -10,6 +10,8 @@ import type { WidgetModule } from './types';
 
 export const registry = {
   'bow-nb-scorer': () => import('./bow-nb-scorer/Widget'),
+  'bow-vectorizer': () => import('./bow-vectorizer/Widget'),
+  'encoding-explorer': () => import('./encoding-explorer/Widget'),
   'gaussian-2d-covariance': () => import('./gaussian-2d-covariance/Widget'),
   'gda-fitter': () => import('./gda-fitter/Widget'),
   'linear-bias-probe': () => import('./linear-bias-probe/Widget'),
@@ -17,6 +19,9 @@ export const registry = {
 
   'line-fit-playground': () => import('./line-fit-playground/Widget'),
   'mse-bowl-gd': () => import('./mse-bowl-gd/Widget'),
+
+  'generative-vs-discriminative-toggle': () =>
+    import('./generative-vs-discriminative-toggle/Widget'),
 } satisfies Record<string, () => Promise<WidgetModule>>;
 
 export type WidgetName = keyof typeof registry;
