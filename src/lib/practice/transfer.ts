@@ -37,15 +37,15 @@ const DERIVATION_PREFIX = 'aml-derivation:';
 
 const phase = z.enum(['new', 'learning', 'review', 'relearning']);
 const rating = z.enum(['again', 'hard', 'good', 'easy']);
-const ms = z.number().finite();
+const ms = z.number();
 
 const cardSchema = z.object({
   id: z.string().min(1),
   phase,
   due: ms,
-  stability: z.number().finite().nonnegative(),
-  difficulty: z.number().finite(),
-  scheduledDays: z.number().finite().nonnegative(),
+  stability: z.number().nonnegative(),
+  difficulty: z.number(),
+  scheduledDays: z.number().nonnegative(),
   learningSteps: z.number().int().nonnegative(),
   reps: z.number().int().nonnegative(),
   lapses: z.number().int().nonnegative(),
@@ -60,7 +60,7 @@ const reviewSchema = z.object({
   at: ms,
   phase,
   elapsedMs: ms.nullable(),
-  scheduledDays: z.number().finite().nonnegative(),
+  scheduledDays: z.number().nonnegative(),
 });
 
 const attemptSchema = z.object({
