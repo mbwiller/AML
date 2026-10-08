@@ -7,7 +7,7 @@
  * generator code and the seed, so regenerating it must produce no diff.
  */
 
-export type CaseId = 'notes' | 'adverse' | 'tropo';
+export type CaseId = 'notes' | 'adverse' | 'tropo' | 'vasco';
 
 export type VariableType =
   'id' | 'binary' | 'integer' | 'continuous' | 'categorical' | 'tokens' | 'probability';

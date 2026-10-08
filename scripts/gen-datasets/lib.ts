@@ -10,6 +10,7 @@ import { generate as generateAdverse } from '@/lib/datasets/adverse';
 import { generate as generateNotes } from '@/lib/datasets/notes';
 import { stableStringify } from '@/lib/datasets/serialize';
 import { generate as generateTropo } from '@/lib/datasets/tropo';
+import { generate as generateVasco } from '@/lib/datasets/vasco';
 import type { CaseId, Dataset } from '@/lib/datasets/types';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -22,6 +23,7 @@ export const GENERATORS: Record<CaseId, () => Dataset<unknown>> = {
   notes: generateNotes,
   adverse: generateAdverse,
   tropo: generateTropo,
+  vasco: generateVasco,
 };
 
 export const CASE_IDS = Object.keys(GENERATORS) as CaseId[];

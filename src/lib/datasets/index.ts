@@ -15,12 +15,14 @@
 import adverseJson from '@/data/adverse.json';
 import notesJson from '@/data/notes.json';
 import tropoJson from '@/data/tropo.json';
+import vascoJson from '@/data/vasco.json';
 
 import type { AdverseRow } from './adverse';
 import type { NotesRow } from './notes';
 import { createRng } from './random';
 import type { TropoRow } from './tropo';
 import type { CaseId, Dataset } from './types';
+import type { VascoRow } from './vasco';
 
 export type { AdverseDataset, AdverseRow } from './adverse';
 export { logit as adverseLogit, sigmoid, spec as adverseSpec } from './adverse';
@@ -38,11 +40,20 @@ export { createRng, type Rng } from './random';
 export type { TropoDataset, TropoRow } from './tropo';
 export { spec as tropoSpec } from './tropo';
 export type { CaseId, Dataset, DatasetVariable, GenerativeModel, VariableType } from './types';
+export type { VascoArm, VascoDataset, VascoRow } from './vasco';
+export {
+  ARMS as VASCO_ARMS,
+  ARM_DOSES as VASCO_ARM_DOSES,
+  armMoments as vascoArmMoments,
+  spec as vascoSpec,
+  trueMean as vascoTrueMean,
+} from './vasco';
 
 export interface RowsByCase {
   notes: NotesRow;
   adverse: AdverseRow;
   tropo: TropoRow;
+  vasco: VascoRow;
 }
 
 function assertEnvelope(id: CaseId, json: unknown): void {
@@ -63,6 +74,7 @@ const FILES: Record<CaseId, unknown> = {
   notes: notesJson,
   adverse: adverseJson,
   tropo: tropoJson,
+  vasco: vascoJson,
 };
 
 const cache = new Map<CaseId, Dataset<unknown>>();
