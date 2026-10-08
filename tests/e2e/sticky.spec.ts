@@ -70,6 +70,18 @@ for (const theme of THEMES) {
     await page.keyboard.press('Escape');
     await expect(card).toBeHidden();
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+    // Content moving under a still pointer fires a fresh pointerover; an Escape
+    // dismissal must survive it (this reopened the card on slow CI runners).
+    await trigger.dispatchEvent('pointerover', { pointerType: 'mouse', bubbles: true });
+    await page.waitForTimeout(600);
+    await expect(card).toBeHidden();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+    // Leaving and coming back opens it again.
+    await page.mouse.move(0, 0);
+    await trigger.hover();
+    await expect(card).toBeVisible();
     expect(consoleErrors, 'console errors').toEqual([]);
   });
 }
