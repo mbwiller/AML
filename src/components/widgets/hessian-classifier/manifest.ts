@@ -36,7 +36,7 @@ export const manifest = {
   challenge:
     'Make the critical point a minimum, then a maximum, then a saddle. Then set one eigenvalue to 0 and try the higher-order terms: what does the Hessian alone fail to tell you?',
   usedIn: ['2.3'],
-  height: 640,
+  height: 740,
   params,
   fallback: renderFallback,
 } satisfies WidgetManifest<typeof params>;
