@@ -34,7 +34,7 @@ export const manifest = {
   challenge:
     'Turn the unit step u all the way around. Where is the slope largest, where is it most negative, and where is it zero?',
   usedIn: ['2.3'],
-  height: 560,
+  height: 570,
   params,
   fallback: renderFallback,
 } satisfies WidgetManifest<typeof params>;
