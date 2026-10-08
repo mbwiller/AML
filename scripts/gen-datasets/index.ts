@@ -7,7 +7,7 @@
  * (STYLE_GUIDE §8), so the check is what CI runs.
  */
 import { CASE_IDS, checkCase, writeCase } from './lib';
-import type { CaseId } from '@/lib/datasets/types';
+import type { DatasetId } from '@/lib/datasets/types';
 
 const args = process.argv.slice(2);
 const check = args.includes('--check');
@@ -17,7 +17,7 @@ if (unknown.length > 0) {
   console.error(`unknown case(s): ${unknown.join(', ')}; known: ${CASE_IDS.join(', ')}`);
   process.exit(2);
 }
-const ids = (named.length > 0 ? named : CASE_IDS) as CaseId[];
+const ids = (named.length > 0 ? named : CASE_IDS) as DatasetId[];
 
 if (check) {
   const problems = ids.map(checkCase).filter((p): p is string => p !== null);

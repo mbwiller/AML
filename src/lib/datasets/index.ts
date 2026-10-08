@@ -13,17 +13,21 @@
  * widget passes it.
  */
 import adverseJson from '@/data/adverse.json';
+import diabetesBmi20Json from '@/data/diabetes-bmi-20.json';
 import notesJson from '@/data/notes.json';
 import tropoJson from '@/data/tropo.json';
 
 import type { AdverseRow } from './adverse';
+import type { DiabetesBmi20Row } from './diabetes-bmi-20';
 import type { NotesRow } from './notes';
 import { createRng } from './random';
 import type { TropoRow } from './tropo';
-import type { CaseId, Dataset } from './types';
+import type { CaseId, Dataset, DatasetId, ReferenceId } from './types';
 
 export type { AdverseDataset, AdverseRow } from './adverse';
 export { logit as adverseLogit, sigmoid, spec as adverseSpec } from './adverse';
+export type { DiabetesBmi20Dataset, DiabetesBmi20Row } from './diabetes-bmi-20';
+export { companion as diabetesBmi20Companion, spec as diabetesBmi20Spec } from './diabetes-bmi-20';
 export type { NotesDataset, NotesRow } from './notes';
 export {
   bagOfWords,
@@ -38,6 +42,7 @@ export { createRng, type Rng } from './random';
 export type { TropoDataset, TropoRow } from './tropo';
 export { spec as tropoSpec } from './tropo';
 export type { CaseId, Dataset, DatasetVariable, GenerativeModel, VariableType } from './types';
+export type { DatasetId, ReferenceId } from './types';
 
 export interface RowsByCase {
   notes: NotesRow;
@@ -45,7 +50,12 @@ export interface RowsByCase {
   tropo: TropoRow;
 }
 
-function assertEnvelope(id: CaseId, json: unknown): void {
+/** Rows of every dataset: the cases above plus the reference datasets. */
+export interface RowsByDataset extends RowsByCase {
+  'diabetes-bmi-20': DiabetesBmi20Row;
+}
+
+function assertEnvelope(id: DatasetId, json: unknown): void {
   const d = json as Partial<Dataset<unknown>> | null;
   if (
     !d ||
@@ -65,15 +75,19 @@ const FILES: Record<CaseId, unknown> = {
   tropo: tropoJson,
 };
 
-const cache = new Map<CaseId, Dataset<unknown>>();
+const REFERENCE_FILES: Record<ReferenceId, unknown> = {
+  'diabetes-bmi-20': diabetesBmi20Json,
+};
 
-/** The generated dataset for a case, validated once and cached. */
-export function loadDataset<K extends CaseId>(id: K): Dataset<RowsByCase[K]> {
+const cache = new Map<DatasetId, Dataset<unknown>>();
+
+/** The generated dataset for a case (or a reference dataset), validated once and cached. */
+export function loadDataset<K extends DatasetId>(id: K): Dataset<RowsByDataset[K]> {
   const hit = cache.get(id);
-  if (hit) return hit as Dataset<RowsByCase[K]>;
-  const json = FILES[id];
+  if (hit) return hit as Dataset<RowsByDataset[K]>;
+  const json = Object.hasOwn(FILES, id) ? FILES[id as CaseId] : REFERENCE_FILES[id as ReferenceId];
   assertEnvelope(id, json);
-  const dataset = json as Dataset<RowsByCase[K]>;
+  const dataset = json as Dataset<RowsByDataset[K]>;
   cache.set(id, dataset);
   return dataset;
 }
