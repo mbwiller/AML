@@ -1,0 +1,48 @@
+/*
+ * Mafs (coordinate-plane widgets) mapped to our tokens (tech-stack memo §8;
+ * STYLE_GUIDE.md §4). mafs/core.css ships its own dark defaults in hex; every
+ * variable it exposes is overridden here so the plane follows data-theme
+ * without a reload. Loaded globally so there is no flash when a widget chunk
+ * arrives; it is ~3 KB.
+ */
+@import 'mafs/core.css';
+
+.MafsView {
+  --mafs-bg: var(--surface);
+  --mafs-fg: var(--fg);
+  --mafs-origin-color: var(--muted);
+  --mafs-line-color: var(--border);
+  --grid-line-subdivision-color: color-mix(in oklch, var(--border) 45%, transparent);
+  --mafs-line-stroke-dash-style: 4, 3;
+  --mafs-axis-stroke-width: 1px;
+
+  /* Mafs' named palette → our categorical series, so a `Theme.blue` is never off-palette. */
+  --mafs-blue: var(--viz-2);
+  --mafs-indigo: var(--viz-3);
+  --mafs-violet: var(--viz-3);
+  --mafs-yellow: var(--viz-4);
+  --mafs-orange: var(--viz-6);
+  --mafs-red: var(--viz-5);
+  --mafs-pink: var(--viz-5);
+  --mafs-green: var(--viz-1);
+
+  border-radius: var(--radius-control);
+  font-family: var(--font-sans);
+  font-size: var(--text-ui-sm);
+}
+
+.MafsView text {
+  fill: var(--muted);
+}
+
+.MafsView:focus-visible {
+  border-radius: var(--radius-control);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .MafsView * {
+    transition: none !important;
+  }
+}
