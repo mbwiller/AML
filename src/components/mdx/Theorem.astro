@@ -1,0 +1,19 @@
+---
+/**
+ * `<Theorem id="…" title="…" source="L9 p.24">` … `</Theorem>` — a numbered,
+ * boxed theorem (docs/CONTENT_AUTHORING.md §4). Number from `id`;
+ * registers a flashcard via `data-flashcard-source`. Rendered by ResultBox.
+ */
+import ResultBox from './ResultBox.astro';
+
+interface Props {
+  id: string;
+  title: string;
+  source?: string | undefined;
+}
+const { id, title, source } = Astro.props;
+---
+
+<ResultBox kind="Theorem" id={id} title={title} source={source}>
+  <slot />
+</ResultBox>

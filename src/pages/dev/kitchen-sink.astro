@@ -1,0 +1,62 @@
+---
+/**
+ * The living kitchen sink (tech-stack memo §8): every MDX component, every token,
+ * rendered through the real Lesson layout with the §11 skeleton lesson.
+ * Playwright screenshots this page in both themes (tests/e2e/kitchen-sink.spec.ts).
+ */
+import { mdxComponents } from '@/components/mdx';
+import TokenSwatches from '@/components/dev/TokenSwatches.astro';
+import Lesson from '@/layouts/Lesson.astro';
+import { outlineFromHeadings } from '@/lib/lessons';
+import { lessonSchema } from '@/lib/content/schemas';
+import KitchenSink, { getHeadings } from './_kitchen-sink.mdx';
+
+const lesson = lessonSchema.parse({
+  title: 'Kitchen sink: the skeleton lesson',
+  unit: 'u6-generative-models-and-naive-bayes',
+  order: 1,
+  slug: 'kitchen-sink',
+  summary:
+    'Every MDX component in the contract and every design token, rendered in the real lesson layout.',
+  lectures: [{ lecture: 8, pages: '19-43' }],
+  concepts: ['generative-model', 'discriminative-model', 'bayes-classifier'],
+  prerequisites: ['bayes-rule', 'conditional-probability', 'softmax-regression'],
+  homework: ['hw3'],
+  cases: ['adverse'],
+  estimatedMinutes: 35,
+  status: 'draft',
+  authors: ['matt'],
+});
+
+const headings = outlineFromHeadings(getHeadings());
+const prerequisites = [
+  { id: 'bayes-rule', label: "Bayes' rule", href: '/glossary#bayes-rule', field: 'probability' },
+  {
+    id: 'conditional-probability',
+    label: 'Conditional probability',
+    href: '/glossary#conditional-probability',
+    field: 'probability',
+  },
+  {
+    id: 'softmax-regression',
+    label: 'Softmax regression',
+    href: '/atlas?node=softmax-regression',
+    field: 'ml',
+  },
+];
+---
+
+<Lesson
+  lesson={lesson}
+  number="6.1"
+  unitTitle="Generative models and Naive Bayes"
+  unitHref="/units/u6-generative-models-and-naive-bayes"
+  outline={[...headings, { depth: 2, slug: 'tokens', text: 'Design tokens' }]}
+  prerequisites={prerequisites}
+  prev={{ href: '/dev', number: 'dev', title: 'Dev index' }}
+  next={{ href: '/dev/math', number: 'dev', title: 'Math pipeline spike' }}
+>
+  <KitchenSink components={mdxComponents} />
+  <hr />
+  <TokenSwatches />
+</Lesson>

@@ -1,0 +1,55 @@
+/* Entry stylesheet, imported once by src/layouts/Base.astro. Keep
+   `@import 'tailwindcss'` first; order below is load-bearing. */
+@import 'tailwindcss';
+
+/* Self-hosted variable fonts (fontsource, font-display: swap) */
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/source-serif-4';
+@import '@fontsource-variable/jetbrains-mono';
+
+/* Tokens, then KaTeX base + our overrides, then prose rhythm */
+@import './tokens.css';
+@import 'katex/dist/katex.min.css';
+@import './katex.css';
+@import './prose.css';
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-serif);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-serif);
+    font-size: var(--text-prose);
+    line-height: var(--leading-prose);
+  }
+
+  ::selection {
+    background: var(--math-hl);
+  }
+
+  /* Focus: --accent, 2px, offset 2px, everywhere (§8) */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Motion carries meaning or it does not exist (§4.4) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

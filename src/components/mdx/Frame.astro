@@ -1,0 +1,72 @@
+---
+/**
+ * `<Frame data model objective optimizer />` — the four-component strip
+ * (VISION.md §6; docs/CONTENT_AUTHORING.md §4). Each value is one line and
+ * may contain `$…$`. Rendered as a `<dl>`: Inter labels, serif values.
+ * M1 pins the same four cells in the lesson's left rail.
+ */
+import { renderInlineTex } from '@/lib/markdown/render-tex';
+
+interface Props {
+  data: string;
+  model: string;
+  objective: string;
+  optimizer: string;
+}
+const { data, model, objective, optimizer } = Astro.props;
+
+const cells = [
+  { key: 'data', label: 'Data', value: data },
+  { key: 'model', label: 'Model class', value: model },
+  { key: 'objective', label: 'Objective', value: objective },
+  { key: 'optimizer', label: 'Optimizer', value: optimizer },
+] as const;
+---
+
+<dl class="frame" id="frame" aria-label="The four components of this lesson">
+  {cells.map(({ key, label, value }) => (
+    <div class="frame-cell" data-component={key}>
+      <dt>{label}</dt>
+      <dd set:html={renderInlineTex(value)} />
+    </div>
+  ))}
+</dl>
+
+<style>
+  .frame {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    margin-block: 1.5em;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--border);
+  }
+  @media (width >= 640px) {
+    .frame {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .frame-cell {
+    min-width: 0;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+  }
+  dt {
+    margin-block-end: 0.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  dd {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+</style>

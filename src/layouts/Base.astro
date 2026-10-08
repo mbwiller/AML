@@ -1,0 +1,54 @@
+---
+import '@/styles/global.css';
+
+import Footer from '@/components/shell/Footer.astro';
+import Header from '@/components/shell/Header.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Site header and footer; off for dev pages that want a bare canvas. */
+  chrome?: boolean;
+}
+const { title, description = 'AML Atlas', chrome = true } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    <title>{title} · AML Atlas</title>
+    <script is:inline>
+      (function () {
+        try {
+          const stored = localStorage.getItem('aml-theme');
+          const theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
+  </head>
+  <body class="flex min-h-dvh flex-col">
+    <a
+      href="#main"
+      class="sr-only font-sans focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-control focus:bg-surface focus:px-3 focus:py-2 focus:text-fg focus:shadow-popover"
+    >
+      Skip to content
+    </a>
+    {chrome && <Header />}
+    <div class="flex-1">
+      <slot />
+    </div>
+    {chrome && <Footer />}
+  </body>
+</html>

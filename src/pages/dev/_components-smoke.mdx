@@ -1,0 +1,144 @@
+# Generative versus discriminative
+
+<Frame data="labeled pairs $(x^{(i)}, y^{(i)})$" model="a joint $p_\theta(x, y) = p_\theta(x \mid y)\,p_\theta(y)$" objective="maximize $\sum_i \log p_\theta(x^{(i)}, y^{(i)})$" optimizer="closed form (this unit)" />
+
+<Objectives>
+
+- Explain the difference between modeling $p(y \mid x)$ and $p(x \mid y)$.
+- Derive the Bayes classifier and show why $p(x)$ drops out.
+- Show that the MLE of a generative model splits into a prior problem and a class-conditional problem.
+
+</Objectives>
+
+<Hook>
+
+A new hyperkalemia report arrives for a patient on 20 mg of the VASCO drug. One classifier draws a line through patient space; another asks, "how would a typical event look, and how would a typical non-event look?" Which one needs fewer patients to get good?
+
+</Hook>
+
+<Definition id="def-6-1-1" title="Discriminative model" source="L8 p.30">
+
+A model of the conditional distribution $p_\theta(y \mid \mathbf{x}) : \mathcal{X} \to (\mathcal{Y} \to [0,1])$. It learns the decision boundary and says nothing about $p(\mathbf{x})$.
+
+</Definition>
+
+<Derivation id="der-6-1-1" title="The Bayes classifier" goalTex="\hat y = \argmax_y p(\mathbf{x} \mid y)\, p(y)" resultTex="\hat y = \argmax_y p(\mathbf{x} \mid y)\, p(y)" source="L8 p.39 (two lines)">
+
+<Chunk title="Start from the posterior">
+
+<Step justification="prediction is the most probable label">
+$$\hat y = \argmax_y p(y \mid \mathbf{x})$$
+</Step>
+
+<Step justification="Bayes' rule" sticky="bayes-rule">
+$$= \argmax_y \frac{p(\mathbf{x} \mid y)\, p(y)}{p(\mathbf{x})}$$
+</Step>
+
+<Step justification="the denominator does not depend on $y$, so it does not change the argmax" fadeable>
+$$= \argmax_y p(\mathbf{x} \mid y)\, p(y)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+<Widget name="generative-vs-discriminative-toggle" dataset="adverse" challenge="Slide the prior $p(y=1)$ from 0.06 to 0.5. Which way does the boundary move, and why?" />
+
+<Check ids={["q-u6-l1-001", "q-u6-l1-002"]} />
+
+<Pitfall title="A larger class-conditional likelihood does not decide the label" misconception="ignore-prior">
+
+$p_\theta(\mathbf{x} \mid y=0) = 0.6$ and $p_\theta(\mathbf{x} \mid y=1) = 0.4$ does not mean "predict 0". With $p(y=1) = 0.9$ the posterior favors class 1. (This is the L8 p.37 poll trap.)
+
+</Pitfall>
+
+<Connections>
+
+- Companion: <Notebook path="Code Companions/Lecture 8 Code Companion.ipynb" cells="0-8" />
+- Next: 6.2 Text as features
+
+</Connections>
+
+<HomeworkBridge hw="hw3" skills={["bayes-classifier", "generative-vs-discriminative"]} />
+
+<Summary>
+
+- Discriminative: $p_\theta(y\mid x)$, learns the boundary. Generative: $p_\theta(x \mid y)\,p_\theta(y)$, learns the data.
+- Bayes classifier: $\hat y = \argmax_y p(\mathbf{x}\mid y)\,p(y)$; the prior matters.
+- Generative MLE splits: $\sum_i \log p(x^{(i)} \mid y^{(i)}) + \sum_i \log p(y^{(i)})$.
+
+</Summary>
+
+---
+
+## Everything else in the contract
+
+<Intuition>
+
+Two points on a line: the [[covariance]] of their features is a single number, and the [[covariance|covariance matrix]] is $1 \times 1$. A sticky appears twice to show first and later uses. A literal dollar: \$5.
+
+</Intuition>
+
+<Theorem id="thm-6-1-1" title="Bayes' rule" source="L8 p.38">
+
+For events $A$ and $B$ with $P(B) > 0$, $P(A \mid B) = P(B \mid A)\,P(A) / P(B)$.
+
+</Theorem>
+
+<Proposition id="prop-6-1-1" title="The evidence does not depend on the label">
+
+$p(\mathbf{x}) = \sum_k p(\mathbf{x} \mid y = k)\,p(y = k)$ is the same number for every candidate $y$.
+
+</Proposition>
+
+<Lemma id="lem-6-1-1" title="A monotone transform preserves the argmax" source="Kuleshov notes §3.1">
+
+If $g$ is strictly increasing, then $\argmax_y g(h(y)) = \argmax_y h(y)$.
+
+</Lemma>
+
+<Proof collapsed title="A monotone transform preserves the argmax" keyIdea="if $h(y^\star) \ge h(y)$ for all $y$, applying $g$ keeps the inequality">
+
+Let $y^\star \in \argmax_y h(y)$, so $h(y^\star) \ge h(y)$ for every $y$. Since $g$ is strictly increasing, $g(h(y^\star)) \ge g(h(y))$ for every $y$, so $y^\star \in \argmax_y g(h(y))$. The reverse inclusion is the same argument with $g^{-1}$, which is also strictly increasing.
+
+</Proof>
+
+A tagged equation to reference:
+
+$$
+\hat\theta = (X\T X)^{-1} X\T y \tag{6.1.1} \htmlId{eq-6-1-1}{}
+$$
+
+The normal equations <EqRef id="eq-6-1-1" /> appear again in the ridge lesson. Semantic color: $\htmlClass{sym-theta}{\theta}$ and $\htmlClass{sym-x}{x}$.
+
+<Callout>
+
+A default callout is a note. The factor $\frac{1}{n}$ in $\hat R(\theta)$ is kept throughout.
+
+</Callout>
+
+<Callout type="warning" title="Variance, not standard deviation">
+
+$\Normal(\mu, \sigma^2)$ takes a variance as its second argument.
+
+</Callout>
+
+<Callout type="slide" title="What the slide writes">
+
+The slides write $X_i$; we write $\ex{i}$ (see <SlideRef lecture={7} pages="47" /> and <SlideRef lecture={7} pages="12-14" />).
+
+</Callout>
+
+<Callout type="beyond">
+
+Regularization as a MAP estimate is beyond the slides.
+
+</Callout>
+
+<Figure src="/figures/placeholder.svg" alt="A placeholder figure" caption="A static figure with a caption and a slide chip." source="L10 p.14" />
+
+<Example case="notes" title="Scoring a report">
+
+The record `notes-0007` has three positive words. Its score is the sum of three log-odds terms.
+
+</Example>

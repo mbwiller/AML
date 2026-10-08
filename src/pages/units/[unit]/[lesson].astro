@@ -1,0 +1,35 @@
+---
+import { render } from 'astro:content';
+
+import { mdxComponents } from '@/components/mdx';
+import Lesson from '@/layouts/Lesson.astro';
+import { lessonNumber, neighbors, outlineFromHeadings, unitHref } from '@/lib/lessons';
+import { getCourseLessons, prereqChips, toNeighbor } from '@/lib/site';
+
+export async function getStaticPaths() {
+  const { units, lessons } = await getCourseLessons();
+  return lessons.map((entry) => ({
+    params: { unit: entry.data.unit, lesson: entry.data.slug },
+    props: { entry, units, lessons },
+  }));
+}
+
+const { entry, units, lessons } = Astro.props;
+const { Content, headings } = await render(entry);
+const unit = units.find((u) => u.id === entry.data.unit);
+const { prev, next } = neighbors(lessons, entry.id);
+const prerequisites = await prereqChips(entry.data.prerequisites);
+---
+
+<Lesson
+  lesson={entry.data}
+  number={lessonNumber(entry.data.unit, entry.data.order)}
+  unitTitle={unit?.title ?? entry.data.unit}
+  unitHref={unitHref(entry.data.unit)}
+  outline={outlineFromHeadings(headings)}
+  prerequisites={prerequisites}
+  prev={toNeighbor(prev)}
+  next={toNeighbor(next)}
+>
+  <Content components={mdxComponents} />
+</Lesson>

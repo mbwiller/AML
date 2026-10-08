@@ -1,0 +1,46 @@
+---
+/**
+ * Plain sticky note (M0): a tooltip via the native `title` attribute.
+ * M1 replaces this with a Base UI popover that renders the glossary entry
+ * (hover on desktop, tap on mobile, keyboard accessible).
+ * Produced by the remark-sticky plugin from `[[term]]`; never written by hand.
+ * The field color is unknown until the glossary is loaded, so M0 underlines
+ * in `--muted`; the first use in a lesson gets a stronger underline.
+ */
+interface Props {
+  id: string;
+  first?: boolean;
+}
+const { id, first = false } = Astro.props;
+---
+
+<span
+  class:list={['sticky', { 'sticky-first': first }]}
+  data-sticky={id}
+  tabindex="0"
+  role="term"
+  title={`Glossary: ${id}`}
+>
+  <slot />
+</span>
+
+<style>
+  .sticky {
+    color: var(--fg);
+    text-decoration: underline dotted;
+    text-decoration-color: var(--muted);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+    cursor: help;
+    border-radius: var(--radius-control);
+    transition: background-color var(--duration-micro) var(--ease-standard);
+  }
+  .sticky-first {
+    text-decoration-thickness: 1.5px;
+    text-decoration-color: var(--fg);
+  }
+  .sticky:hover,
+  .sticky:focus-visible {
+    background-color: var(--math-hl);
+  }
+</style>

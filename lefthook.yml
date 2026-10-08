@@ -1,0 +1,31 @@
+# https://lefthook.dev/configuration/
+# Installed by `pnpm install` (the `prepare` script runs `lefthook install`).
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: forbidden paths
+      run: >-
+        sh -c 'for f in "$@"; do
+          case "$f" in
+            *.DS_Store|.claude/settings.local.json)
+              echo "refusing to commit $f (CLAUDE.md non-negotiable 9)"; exit 1;;
+          esac;
+        done' sh {staged_files}
+
+    - name: prettier
+      glob: '*.{ts,tsx,astro,css,json,yml,yaml,mjs,js}'
+      run: pnpm exec prettier --check {staged_files}
+
+    - name: eslint
+      glob: '*.{ts,tsx,astro,js,mjs}'
+      run: pnpm exec eslint --no-warn-ignored {staged_files}
+
+# commit-msg: conventional commits via commitlint. @commitlint/cli is not installed
+# yet; add it (plus @commitlint/config-conventional and commitlint.config.js) and
+# uncomment this block.
+#
+# commit-msg:
+#   jobs:
+#     - name: commitlint
+#       run: pnpm exec commitlint --edit {1}

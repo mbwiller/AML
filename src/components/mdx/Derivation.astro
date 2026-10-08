@@ -1,0 +1,105 @@
+---
+/**
+ * `<Derivation id title goalTex resultTex source>` → `<Chunk>` → `<Step>`
+ * (docs/CONTENT_AUTHORING.md §4; VISION.md §9.1). M0 renders the label
+ * ("Derivation 6.3.2", derived from `id`), the goal banner, every chunk and
+ * step with its justification beside it, and the boxed result with the
+ * slide chip. Steps are numbered by a CSS counter reset here, not per chunk.
+ * M1 adds step reveal, the faded-example and "which step is wrong" variants,
+ * and `figureState` dispatch to the preceding `<Widget>`.
+ */
+import { labelFromId } from '@/lib/markdown/numbering';
+import { renderDisplayTex, renderInlineTex } from '@/lib/markdown/render-tex';
+
+import Label from './Label.astro';
+import SourceChip from './SourceChip.astro';
+
+interface Props {
+  id: string;
+  title: string;
+  goalTex: string;
+  resultTex: string;
+  source?: string | undefined;
+}
+const { id, title, goalTex, resultTex, source } = Astro.props;
+const label = labelFromId(id, 'Derivation');
+---
+
+<section id={id} class="derivation" data-derivation={id} aria-labelledby={`${id}-title`}>
+  <header class="derivation-head">
+    <h3 id={`${id}-title`} class="derivation-title">
+      <span class="derivation-label">{label}</span>
+      <span class="derivation-name" set:html={renderInlineTex(title)} />
+    </h3>
+  </header>
+
+  <div class="goal" data-derivation-goal>
+    <Label>Goal</Label>
+    <div class="goal-math" set:html={renderDisplayTex(goalTex)} />
+  </div>
+
+  <div class="derivation-body">
+    <slot />
+  </div>
+
+  <div class="result" data-derivation-result data-flashcard-source>
+    <div class="result-head">
+      <Label>Result</Label>
+      {source && <SourceChip source={source} />}
+    </div>
+    <div class="result-math" set:html={renderDisplayTex(resultTex)} />
+  </div>
+</section>
+
+<style>
+  .derivation {
+    counter-reset: step;
+    margin-block: 2em;
+    scroll-margin-top: 4rem;
+  }
+  .derivation-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    margin-block: 0 0.75em;
+    font-size: 1.2rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .derivation-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .goal,
+  .result {
+    padding: 0.75rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface-2);
+  }
+  .result {
+    background: var(--surface);
+    border-color: var(--fg);
+  }
+  .result-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+  }
+  .goal-math :global(.katex-display),
+  .result-math :global(.katex-display) {
+    margin: 0.5em 0 0.25em;
+  }
+
+  .derivation-body {
+    margin-block: 1.25em;
+  }
+</style>

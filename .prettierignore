@@ -1,0 +1,24 @@
+# Build output and caches
+dist
+.astro
+node_modules
+pnpm-lock.yaml
+test-results
+playwright-report
+
+# Raw course material is read-only
+AML Course Material/
+
+# Markdown and MDX are never formatted: Prettier would reflow math and sticky notes
+**/*.md
+**/*.mdx
+
+# Generated datasets (scripts/gen-datasets) are never hand-edited
+src/data/**/*.json
+
+# Claude Code config and static assets
+.claude/**
+public/
+
+# Content tree belongs to the content workstream; math in MDX/YAML must never be reflowed
+src/content/**

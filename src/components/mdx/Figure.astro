@@ -1,0 +1,48 @@
+---
+/**
+ * `<Figure src alt caption? source? />` — a static figure
+ * (docs/CONTENT_AUTHORING.md §4). M0 uses a plain `<img>` with `src` as
+ * given; M1 moves to `astro:assets` for sizing and formats.
+ */
+import { renderInlineTex } from '@/lib/markdown/render-tex';
+
+import SourceChip from './SourceChip.astro';
+
+interface Props {
+  src: string;
+  alt: string;
+  caption?: string | undefined;
+  source?: string | undefined;
+}
+const { src, alt, caption, source } = Astro.props;
+---
+
+<figure class="figure" data-figure>
+  <img src={src} alt={alt} loading="lazy" decoding="async" />
+  {(caption || source) && (
+    <figcaption>
+      {caption && <span class="figure-caption" set:html={renderInlineTex(caption)} />}
+      {source && <SourceChip source={source} />}
+    </figcaption>
+  )}
+</figure>
+
+<style>
+  .figure {
+    margin-block: 1.5em;
+  }
+  .figure img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+  }
+  figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+  }
+</style>

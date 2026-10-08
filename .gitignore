@@ -34,3 +34,7 @@ venv/
 # Editors
 .vscode/
 .idea/
+
+# Tests
+test-results/
+playwright-report/
