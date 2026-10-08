@@ -1,0 +1,24 @@
+---
+/**
+ * The unknown-name path of `<Widget>` (src/components/mdx/Widget.astro): a
+ * name that is not in the registry renders the M0 placeholder, so content can
+ * be written before a widget ships. The kitchen sink used
+ * `generative-vs-discriminative-toggle` for this until that widget was
+ * registered; this page keeps the path under test with a name that will
+ * never be registered (tests/e2e/widgets.spec.ts).
+ */
+import Widget from '@/components/mdx/Widget.astro';
+import Base from '@/layouts/Base.astro';
+---
+
+<Base title="Widget placeholder">
+  <main id="main" class="mx-auto max-w-3xl px-4 py-10 font-sans">
+    <h1 class="text-h1 font-bold tracking-tight">Widget placeholder</h1>
+    <p class="mt-2 text-muted">An unregistered widget name renders the placeholder.</p>
+    <Widget
+      name="unregistered-placeholder-demo"
+      dataset="adverse"
+      challenge="Slide the prior $p(y=1)$ from 0.06 to 0.5. Which way does the boundary move, and why?"
+    />
+  </main>
+</Base>
