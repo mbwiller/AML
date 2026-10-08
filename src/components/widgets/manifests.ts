@@ -6,12 +6,14 @@
  * step; `manifests.test.ts` checks they agree.
  */
 import { manifest as bowNbScorer } from './bow-nb-scorer/manifest';
+import { manifest as encodingExplorer } from './encoding-explorer/manifest';
 import { manifest as gaussian2dCovariance } from './gaussian-2d-covariance/manifest';
 import { manifest as gdaFitter } from './gda-fitter/manifest';
 import type { ParamsSchema, WidgetManifest } from './types';
 
 export const manifests: Readonly<Record<string, WidgetManifest>> = {
   [bowNbScorer.name]: bowNbScorer as WidgetManifest<ParamsSchema>,
+  [encodingExplorer.name]: encodingExplorer as WidgetManifest<ParamsSchema>,
   [gaussian2dCovariance.name]: gaussian2dCovariance as WidgetManifest<ParamsSchema>,
   [gdaFitter.name]: gdaFitter as WidgetManifest<ParamsSchema>,
 };
