@@ -161,7 +161,7 @@ Sticky-note popover for a glossary id: hover (300 ms) or tap opens the glossary 
 `slide` = "what the slide says, and how we normalize it"; `beyond` = "beyond the slides" (e.g., the MAP view of regularization).
 
 ### `<SlideRef lecture={7} pages="47" />`
-Inline citation chip; links to the PDF page in `/materials`.
+Inline citation chip; links to the lecture PDF at that page (`/materials/files/lectures/<file>.pdf#page=<first page>`), or to the lecture's row on `/materials` when the PDF is not in the course folder.
 
 ### `<Widget name="bow-nb-scorer" dataset="notes" smoothing={false} challenge="Turn smoothing off and type a word the training set never saw." />`
 Props beyond `name` and `challenge` are validated at build time against the widget's manifest (`src/components/widgets/<name>/manifest.ts`, a Zod schema in which every param has a default): an unknown prop or an out-of-range value fails the build with the offending prop named, so `<Widget name="…" />` alone is always valid. `challenge` overrides the manifest's default challenge line. The registered widgets, their params, ranges, and defaults are listed on `/dev/widgets`. If the widget does not exist yet, the build shows a placeholder with the name and params (content can be written before the widget ships). Reader state: the "copy state link" button in the frame puts the current params in the URL hash (`#w=<name>:<base64url>`), which the widget restores on load; a `<Step figureState>` reveal reaches the nearest preceding widget as its `figureState` prop.
@@ -170,7 +170,7 @@ Props beyond `name` and `challenge` are validated at build time against the widg
 Static figure (SVG/PNG under `src/assets/figures/`). Use only when interactivity adds nothing.
 
 ### `<Example case="notes" title="Scoring a report" />` … `</Example>`
-A worked example whose numbers come from the generated case dataset (`src/data/notes.json`); cite the record ids.
+A worked example whose numbers come from the generated case dataset (`src/data/notes.json`); cite the record ids. The case chip links to `/cases/<id>`. Optional `homeworkReviewed` (boolean, renders nothing): set after you have checked the numbers are not answers to a live homework; silences the R17 warning (`<Example case="notes" title="…" homeworkReviewed>`).
 
 ### `<Check ids={["q-u6-l3-001", "q-u6-l3-002"]} />`
 Inline check pulling items from the quiz bank (§7). Prefer 2–4 items per section.
@@ -182,7 +182,7 @@ A false belief, stated, then the fix. `misconception` ids tag quiz distractors s
 Markdown links to companion cells (`<Notebook path="Code Companions/Lecture 8 Code Companion.ipynb" cells="9-14" />`), homework problems, the next lesson, and graph neighbors.
 
 ### `<HomeworkBridge hw="hw3" skills={["bernoulli-nb-mle", "laplace-smoothing", "log-space-prediction"]} />`
-Renders the readiness-gate rows for this lesson's contribution to a homework. For a live homework, never include answers.
+Renders the readiness-gate rows for this lesson's contribution to a homework. Each skill id (a graph node or glossary id) is resolved at build time: "Learn it in" lists the lessons whose `concepts` include it (or the node's `lesson`) and the node's `derivation` at its anchor; "Practice" lists the quiz items whose `concepts` include it, each linked to the `<Check>` that carries it (else `/practice`). So tag quiz items with `concepts` and graph nodes with `derivation` and the gate fills itself. The homework page (`/homework/<hw>`) collects every lesson's bridge for that homework. For a live homework, never include answers.
 
 ### `<Summary>` … `</Summary>`
 Definitions and results on one screen (markdown + math). Source of the lesson's flashcards together with the boxed results.

@@ -1085,6 +1085,10 @@ export function validateContent(
   for (const l of content.lessons) {
     if (!l.data.homework.some((h) => liveHomework.has(h))) continue;
     for (const ex of findBlocks(l.body, 'Example')) {
+      // `homeworkReviewed` (or `homeworkReviewed={true}`): the author has checked
+      // the numbers are not answers to the live homework.
+      const reviewed = ex.attrs['homeworkReviewed'];
+      if (reviewed === true || reviewed === 'true') continue;
       const hit =
         findMathSpans(ex.inner).find((m) => NUMERIC_ANSWER_MATH_RE.test(m.tex)) ??
         maskNonProse(ex.inner, { math: false })

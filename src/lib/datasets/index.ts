@@ -78,6 +78,20 @@ export function loadDataset<K extends CaseId>(id: K): Dataset<RowsByCase[K]> {
   return dataset;
 }
 
+/** True when `src/data/<id>.json` is wired into this accessor. */
+export function hasDataset(id: string): id is CaseId {
+  return Object.hasOwn(FILES, id);
+}
+
+/**
+ * The dataset for any case id, or undefined when it has not been generated
+ * yet (case pages render without a data sample rather than throwing).
+ */
+export function tryLoadDataset(id: string): Dataset<Record<string, unknown>> | undefined {
+  if (!hasDataset(id)) return undefined;
+  return loadDataset(id) as unknown as Dataset<Record<string, unknown>>;
+}
+
 const indexes = new WeakMap<Dataset<unknown>, Map<string, unknown>>();
 
 /** The row with the given record id (`NOTE-0042`, `ADV-0117`, `TRO-1999`), or undefined. */

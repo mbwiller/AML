@@ -1,18 +1,31 @@
 ---
 /**
  * `<HomeworkBridge hw="hw3" skills={["bernoulli-nb-mle", …]} />` — the
- * readiness-gate rows for this lesson's contribution to a homework
- * (docs/CONTENT_AUTHORING.md §4; VISION.md §9.9). M0 lists the skills with
- * empty section and check columns; M1 fills them from the homework map and
- * the practice engine. Never carries answers for a live homework (R17).
+ * readiness-gate rows for a homework (docs/CONTENT_AUTHORING.md §4;
+ * VISION.md §9.9). Each skill id resolves at build time
+ * (`resolveSkill` in src/lib/homework.ts) to:
+ * - the lessons whose `concepts` include it (or its graph node's `lesson`),
+ * - the derivation that establishes it (the node's `derivation`, at its anchor),
+ * - the quiz items whose `concepts` include it, linked to the inline
+ *   `<Check>` that carries each one (`#check-<id>`), else to /practice.
+ * Only ids and links: never answers, live homework or not (R17).
+ *
+ * `footer={false}` hides the "all of HWn's checks" link (used on the
+ * homework page itself).
  */
+import { resolveSkill } from '@/lib/homework';
+import { bridgeContext } from '@/lib/site';
+
 interface Props {
   hw: string;
   skills: string[];
+  footer?: boolean;
 }
-const { hw, skills = [] } = Astro.props;
+const { hw, skills = [], footer = true } = Astro.props;
 const hwLabel = hw.toUpperCase();
 const sectionId = `homework-${hw}`;
+const ctx = await bridgeContext();
+const rows = skills.map((s) => resolveSkill(ctx, s));
 ---
 
 <section
@@ -29,25 +42,67 @@ const sectionId = `homework-${hw}`;
     <thead>
       <tr>
         <th scope="col">Skill</th>
-        <th scope="col">Lesson section</th>
-        <th scope="col">Check</th>
+        <th scope="col">Learn it in</th>
+        <th scope="col">Practice</th>
       </tr>
     </thead>
     <tbody>
-      {skills.map((skill) => (
-        <tr data-skill={skill}>
-          <td>
-            <code>{skill}</code>
+      {rows.map((r) => (
+        <tr data-skill={r.id} data-skill-known={r.known ? 'true' : 'false'}>
+          <td data-cell="Skill">
+            <span class="skill-label">{r.label}</span>
+            <code class="skill-id">{r.id}</code>
           </td>
-          <td data-skill-section>—</td>
-          <td data-skill-check>—</td>
+          <td data-cell="Learn it in" data-skill-section>
+            {r.lessons.length === 0 && !r.derivation ? (
+              <span class="bridge-muted">Not taught in a lesson yet</span>
+            ) : (
+              <ul class="bridge-links">
+                {r.lessons.map((l) => (
+                  <li>
+                    <a href={l.href} data-skill-lesson>
+                      <span class="bridge-number">{l.number}</span> {l.title}
+                    </a>
+                  </li>
+                ))}
+                {r.derivation && (
+                  <li>
+                    <a href={r.derivation.href} data-skill-derivation={r.derivation.id}>
+                      {r.derivation.label}
+                    </a>
+                  </li>
+                )}
+              </ul>
+            )}
+          </td>
+          <td data-cell="Practice" data-skill-check>
+            {r.practice.length === 0 ? (
+              <span class="bridge-muted">—</span>
+            ) : (
+              <ul class="bridge-links bridge-practice">
+                {r.practice.map((p) => (
+                  <li>
+                    <a
+                      href={p.href}
+                      data-practice-item={p.id}
+                      data-practice-inline={p.inline ? 'true' : 'false'}
+                    >
+                      <code>{p.id}</code>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </td>
         </tr>
       ))}
     </tbody>
   </table>
-  <p class="bridge-foot">
-    <a href={`/homework/${hw}`}>All of {hwLabel}'s readiness checks</a>
-  </p>
+  {footer && (
+    <p class="bridge-foot">
+      <a href={`/homework/${hw}`}>All of {hwLabel}'s readiness checks</a>
+    </p>
+  )}
 </section>
 
 <style>
@@ -78,9 +133,76 @@ const sectionId = `homework-${hw}`;
   .bridge-table {
     margin-block: 0.5em;
   }
+  .skill-label {
+    display: block;
+  }
+  .skill-id {
+    font-size: 0.75rem;
+    color: var(--muted);
+    overflow-wrap: anywhere;
+  }
+  .bridge-links {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .bridge-links li {
+    margin: 0;
+  }
+  .bridge-practice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+  }
+  .bridge-number {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
+  .bridge-muted {
+    color: var(--muted);
+  }
   .bridge-foot {
     margin: 0.75em 0 0;
     font-family: var(--font-sans);
     font-size: 0.875rem;
+  }
+  /* Phones: one card per skill instead of three squeezed columns. */
+  @media (width < 640px) {
+    .homework-bridge {
+      padding: 0.75rem 1rem;
+    }
+    .bridge-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    .bridge-table,
+    .bridge-table tbody,
+    .bridge-table tr,
+    .bridge-table td {
+      display: block;
+      width: 100%;
+    }
+    .bridge-table tr {
+      padding-block: 0.5em;
+      border-block-end: 1px solid var(--border);
+    }
+    .bridge-table td {
+      padding: 0.15em 0;
+      border: 0;
+    }
+    .bridge-table td:not(:first-child)::before {
+      content: attr(data-cell);
+      display: block;
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
   }
 </style>

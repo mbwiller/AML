@@ -1,0 +1,21 @@
+---
+/**
+ * Table-cell override used only on /homework pages: a homework body's
+ * readiness tables write check ids as plain text ("q-u6-l3-009"); this turns
+ * each into a link to the inline `<Check>` that carries it (`#check-<id>`),
+ * else to /practice (`linkQuizIds` in src/lib/homework.ts). Ids only, never
+ * answers (R17).
+ */
+import type { HTMLAttributes } from 'astro/types';
+
+import { linkQuizIds, practiceHref } from '@/lib/homework';
+import { bridgeContext } from '@/lib/site';
+
+type Props = HTMLAttributes<'td'>;
+const attrs = Astro.props;
+const ctx = await bridgeContext();
+const inner = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+const html = linkQuizIds(inner, (id) => practiceHref(ctx, id));
+---
+
+<td {...attrs} set:html={html} />
