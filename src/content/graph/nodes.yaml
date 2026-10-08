@@ -723,6 +723,80 @@
   summary: "For the least-squares line, R² = s_xy²/(s_xx s_yy) → β²σ_X²/(β²σ_X² + σ_ε²) when Y = α + βX + ε (the L3 p.40 question, general result)."
   derivation: der-1-3-4
 
+# Lesson 1.4: least-squares
+# Course map L2 pp.20-21 and L3 pp.10-15, 21-22. The glossary terms `transpose-rules`,
+# `linear-independence`, and `orthogonal-projection` (new) are nodes automatically.
+
+- id: training-as-optimization
+  label: "Training as minimization"
+  type: concept
+  field: ml
+  unit: u1-linear-regression
+  lesson: least-squares
+  summary: "An optimizer takes a loss and a model class and returns θ̂ ∈ argmin over Θ of the training objective: minimizing over f ∈ M becomes minimizing over θ (L3 p.10)."
+
+- id: least-squares-problem
+  label: "Least-squares problem"
+  type: method
+  field: ml
+  unit: u1-linear-regression
+  lesson: least-squares
+  summary: "min over θ of (1/n)‖Xθ − y‖₂², with a column of ones in X; the slides' θᵀX is read as Xθ."
+
+- id: normal-equations
+  label: "Normal equations XᵀXθ = Xᵀy"
+  type: method
+  field: ml
+  unit: u1-linear-regression
+  lesson: least-squares
+  summary: "Setting ∇(1/n)‖Xθ − y‖² = (2/n)Xᵀ(Xθ − y) to zero gives XᵀXθ = Xᵀy: the residual is orthogonal to every column of X."
+  derivation: der-1-4-1
+
+- id: least-squares-closed-form
+  label: "Closed form θ̂ = (XᵀX)⁻¹Xᵀy"
+  type: method
+  field: ml
+  unit: u1-linear-regression
+  lesson: least-squares
+  summary: "When X has full column rank, XᵀX is invertible and the unique least-squares solution is θ̂ = (XᵀX)⁻¹Xᵀy; compute it with a solver, not an inverse."
+  derivation: der-1-4-1
+
+- id: least-squares-convexity
+  label: "Convexity of least squares"
+  type: concept
+  field: calculus
+  unit: u1-linear-regression
+  lesson: least-squares
+  summary: "The chord gap of (1/n)‖Xθ − y‖² is t(1−t)‖X(θ − θ')‖²/n ≥ 0 and the Hessian (2/n)XᵀX is PSD; strictly convex exactly when X has full column rank."
+  derivation: der-1-4-2
+
+- id: least-squares-projection
+  label: "Least squares as orthogonal projection"
+  type: concept
+  field: linear-algebra
+  unit: u1-linear-regression
+  lesson: least-squares
+  summary: "‖Xθ − y‖² = ‖Xθ̂ − y‖² + ‖X(θ − θ̂)‖² for any solution θ̂ of the normal equations, so it is a global minimizer and Xθ̂ is the projection of y onto col(X)."
+  derivation: der-1-4-3
+
+- id: singular-normal-equations
+  label: "Singular normal equations"
+  type: concept
+  field: linear-algebra
+  unit: u1-linear-regression
+  lesson: least-squares
+  summary: "If X lacks full column rank (collinear columns, the dummy-variable trap, d + 1 > n), solutions still exist but form θ̂ + null(X), all with the same predictions and loss."
+  derivation: der-1-4-4
+
+- id: simple-linear-regression-closed-form
+  label: "One-feature least squares"
+  type: method
+  field: ml
+  unit: u1-linear-regression
+  lesson: least-squares
+  summary: "θ̂₁ = s_xy/s_xx and θ̂₀ = ȳ − θ̂₁x̄; on the L2 companion's 20 patients, slope 37.3788 and intercept −797.08."
+  derivation: der-1-4-5
+
 # ---------- Unit 2: Risk and gradient descent ----------
 # Seeded from docs/course-map/01-lectures-L1-L3.md (L3) and 02-lectures-L4-L5.md (L4, L5), "Concept-graph edges".
 

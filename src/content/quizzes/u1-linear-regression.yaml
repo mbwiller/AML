@@ -789,3 +789,278 @@
   explanation: |
     The limit is $\beta^2\sigma_X^2/(\beta^2\sigma_X^2 + \sigma_\varepsilon^2)$ (der-1-3-4 step 13). It has no $\alpha$: shifting every target by a constant shifts the fitted line and $\bar y$ equally. Doubling $\beta$ or $\sigma_X$ raises the signal variance and the limit; doubling $\sigma_\varepsilon$ lowers it.
   discriminates: [r2-population-limit]
+
+# ---------- Lesson 1.4: least-squares ----------
+# Poll items: the L3 p.22 "the loss of my linear regression is high; what could have gone wrong?"
+# poll is split into one true/false item per option (001-005), keyed by the course map's
+# discussion; its "all of the above" option is false because 002, 004, and 005 are.
+
+- id: q-u1-l4-001
+  lesson: least-squares
+  concepts: [least-squares-problem]
+  type: mc
+  difficulty: 1
+  source: "L3 p.22 poll"
+  prompt: |
+    The loss of my linear regression is high on my dataset. True or false: a possible cause is that I picked the wrong model class, because the underlying data-generating mechanism is highly nonlinear.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True. Least squares finds the best line, but if the truth is far from every line, the best line is still far from the data. The VASCO residual table shows the signature: residuals that arc systematically with the input instead of scattering around zero.
+
+- id: q-u1-l4-002
+  lesson: least-squares
+  concepts: [least-squares-convexity, least-squares-projection]
+  type: mc
+  difficulty: 1
+  source: "L3 p.22 poll"
+  prompt: |
+    The loss of my linear regression is high on my dataset. True or false: a possible cause is that the loss function got stuck at a local minimum.
+  options:
+    - { text: "True", misconception: lsq-local-minima }
+    - { text: "False", correct: true }
+  explanation: |
+    False. The least-squares objective is convex (der-1-4-2 step 6), and every solution of the normal equations is a global minimizer (der-1-4-3 step 6). There is no local minimum to get stuck in.
+  discriminates: [least-squares-convexity]
+
+- id: q-u1-l4-003
+  lesson: least-squares
+  concepts: [least-squares-problem]
+  type: mc
+  difficulty: 1
+  source: "L3 p.22 poll"
+  prompt: |
+    The loss of my linear regression is high on my dataset. True or false: a possible cause is that I did not preprocess my data well.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True. The model is linear in its features, so the features decide what it can fit. A categorical attribute fed as an integer code, a nonlinear effect fed raw instead of through a feature map, or an uncorrected unit error all raise the minimum loss (lesson 1.1).
+
+- id: q-u1-l4-004
+  lesson: least-squares
+  concepts: [least-squares-problem]
+  type: mc
+  difficulty: 1
+  source: "L3 p.22 poll"
+  prompt: |
+    The loss of my linear regression is high on my dataset. True or false: a possible cause is that the model class is too small, since linear regression only contains a finite number of hypotheses.
+  options:
+    - { text: "True", misconception: restriction-means-finite }
+    - { text: "False", correct: true }
+  explanation: |
+    False as stated. The linear class has one member for every $\theta \in \mathbb{R}^{d+1}$, infinitely many (lesson 1.2). It can be too restrictive, by shape, which is the first option of this poll; it is not finite.
+
+- id: q-u1-l4-005
+  lesson: least-squares
+  concepts: [singular-normal-equations]
+  type: mc
+  difficulty: 2
+  source: "L3 p.22 poll"
+  prompt: |
+    The loss of my linear regression is high on my dataset. True or false: a possible cause is that the features in my dataset are not linearly independent of each other.
+  options:
+    - { text: "True", misconception: collinear-high-loss }
+    - { text: "False", correct: true }
+  explanation: |
+    False. Linear dependence makes $X^\top X$ singular, so the least-squares solution is not unique, but every solution makes the same predictions and reaches the same minimum loss (der-1-4-4 step 10). In the lesson, entering BMI twice leaves the MSE at 2176.0009. What dependence costs is the interpretability of individual coefficients.
+  discriminates: [singular-normal-equations, least-squares-closed-form]
+
+- id: q-u1-l4-006
+  lesson: least-squares
+  concepts: [simple-linear-regression-closed-form]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Toy data: four patients with $x = 1, 2, 3, 4$ and $y = 2, 3, 5, 6$. Using $\hat\theta_1 = s_{xy}/s_{xx}$ (sample moments with $\frac1n$), what is the least-squares slope? Give two decimal places.
+  answer: 1.4
+  tolerance: 0.005
+  formula: "1.75 / 1.25"
+  explanation: |
+    $\bar x = 2.5$, $\bar y = 4$. The deviations are $x - \bar x = (-1.5, -0.5, 0.5, 1.5)$ and $y - \bar y = (-2, -1, 1, 2)$, so $s_{xy} = (3 + 0.5 + 0.5 + 3)/4 = 1.75$ and $s_{xx} = (2.25 + 0.25 + 0.25 + 2.25)/4 = 1.25$. The slope is $1.75/1.25 = 1.4$ (der-1-4-5 step 8), and the intercept is $4 - 1.4 \times 2.5 = 0.5$ (step 3).
+
+- id: q-u1-l4-007
+  lesson: least-squares
+  concepts: [simple-linear-regression-closed-form]
+  type: numeric
+  difficulty: 1
+  source: "L2 companion cell 15"
+  prompt: |
+    For the companion's 20 patients, $\bar x = 24.7007$, $\bar y = 126.2$, and the least-squares slope is $37.3788$. What is the intercept? Give two decimal places.
+  answer: -797.08
+  tolerance: 0.01
+  formula: "126.2 - 37.3788 * 24.7007"
+  explanation: |
+    The first normal equation gives $\hat\theta_0 = \bar y - \hat\theta_1\bar x$ (der-1-4-5 step 3): $126.2 - 37.3788 \times 24.7007 \approx -797.08$, matching the $-797.0817\ldots$ printed in cell 15. The fitted line passes through the point of means.
+
+- id: q-u1-l4-008
+  lesson: least-squares
+  type: which-step
+  concepts: [normal-equations]
+  difficulty: 2
+  source: "original"
+  derivation: der-1-4-1
+  corrupt: { step: 5, replaceTex: '\hat R(\theta) = \frac1n\big(\theta^\top X^\top X\theta - (X^\top y)^\top\theta + y^\top y\big)', explanation: 'Step 4 has two cross terms, $-\theta^\top X^\top y$ and $-y^\top X\theta$. They are equal scalars (each is the transpose of the other), so they combine to $-2(X^\top y)^\top\theta$, not $-(X^\top y)^\top\theta$. Keeping only one would lead to $X^\top X\theta = \frac12 X^\top y$, halving every coefficient.' }
+
+- id: q-u1-l4-009
+  lesson: least-squares
+  type: which-step
+  concepts: [least-squares-closed-form]
+  difficulty: 1
+  source: "original"
+  derivation: der-1-4-1
+  corrupt: { step: 13, replaceTex: '\hat\theta = X^\top y\,(X^\top X)^{-1}', explanation: 'The inverse must multiply from the left, the side on which $X^\top X$ sits in step 12. As written the product is not even defined: $X^\top y$ is $(d+1) \times 1$ and $(X^\top X)^{-1}$ is $(d+1) \times (d+1)$.' }
+
+- id: q-u1-l4-010
+  lesson: least-squares
+  concepts: [singular-normal-equations, least-squares-closed-form]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A study has $n = 50$ patients and 80 laboratory values per patient. You fit a linear model with all 80 features and an intercept. Is $X^\top X$ invertible?
+  options:
+    - { text: 'No: $X$ has 81 columns but rank at most 50, so its null space is not $\{0\}$', correct: true }
+    - { text: 'Yes: $X^\top X$ is symmetric, and symmetric matrices are invertible', misconception: symmetric-means-invertible }
+    - { text: 'Yes, as long as no two lab values are identical columns', misconception: n-ge-d-sufficient }
+    - { text: 'It depends on whether the features are standardized' }
+  explanation: |
+    The rank of $X$ is at most $\min(n, d + 1) = 50 \lt 81$ (der-1-4-4 step 11), so some $v \ne 0$ has $Xv = 0$, and then $X^\top X v = 0$: singular. Infinitely many $\theta$ fit equally well. Standardizing rescales columns but cannot raise the rank. This is the regime of ridge regression (Unit 5).
+  discriminates: [singular-normal-equations]
+
+- id: q-u1-l4-011
+  lesson: least-squares
+  concepts: [singular-normal-equations]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The VASCO trial has 300 patients and six dose arms. You fit an intercept plus one indicator column for each of the six arms, 7 parameters in all. Which statement is correct?
+  options:
+    - { text: '$X^\top X$ is singular: the six indicator columns sum to the column of ones, so $X$ has rank 6', correct: true }
+    - { text: '$X^\top X$ is invertible, because 300 patients is far more than 7 parameters', misconception: n-ge-d-sufficient }
+    - { text: '$X^\top X$ is invertible, but gradient descent will get stuck', misconception: lsq-local-minima }
+    - { text: 'The fit has a higher MSE than the fit without an intercept', misconception: collinear-high-loss }
+  explanation: |
+    This is the dummy-variable trap (lesson 1.1, der-1-1-1 step 11): one column is a combination of others, so $X$ lacks full column rank whatever $n$ is (der-1-4-4 step 11). All solutions give the six arm means as predictions and the same MSE (step 10). Drop one arm's column or the intercept.
+  discriminates: [singular-normal-equations, dummy-variable-trap]
+
+- id: q-u1-l4-012
+  lesson: least-squares
+  concepts: [least-squares-problem]
+  type: mc
+  difficulty: 1
+  source: "L3 p.12 (slide notation)"
+  prompt: |
+    The design matrix $X$ has one row per patient, $n$ rows and $d + 1$ columns, and $\theta \in \mathbb{R}^{d+1}$. Which expression is the vector of predictions in the least-squares objective?
+  options:
+    - { text: '$X\theta$', correct: true }
+    - { text: '$\theta^\top X$, as written on L3 p.12', misconception: theta-transpose-x }
+    - { text: '$X^\top\theta$' }
+    - { text: '$\theta X^\top$' }
+  explanation: |
+    Entry $i$ of $X\theta$ is row $i$ of $X$ times $\theta$, the prediction $(x^{(i)})^\top\theta$ (eq-1-2-1); it has shape $n \times 1$. $\theta^\top X$ multiplies a $1 \times (d+1)$ row by a matrix with $n$ rows, which is undefined unless $n = d + 1$. $X^\top\theta$ is undefined for the same reason.
+  discriminates: [least-squares-problem]
+
+- id: q-u1-l4-013
+  lesson: least-squares
+  concepts: [normal-equations]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    For the full diabetes data, $n = 442$ patients and $d = 10$ features, with an intercept. What is the shape of $X^\top X$ in the normal equations?
+  options:
+    - { text: '$11 \times 11$', correct: true }
+    - { text: '$442 \times 442$' }
+    - { text: '$442 \times 11$' }
+    - { text: '$10 \times 10$', misconception: forget-intercept-column }
+  explanation: |
+    $X$ is $442 \times 11$ (ten features plus the column of ones), so $X^\top X$ is $(11 \times 442)(442 \times 11) = 11 \times 11$: one row and column per parameter. The normal equations are 11 equations in 11 unknowns, however many patients there are. $XX^\top$, which is $442 \times 442$, does not appear.
+
+- id: q-u1-l4-014
+  lesson: least-squares
+  concepts: [normal-equations]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of der-1-4-1 (the normal equations) in order.
+  items:
+    - 'Write the mean squared error as $\frac1n\lVert X\theta - y\rVert_2^2$.'
+    - 'Expand $(X\theta - y)^\top(X\theta - y)$ and merge the two equal cross terms into $-2(X^\top y)^\top\theta$.'
+    - 'Differentiate term by term: $2X^\top X\theta$, $X^\top y$, and 0.'
+    - 'Combine and factor: $\nabla_\theta\hat R = \frac2n X^\top(X\theta - y)$.'
+    - 'Set the gradient to zero: $X^\top X\hat\theta = X^\top y$.'
+    - 'If $X^\top X$ is invertible, multiply by its inverse on the left.'
+  explanation: |
+    Quadratic form first, then the gradient, then the first-order condition, then the solve, which needs full column rank (der-1-4-2 step 10).
+
+- id: q-u1-l4-015
+  lesson: least-squares
+  concepts: [least-squares-projection]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    You fit a line with an intercept by least squares. What is the sum of the residuals $\sum_i (f_{\hat\theta}(x^{(i)}) - y^{(i)})$?
+  options:
+    - { text: 'Exactly 0, because the residual vector is orthogonal to the column of ones', correct: true }
+    - { text: 'Exactly 0 for any linear model, with or without an intercept', misconception: residuals-sum-zero-always }
+    - { text: 'Approximately 0, up to the noise in the data' }
+    - { text: 'Equal to $n$ times the MSE' }
+  explanation: |
+    der-1-4-3 step 2: the residual vector is orthogonal to every column of $X$. With an intercept, one column is $\mathbf{1}$, and $\mathbf{1}^\top\hat r = \sum_i \hat r^{(i)} = 0$ exactly, not approximately. Without the column of ones the orthogonality says nothing about the sum.
+  discriminates: [least-squares-projection]
+
+- id: q-u1-l4-016
+  lesson: least-squares
+  concepts: [singular-normal-equations, least-squares-projection]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    $X$ does not have full column rank, and $\hat\theta \ne \tilde\theta$ both solve the normal equations. Which statement is correct?
+  options:
+    - { text: 'They make identical predictions on the training data and have the same training MSE', correct: true }
+    - { text: 'One of them has a lower training MSE, and gradient descent finds that one', misconception: collinear-high-loss }
+    - { text: 'Their predictions differ, but their MSEs agree' }
+    - { text: 'This cannot happen: least-squares solutions are always unique', misconception: n-ge-d-sufficient }
+  explanation: |
+    Their difference $v = \tilde\theta - \hat\theta$ satisfies $Xv = 0$ (der-1-4-4 step 9), so $X\tilde\theta = X\hat\theta$ and the losses agree (step 10). On a new input $x$ whose direction the training data did not pin down, $x^\top v$ need not be 0, so their predictions there can differ.
+  discriminates: [singular-normal-equations]
+
+- id: q-u1-l4-017
+  lesson: least-squares
+  concepts: [least-squares-convexity, least-squares-projection]
+  type: predict
+  difficulty: 2
+  source: "original"
+  prompt: |
+    In the MSE-bowl widget, you switch on standardization of the BMI feature (subtract its mean, divide by its standard deviation) and refit. Predict what happens.
+  options:
+    - { text: 'The contours become much rounder and the bottom moves to new coordinates, but the fitted line through the patients is the same', correct: true }
+    - { text: 'The fitted line changes, because the features changed' }
+    - { text: 'Nothing changes, because standardization is only for gradient descent' }
+    - { text: 'The bowl stops being convex' }
+  explanation: |
+    The columns $\mathbf{1}$ and the standardized BMI span the same column space as $\mathbf{1}$ and the raw BMI, so the projection $\hat y$, and with it the fitted line, is unchanged (der-1-4-3 step 8). The coordinates $\theta$ change because the features are measured differently. Centering makes the two columns orthogonal, which turns a long narrow valley into a nearly round bowl; lesson 2.5 shows why that speeds up gradient descent.
+  discriminates: [least-squares-projection]
+
+- id: q-u1-l4-018
+  lesson: least-squares
+  concepts: [least-squares-closed-form]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Least squares has a closed form. In which situation is gradient descent nevertheless the better tool?
+  options:
+    - { text: 'There are hundreds of thousands of features, or the data arrive in a stream and never sit in memory at once', correct: true }
+    - { text: 'The least-squares loss has local minima that the closed form can miss', misconception: lsq-local-minima }
+    - { text: 'Whenever $X^\top X$ is invertible' }
+    - { text: 'Never: the closed form is exact, so gradient descent has no use for linear regression' }
+  explanation: |
+    Forming $X^\top X$ costs about $n d^2$ operations and solving costs about $d^3$; gradient descent needs only $X^\top(X\theta - y)$ per step, about $n d$, and can use a minibatch at a time. The loss is convex, so there are no local minima to miss (der-1-4-2). HW1 Part II Q6 asked this question.

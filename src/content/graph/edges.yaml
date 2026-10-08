@@ -193,6 +193,28 @@
 - { from: best-constant-mean-median, to: conditional-mean-optimality, type: generalizes }
 - { from: linear-dgp-well-specified, to: r2-population-limit, type: uses }
 
+# Lesson 1.4: least-squares
+# Course map seed edges (L3 "Concept-graph edges"):
+#   Loss function + Model class -> Optimizer -> Closed-form least squares; -> Gradient descent
+#   Design matrix -> Vector form of squared loss -> Normal equations
+#   Convexity definition -> GD global-optimality guarantee; MSE bowl -> Convexity of least squares
+#   Critical points -> Closed-form minimization (lesson 2.3's comment below; added here)
+- { from: training-as-optimization, to: least-squares-problem, type: requires }
+- { from: least-squares-problem, to: normal-equations, type: requires }
+- { from: normal-equations, to: least-squares-closed-form, type: requires }
+- { from: least-squares-problem, to: least-squares-convexity, type: requires }
+- { from: least-squares-convexity, to: least-squares-closed-form, type: requires }
+- { from: normal-equations, to: least-squares-projection, type: requires }
+- { from: normal-equations, to: singular-normal-equations, type: requires }
+- { from: least-squares-projection, to: singular-normal-equations, type: requires }
+- { from: normal-equations, to: simple-linear-regression-closed-form, type: requires }
+
+# Toward Unit 2 (the closed form versus iterating; convexity behind the GD guarantee)
+- { from: critical-point, to: normal-equations, type: uses }
+- { from: least-squares-closed-form, to: iterative-optimization, type: contrasts }
+- { from: least-squares-convexity, to: gd-convergence-behavior, type: uses }
+- { from: normal-equations, to: lsq-gradient-hessian-form, type: uses }
+
 # ---------- Unit 2: Risk and gradient descent ----------
 
 # Lesson 2.1: data-generating-distributions
