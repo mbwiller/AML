@@ -166,6 +166,55 @@
 - { from: five-ml-components, to: supervised-dataset, type: requires }
 - { from: interaction-feature, to: linear-additive-effects, type: contrasts }
 
+# Lesson 1.3: loss-functions
+# Course map seed edges (docs/course-map/01-lectures-L1-L3.md, L2 and L3 "Concept-graph edges"):
+#   Loss function -> MAE; -> MSE -> RMSE, R²; Sample variance -> R²; R² -> "R² can be negative";
+#   Linear DGP + R² -> the L3 p.40 limit question. Edges between concepts of the same lesson
+#   cannot be derived from frontmatter.
+- { from: per-example-loss, to: mean-absolute-error, type: requires }
+- { from: per-example-loss, to: mean-squared-error, type: requires }
+- { from: residual, to: mean-absolute-error, type: requires }
+- { from: residual, to: mean-squared-error, type: requires }
+- { from: mean-squared-error, to: root-mean-squared-error, type: requires }
+- { from: mean-squared-error, to: coefficient-of-determination, type: requires }
+- { from: coefficient-of-determination, to: loss-vs-evaluation-metric, type: requires }
+- { from: mean-squared-error, to: best-constant-mean-median, type: requires }
+- { from: mean-absolute-error, to: best-constant-mean-median, type: requires }
+- { from: best-constant-mean-median, to: squared-loss-outlier-sensitivity, type: requires }
+- { from: coefficient-of-determination, to: r2-bounds, type: requires }
+- { from: best-constant-mean-median, to: r2-bounds, type: requires }
+- { from: r2-bounds, to: r2-population-limit, type: requires }
+- { from: best-constant-mean-median, to: r2-population-limit, type: requires }
+- { from: mean-absolute-error, to: mean-squared-error, type: contrasts }
+
+# Toward Unit 2 (MSE is the empirical risk for squared loss; the population best predictor
+# generalizes the best constant; the R² limit uses the linear DGP of lesson 2.1)
+- { from: mean-squared-error, to: empirical-risk, type: generalizes }
+- { from: best-constant-mean-median, to: conditional-mean-optimality, type: generalizes }
+- { from: linear-dgp-well-specified, to: r2-population-limit, type: uses }
+
+# Lesson 1.4: least-squares
+# Course map seed edges (L3 "Concept-graph edges"):
+#   Loss function + Model class -> Optimizer -> Closed-form least squares; -> Gradient descent
+#   Design matrix -> Vector form of squared loss -> Normal equations
+#   Convexity definition -> GD global-optimality guarantee; MSE bowl -> Convexity of least squares
+#   Critical points -> Closed-form minimization (lesson 2.3's comment below; added here)
+- { from: training-as-optimization, to: least-squares-problem, type: requires }
+- { from: least-squares-problem, to: normal-equations, type: requires }
+- { from: normal-equations, to: least-squares-closed-form, type: requires }
+- { from: least-squares-problem, to: least-squares-convexity, type: requires }
+- { from: least-squares-convexity, to: least-squares-closed-form, type: requires }
+- { from: normal-equations, to: least-squares-projection, type: requires }
+- { from: normal-equations, to: singular-normal-equations, type: requires }
+- { from: least-squares-projection, to: singular-normal-equations, type: requires }
+- { from: normal-equations, to: simple-linear-regression-closed-form, type: requires }
+
+# Toward Unit 2 (the closed form versus iterating; convexity behind the GD guarantee)
+- { from: critical-point, to: normal-equations, type: uses }
+- { from: least-squares-closed-form, to: iterative-optimization, type: contrasts }
+- { from: least-squares-convexity, to: gd-convergence-behavior, type: uses }
+- { from: normal-equations, to: lsq-gradient-hessian-form, type: uses }
+
 # ---------- Unit 2: Risk and gradient descent ----------
 
 # Lesson 2.1: data-generating-distributions

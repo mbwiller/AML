@@ -515,3 +515,552 @@
   explanation: |
     $\theta_j$ is the change in prediction per unit of feature $j$ (der-1-2-2 step 7). One gram is 1,000 mg, so the per-gram effect is $1000 \times (-0.4) = -400$. The product $\theta_{\text{dose}} \cdot D$ is unchanged, so are the predictions. Coefficient sizes say nothing about importance until the features share a scale.
   discriminates: [linear-uniform-effects]
+
+# ---------- Lesson 1.3: loss-functions ----------
+# Poll items carry source "L3 p.<k> poll" (docs/course-map/01-lectures-L1-L3.md, L3 poll section).
+# The L3 p.20 "select all that can be used as an evaluation metric" poll is split into one
+# true/false item per option (002-006), as in the Unit 2 and Unit 6 banks. The L3 p.40 open
+# question (HW2, past) is q-u2-l1-005 in the Unit 2 bank.
+
+- id: q-u1-l3-001
+  lesson: loss-functions
+  concepts: [mean-squared-error, loss-vs-evaluation-metric]
+  type: mc
+  difficulty: 1
+  source: "L3 p.19 poll"
+  prompt: |
+    What is the most common objective (loss) function for linear regression?
+  options:
+    - { text: 'Least squares', explanation: 'Close: least squares is the name of the method, and its objective, the sum of squared errors, is $n$ times the MSE. The poll keys the objective by its name, mean squared error.' }
+    - { text: 'Gradient descent', misconception: optimizer-as-loss }
+    - { text: 'Mean squared error', correct: true }
+    - { text: '$R^2$', misconception: r2-is-a-loss }
+  explanation: |
+    The mean squared error, $\frac1n\sum_i (f_\theta(x^{(i)}) - y^{(i)})^2$ (def-1-3-3; L2 p.31 calls it "the most common"). Gradient descent is an optimizer, a way to minimize a loss, not a loss. $R^2$ is an evaluation metric (L3 p.8); on a fixed training set, maximizing it is the same as minimizing MSE (eq-1-3-2).
+  discriminates: [mean-squared-error, loss-vs-evaluation-metric]
+
+- id: q-u1-l3-002
+  lesson: loss-functions
+  concepts: [loss-vs-evaluation-metric, mean-squared-error]
+  type: mc
+  difficulty: 2
+  source: "L3 p.20 poll"
+  prompt: |
+    True or false: least squares can be used as an evaluation metric for linear regression.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The course map's key counts it "as a value": the minimized least-squares objective, the residual sum of squares $\mathrm{RSS} = n\,\mathrm{MSE}$, is a number you can report. It is a poor one to compare across datasets, because it grows with $n$ and has the squared units of $y$; MSE removes the first problem, RMSE the second, and $R^2$ both (der-1-3-3).
+  discriminates: [loss-vs-evaluation-metric]
+
+- id: q-u1-l3-003
+  lesson: loss-functions
+  concepts: [root-mean-squared-error, loss-vs-evaluation-metric]
+  type: mc
+  difficulty: 1
+  source: "L3 p.20 poll"
+  prompt: |
+    True or false: root mean squared error can be used as an evaluation metric for linear regression.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True. RMSE "puts the error back in the units of the label" (L3 p.8), which makes it the easiest of the squared-error metrics to read. Judge it against the standard deviation of the targets: $R^2 = 1 - (\mathrm{RMSE}/s_y)^2$ (der-1-3-3 step 6).
+
+- id: q-u1-l3-004
+  lesson: loss-functions
+  concepts: [coefficient-of-determination, loss-vs-evaluation-metric]
+  type: mc
+  difficulty: 1
+  source: "L3 p.20 poll"
+  prompt: |
+    True or false: $R^2$ can be used as an evaluation metric for linear regression.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True; it is the metric L3 p.8 singles out as "an evaluation metric, not a loss function". It measures MSE in units of the target variance, $R^2 = 1 - \mathrm{MSE}(\theta)/s_y^2$ (eq-1-3-2), so fits on different datasets can be compared.
+
+- id: q-u1-l3-005
+  lesson: loss-functions
+  concepts: [mean-squared-error, loss-vs-evaluation-metric]
+  type: mc
+  difficulty: 1
+  source: "L3 p.20 poll"
+  prompt: |
+    True or false: mean squared error can be used as an evaluation metric for linear regression.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True. MSE is both the usual training loss and a common reported metric (def-1-3-6). Its size depends on the units of $y$, so report it next to the target variance, or report $R^2$.
+
+- id: q-u1-l3-006
+  lesson: loss-functions
+  concepts: [loss-vs-evaluation-metric]
+  type: mc
+  difficulty: 1
+  source: "L3 p.20 poll"
+  prompt: |
+    True or false: accuracy can be used as an evaluation metric for linear regression.
+  options:
+    - { text: "True", misconception: accuracy-for-regression }
+    - { text: "False", correct: true }
+  explanation: |
+    False. Accuracy is the fraction of predictions that equal the label exactly, a classification metric (Unit 4). For a continuous target such as a progression score, a prediction is essentially never exactly right, so accuracy is near 0 for every model and says nothing about how close the predictions are.
+
+- id: q-u1-l3-007
+  lesson: loss-functions
+  concepts: [coefficient-of-determination, r2-bounds]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A model's training MSE is 2176, and the standard deviation of the targets, computed with $\frac1n$, is 69.5. What is its $R^2$? Give three decimal places.
+  answer: 0.5495
+  tolerance: 0.001
+  seeded: { mse: [2176, 1500, 3000, 5000], sd: [69.5, 60, 80] }
+  formula: "1 - mse / (sd * sd)"
+  explanation: |
+    By eq-1-3-2, $R^2 = 1 - \mathrm{MSE}/s_y^2 = 1 - 2176/69.5^2 = 1 - 2176/4830.25 \approx 0.5495$. When the MSE exceeds $s_y^2$ the answer is negative: the model does worse than predicting the mean (der-1-3-3 step 9).
+
+- id: q-u1-l3-008
+  lesson: loss-functions
+  concepts: [best-constant-mean-median]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Five patients have progression scores 48, 57, 64, 66, and 310. You must predict the same number $c$ for all of them. Which $c$ minimizes the mean squared error?
+  answer: 109
+  tolerance: 0.01
+  formula: "(48 + 57 + 64 + 66 + 310) / 5"
+  explanation: |
+    The mean (der-1-3-1 step 4): $(48 + 57 + 64 + 66 + 310)/5 = 545/5 = 109$. It sits above four of the five scores, pulled up by the one large value.
+
+- id: q-u1-l3-009
+  lesson: loss-functions
+  concepts: [best-constant-mean-median]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    The same five scores, 48, 57, 64, 66, and 310. Which constant prediction minimizes the mean absolute error?
+  options:
+    - { text: '64', correct: true }
+    - { text: '109', misconception: mean-minimizes-mae }
+    - { text: '179, the midpoint of the range' }
+    - { text: '58.75, the mean of the four scores without 310' }
+  explanation: |
+    A median (der-1-3-1 step 8): with five values, the middle one, 64. Moving $c$ above 64 puts three scores below it and two above, so MAE rises; moving it below puts three above, and MAE rises again. The score of 310 counts as one vote, whatever its size. The mean, 109, minimizes the squared error instead.
+  discriminates: [best-constant-mean-median]
+
+- id: q-u1-l3-010
+  lesson: loss-functions
+  concepts: [best-constant-mean-median, squared-loss-outlier-sensitivity]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A training set has $n = 20$ patients. One score is mis-entered $\Delta = 1000$ points too high. By how much does the mean of the scores, the best constant under squared error, move?
+  answer: 50
+  tolerance: 0.01
+  seeded: { delta: [100, 500, 1000, 1647], n: [10, 20, 50] }
+  formula: "delta / n"
+  explanation: |
+    $\bar y$ is linear in each score, so it moves by $\Delta/n = 1000/20 = 50$, without bound as $\Delta$ grows. The median does not move at all if the mis-entered score was already above it (der-1-3-1, and the discussion after it). In the lesson's worked example, $\Delta = 1830 - 183 = 1647$ moves the mean from 126.2 to 208.55.
+
+- id: q-u1-l3-011
+  lesson: loss-functions
+  type: which-step
+  concepts: [coefficient-of-determination]
+  difficulty: 2
+  source: "original"
+  derivation: der-1-3-3
+  corrupt: { step: 4, replaceTex: 'R^2(\theta) = 1 - \frac{\mathrm{RMSE}(\theta)}{\mathrm{RMSE}(\bar y)}', explanation: 'Steps 2 and 3 turn RSS and TSS into $n$ times an MSE, so their ratio is a ratio of MSEs, not of RMSEs. The RMSE form needs a square, $1 - (\mathrm{RMSE}/s_y)^2$ (step 6). For the companion line, the wrong formula gives $1 - 46.65/69.51 \approx 0.33$ instead of 0.55.' }
+
+- id: q-u1-l3-012
+  lesson: loss-functions
+  concepts: [squared-loss-outlier-sensitivity, best-constant-mean-median]
+  type: predict
+  difficulty: 2
+  source: "original"
+  prompt: |
+    In the line-fit playground, the 20 diabetes patients are fit twice: by least squares (MSE) and by least absolute deviations (MAE). You drag the patient with BMI 23.3 from a score of 183 up to 1830. Predict what happens to the two fitted lines.
+  options:
+    - { text: 'The least-squares line swings sharply, and its slope can even turn negative; the MAE line barely moves or does not move at all', correct: true }
+    - { text: 'Both lines move up by the same amount, since both average over the same 20 patients', misconception: mse-robust-to-outliers }
+    - { text: 'The MAE line moves more, because absolute error weights every residual equally' }
+    - { text: 'Neither moves: one patient out of 20 cannot change a fit', misconception: mse-robust-to-outliers }
+  explanation: |
+    Under squared loss each residual pulls on $\theta$ in proportion to its size, $2\,r^{(i)} x^{(i)}$; under absolute loss the pull is $\operatorname{sgn}(r^{(i)})\,x^{(i)}$, the same for a residual of 10 or of 1,600 (der-1-3-2 step 6). In the worked example the least-squares line goes from slope $+37.4$ to $-23.6$, while a line minimizing MAE is $-868.36 + 40.29x$ before and after.
+  discriminates: [squared-loss-outlier-sensitivity]
+
+- id: q-u1-l3-013
+  lesson: loss-functions
+  concepts: [mean-absolute-error, mean-squared-error]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    On ten patients, line A misses every patient by 1. Line B predicts nine patients exactly and misses the tenth by 10. Which statement is correct?
+  options:
+    - { text: 'A and B have the same MAE, and B''s MSE is ten times A''s', correct: true }
+    - { text: 'A and B have the same MSE, and B''s MAE is ten times A''s' }
+    - { text: 'B is better under both losses, because it fits more patients exactly' }
+    - { text: 'A and B tie under both losses' }
+  explanation: |
+    MAE: A gives $\frac{1}{10}(10 \times 1) = 1$ and B gives $\frac{1}{10}(10) = 1$. MSE: A gives $\frac{1}{10}(10 \times 1^2) = 1$ and B gives $\frac{1}{10}(10^2) = 10$. Squaring makes one large miss count more than many small ones (the lesson's intuition section).
+  discriminates: [mean-absolute-error, mean-squared-error]
+
+- id: q-u1-l3-014
+  lesson: loss-functions
+  type: which-step
+  concepts: [best-constant-mean-median]
+  difficulty: 2
+  source: "original"
+  derivation: der-1-3-1
+  corrupt: { step: 7, replaceTex: '\frac{d}{dc}\,\mathrm{MAE}(c) = \frac{1}{n}\Big(\#\{i : y^{(i)} \gt c\} - \#\{i : y^{(i)} \lt c\}\Big)', explanation: 'By step 6, a target below $c$ contributes slope $+1$ and a target above $c$ contributes $-1$, so the derivative is (number below) minus (number above). With the signs swapped, MAE would rise to the left of the median and fall to the right, making the median a maximum.' }
+
+- id: q-u1-l3-015
+  lesson: loss-functions
+  concepts: [r2-bounds, coefficient-of-determination]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A least-squares model with an intercept has $R^2 = 0.55$ on its training set and $R^2 = -0.3$ on a held-out test set. What does the negative value mean?
+  options:
+    - { text: 'On the test patients, the model''s MSE is larger than the variance of their scores: it does worse than predicting their mean', correct: true }
+    - { text: 'There is a bug, because $R^2$ always lies between 0 and 1', misconception: r2-always-nonnegative }
+    - { text: 'The model''s slope has the wrong sign' }
+    - { text: 'The test set explains 30% less variance than the training set' }
+  explanation: |
+    By der-1-3-3 step 9, $R^2 \lt 0$ exactly when $\mathrm{MSE}(\theta) \gt s_y^2$. The guarantee $R^2 \ge 0$ (step 10) holds only for a least-squares fit scored on the data it was fit to; on new data nothing makes the model beat the new data's mean. A wrong slope sign is one possible cause, not what the number means.
+  discriminates: [r2-bounds]
+
+- id: q-u1-l3-016
+  lesson: loss-functions
+  concepts: [coefficient-of-determination, loss-vs-evaluation-metric]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    True or false: on a fixed training set, the $\theta$ that maximizes $R^2$ over a model class is the $\theta$ that minimizes the MSE.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False", misconception: r2-is-a-loss }
+  explanation: |
+    True. By eq-1-3-2, $R^2(\theta) = 1 - \mathrm{MSE}(\theta)/s_y^2$, and $s_y^2$ depends on the targets, not on $\theta$. So $R^2$ is a decreasing function of MSE and adds nothing as an objective; its use is to compare fits across datasets, which is why L3 p.8 calls it an evaluation metric rather than a loss.
+  discriminates: [coefficient-of-determination, mean-squared-error]
+
+- id: q-u1-l3-017
+  lesson: loss-functions
+  concepts: [r2-population-limit]
+  type: order
+  difficulty: 3
+  source: "original"
+  prompt: |
+    Put the moves of der-1-3-4 (the limit of $R^2$ under a linear data-generating distribution) in order.
+  items:
+    - 'For a fixed slope, the best intercept is the mean of $y^{(i)} - \theta_1 x^{(i)}$, the best-constant result.'
+    - 'Complete the square in $\theta_1$: the best line has $\mathrm{MSE} = s_{yy} - s_{xy}^2/s_{xx}$.'
+    - 'Divide by $\mathrm{MSE}(\bar y) = s_{yy}$: $R^2 = s_{xy}^2/(s_{xx} s_{yy})$, a squared correlation.'
+    - 'Use the law of large numbers: the sample moments converge to $\sigma_X^2$, $\Cov(X, Y)$, and $\Var(Y)$.'
+    - 'Compute $\Cov(X, Y) = \beta\sigma_X^2$ and $\Var(Y) = \beta^2\sigma_X^2 + \sigma_\varepsilon^2$ under the linear DGP.'
+    - 'Take the ratio of the limits and cancel $\sigma_X^2$.'
+  explanation: |
+    First find the best line's training MSE on the sample (chunk 1), then express $R^2$ through sample moments (chunk 2), and only then let $n$ grow (chunk 3).
+
+- id: q-u1-l3-018
+  lesson: loss-functions
+  concepts: [r2-population-limit]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Data follow $Y = \alpha + \beta X + \varepsilon$ with $\varepsilon$ independent of $X$. Which change leaves the limit of the least-squares $R^2$ as $n \to \infty$ unchanged?
+  options:
+    - { text: 'Doubling the intercept $\alpha$', correct: true }
+    - { text: 'Doubling the slope $\beta$' }
+    - { text: 'Doubling the spread $\sigma_X$ of the inputs' }
+    - { text: 'Doubling the noise standard deviation $\sigma_\varepsilon$' }
+  explanation: |
+    The limit is $\beta^2\sigma_X^2/(\beta^2\sigma_X^2 + \sigma_\varepsilon^2)$ (der-1-3-4 step 13). It has no $\alpha$: shifting every target by a constant shifts the fitted line and $\bar y$ equally. Doubling $\beta$ or $\sigma_X$ raises the signal variance and the limit; doubling $\sigma_\varepsilon$ lowers it.
+  discriminates: [r2-population-limit]
+
+# ---------- Lesson 1.4: least-squares ----------
+# Poll items: the L3 p.22 "the loss of my linear regression is high; what could have gone wrong?"
+# poll is split into one true/false item per option (001-005), keyed by the course map's
+# discussion; its "all of the above" option is false because 002, 004, and 005 are.
+
+- id: q-u1-l4-001
+  lesson: least-squares
+  concepts: [least-squares-problem]
+  type: mc
+  difficulty: 1
+  source: "L3 p.22 poll"
+  prompt: |
+    The loss of my linear regression is high on my dataset. True or false: a possible cause is that I picked the wrong model class, because the underlying data-generating mechanism is highly nonlinear.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True. Least squares finds the best line, but if the truth is far from every line, the best line is still far from the data. The VASCO residual table shows the signature: residuals that arc systematically with the input instead of scattering around zero.
+
+- id: q-u1-l4-002
+  lesson: least-squares
+  concepts: [least-squares-convexity, least-squares-projection]
+  type: mc
+  difficulty: 1
+  source: "L3 p.22 poll"
+  prompt: |
+    The loss of my linear regression is high on my dataset. True or false: a possible cause is that the loss function got stuck at a local minimum.
+  options:
+    - { text: "True", misconception: lsq-local-minima }
+    - { text: "False", correct: true }
+  explanation: |
+    False. The least-squares objective is convex (der-1-4-2 step 6), and every solution of the normal equations is a global minimizer (der-1-4-3 step 6). There is no local minimum to get stuck in.
+  discriminates: [least-squares-convexity]
+
+- id: q-u1-l4-003
+  lesson: least-squares
+  concepts: [least-squares-problem]
+  type: mc
+  difficulty: 1
+  source: "L3 p.22 poll"
+  prompt: |
+    The loss of my linear regression is high on my dataset. True or false: a possible cause is that I did not preprocess my data well.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True. The model is linear in its features, so the features decide what it can fit. A categorical attribute fed as an integer code, a nonlinear effect fed raw instead of through a feature map, or an uncorrected unit error all raise the minimum loss (lesson 1.1).
+
+- id: q-u1-l4-004
+  lesson: least-squares
+  concepts: [least-squares-problem]
+  type: mc
+  difficulty: 1
+  source: "L3 p.22 poll"
+  prompt: |
+    The loss of my linear regression is high on my dataset. True or false: a possible cause is that the model class is too small, since linear regression only contains a finite number of hypotheses.
+  options:
+    - { text: "True", misconception: restriction-means-finite }
+    - { text: "False", correct: true }
+  explanation: |
+    False as stated. The linear class has one member for every $\theta \in \mathbb{R}^{d+1}$, infinitely many (lesson 1.2). It can be too restrictive, by shape, which is the first option of this poll; it is not finite.
+
+- id: q-u1-l4-005
+  lesson: least-squares
+  concepts: [singular-normal-equations]
+  type: mc
+  difficulty: 2
+  source: "L3 p.22 poll"
+  prompt: |
+    The loss of my linear regression is high on my dataset. True or false: a possible cause is that the features in my dataset are not linearly independent of each other.
+  options:
+    - { text: "True", misconception: collinear-high-loss }
+    - { text: "False", correct: true }
+  explanation: |
+    False. Linear dependence makes $X^\top X$ singular, so the least-squares solution is not unique, but every solution makes the same predictions and reaches the same minimum loss (der-1-4-4 step 10). In the lesson, entering BMI twice leaves the MSE at 2176.0009. What dependence costs is the interpretability of individual coefficients.
+  discriminates: [singular-normal-equations, least-squares-closed-form]
+
+- id: q-u1-l4-006
+  lesson: least-squares
+  concepts: [simple-linear-regression-closed-form]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Toy data: four patients with $x = 1, 2, 3, 4$ and $y = 2, 3, 5, 6$. Using $\hat\theta_1 = s_{xy}/s_{xx}$ (sample moments with $\frac1n$), what is the least-squares slope? Give two decimal places.
+  answer: 1.4
+  tolerance: 0.005
+  formula: "1.75 / 1.25"
+  explanation: |
+    $\bar x = 2.5$, $\bar y = 4$. The deviations are $x - \bar x = (-1.5, -0.5, 0.5, 1.5)$ and $y - \bar y = (-2, -1, 1, 2)$, so $s_{xy} = (3 + 0.5 + 0.5 + 3)/4 = 1.75$ and $s_{xx} = (2.25 + 0.25 + 0.25 + 2.25)/4 = 1.25$. The slope is $1.75/1.25 = 1.4$ (der-1-4-5 step 8), and the intercept is $4 - 1.4 \times 2.5 = 0.5$ (step 3).
+
+- id: q-u1-l4-007
+  lesson: least-squares
+  concepts: [simple-linear-regression-closed-form]
+  type: numeric
+  difficulty: 1
+  source: "L2 companion cell 15"
+  prompt: |
+    For the companion's 20 patients, $\bar x = 24.7007$, $\bar y = 126.2$, and the least-squares slope is $37.3788$. What is the intercept? Give two decimal places.
+  answer: -797.08
+  tolerance: 0.01
+  formula: "126.2 - 37.3788 * 24.7007"
+  explanation: |
+    The first normal equation gives $\hat\theta_0 = \bar y - \hat\theta_1\bar x$ (der-1-4-5 step 3): $126.2 - 37.3788 \times 24.7007 \approx -797.08$, matching the $-797.0817\ldots$ printed in cell 15. The fitted line passes through the point of means.
+
+- id: q-u1-l4-008
+  lesson: least-squares
+  type: which-step
+  concepts: [normal-equations]
+  difficulty: 2
+  source: "original"
+  derivation: der-1-4-1
+  corrupt: { step: 5, replaceTex: '\hat R(\theta) = \frac1n\big(\theta^\top X^\top X\theta - (X^\top y)^\top\theta + y^\top y\big)', explanation: 'Step 4 has two cross terms, $-\theta^\top X^\top y$ and $-y^\top X\theta$. They are equal scalars (each is the transpose of the other), so they combine to $-2(X^\top y)^\top\theta$, not $-(X^\top y)^\top\theta$. Keeping only one would lead to $X^\top X\theta = \frac12 X^\top y$, halving every coefficient.' }
+
+- id: q-u1-l4-009
+  lesson: least-squares
+  type: which-step
+  concepts: [least-squares-closed-form]
+  difficulty: 1
+  source: "original"
+  derivation: der-1-4-1
+  corrupt: { step: 13, replaceTex: '\hat\theta = X^\top y\,(X^\top X)^{-1}', explanation: 'The inverse must multiply from the left, the side on which $X^\top X$ sits in step 12. As written the product is not even defined: $X^\top y$ is $(d+1) \times 1$ and $(X^\top X)^{-1}$ is $(d+1) \times (d+1)$.' }
+
+- id: q-u1-l4-010
+  lesson: least-squares
+  concepts: [singular-normal-equations, least-squares-closed-form]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A study has $n = 50$ patients and 80 laboratory values per patient. You fit a linear model with all 80 features and an intercept. Is $X^\top X$ invertible?
+  options:
+    - { text: 'No: $X$ has 81 columns but rank at most 50, so its null space is not $\{0\}$', correct: true }
+    - { text: 'Yes: $X^\top X$ is symmetric, and symmetric matrices are invertible', misconception: symmetric-means-invertible }
+    - { text: 'Yes, as long as no two lab values are identical columns', misconception: n-ge-d-sufficient }
+    - { text: 'It depends on whether the features are standardized' }
+  explanation: |
+    The rank of $X$ is at most $\min(n, d + 1) = 50 \lt 81$ (der-1-4-4 step 11), so some $v \ne 0$ has $Xv = 0$, and then $X^\top X v = 0$: singular. Infinitely many $\theta$ fit equally well. Standardizing rescales columns but cannot raise the rank. This is the regime of ridge regression (Unit 5).
+  discriminates: [singular-normal-equations]
+
+- id: q-u1-l4-011
+  lesson: least-squares
+  concepts: [singular-normal-equations]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The VASCO trial has 300 patients and six dose arms. You fit an intercept plus one indicator column for each of the six arms, 7 parameters in all. Which statement is correct?
+  options:
+    - { text: '$X^\top X$ is singular: the six indicator columns sum to the column of ones, so $X$ has rank 6', correct: true }
+    - { text: '$X^\top X$ is invertible, because 300 patients is far more than 7 parameters', misconception: n-ge-d-sufficient }
+    - { text: '$X^\top X$ is invertible, but gradient descent will get stuck', misconception: lsq-local-minima }
+    - { text: 'The fit has a higher MSE than the fit without an intercept', misconception: collinear-high-loss }
+  explanation: |
+    This is the dummy-variable trap (lesson 1.1, der-1-1-1 step 11): one column is a combination of others, so $X$ lacks full column rank whatever $n$ is (der-1-4-4 step 11). All solutions give the six arm means as predictions and the same MSE (step 10). Drop one arm's column or the intercept.
+  discriminates: [singular-normal-equations, dummy-variable-trap]
+
+- id: q-u1-l4-012
+  lesson: least-squares
+  concepts: [least-squares-problem]
+  type: mc
+  difficulty: 1
+  source: "L3 p.12 (slide notation)"
+  prompt: |
+    The design matrix $X$ has one row per patient, $n$ rows and $d + 1$ columns, and $\theta \in \mathbb{R}^{d+1}$. Which expression is the vector of predictions in the least-squares objective?
+  options:
+    - { text: '$X\theta$', correct: true }
+    - { text: '$\theta^\top X$, as written on L3 p.12', misconception: theta-transpose-x }
+    - { text: '$X^\top\theta$' }
+    - { text: '$\theta X^\top$' }
+  explanation: |
+    Entry $i$ of $X\theta$ is row $i$ of $X$ times $\theta$, the prediction $(x^{(i)})^\top\theta$ (eq-1-2-1); it has shape $n \times 1$. $\theta^\top X$ multiplies a $1 \times (d+1)$ row by a matrix with $n$ rows, which is undefined unless $n = d + 1$. $X^\top\theta$ is undefined for the same reason.
+  discriminates: [least-squares-problem]
+
+- id: q-u1-l4-013
+  lesson: least-squares
+  concepts: [normal-equations]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    For the full diabetes data, $n = 442$ patients and $d = 10$ features, with an intercept. What is the shape of $X^\top X$ in the normal equations?
+  options:
+    - { text: '$11 \times 11$', correct: true }
+    - { text: '$442 \times 442$' }
+    - { text: '$442 \times 11$' }
+    - { text: '$10 \times 10$', misconception: forget-intercept-column }
+  explanation: |
+    $X$ is $442 \times 11$ (ten features plus the column of ones), so $X^\top X$ is $(11 \times 442)(442 \times 11) = 11 \times 11$: one row and column per parameter. The normal equations are 11 equations in 11 unknowns, however many patients there are. $XX^\top$, which is $442 \times 442$, does not appear.
+
+- id: q-u1-l4-014
+  lesson: least-squares
+  concepts: [normal-equations]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of der-1-4-1 (the normal equations) in order.
+  items:
+    - 'Write the mean squared error as $\frac1n\lVert X\theta - y\rVert_2^2$.'
+    - 'Expand $(X\theta - y)^\top(X\theta - y)$ and merge the two equal cross terms into $-2(X^\top y)^\top\theta$.'
+    - 'Differentiate term by term: $2X^\top X\theta$, $X^\top y$, and 0.'
+    - 'Combine and factor: $\nabla_\theta\hat R = \frac2n X^\top(X\theta - y)$.'
+    - 'Set the gradient to zero: $X^\top X\hat\theta = X^\top y$.'
+    - 'If $X^\top X$ is invertible, multiply by its inverse on the left.'
+  explanation: |
+    Quadratic form first, then the gradient, then the first-order condition, then the solve, which needs full column rank (der-1-4-2 step 10).
+
+- id: q-u1-l4-015
+  lesson: least-squares
+  concepts: [least-squares-projection]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    You fit a line with an intercept by least squares. What is the sum of the residuals $\sum_i (f_{\hat\theta}(x^{(i)}) - y^{(i)})$?
+  options:
+    - { text: 'Exactly 0, because the residual vector is orthogonal to the column of ones', correct: true }
+    - { text: 'Exactly 0 for any linear model, with or without an intercept', misconception: residuals-sum-zero-always }
+    - { text: 'Approximately 0, up to the noise in the data' }
+    - { text: 'Equal to $n$ times the MSE' }
+  explanation: |
+    der-1-4-3 step 2: the residual vector is orthogonal to every column of $X$. With an intercept, one column is $\mathbf{1}$, and $\mathbf{1}^\top\hat r = \sum_i \hat r^{(i)} = 0$ exactly, not approximately. Without the column of ones the orthogonality says nothing about the sum.
+  discriminates: [least-squares-projection]
+
+- id: q-u1-l4-016
+  lesson: least-squares
+  concepts: [singular-normal-equations, least-squares-projection]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    $X$ does not have full column rank, and $\hat\theta \ne \tilde\theta$ both solve the normal equations. Which statement is correct?
+  options:
+    - { text: 'They make identical predictions on the training data and have the same training MSE', correct: true }
+    - { text: 'One of them has a lower training MSE, and gradient descent finds that one', misconception: collinear-high-loss }
+    - { text: 'Their predictions differ, but their MSEs agree' }
+    - { text: 'This cannot happen: least-squares solutions are always unique', misconception: n-ge-d-sufficient }
+  explanation: |
+    Their difference $v = \tilde\theta - \hat\theta$ satisfies $Xv = 0$ (der-1-4-4 step 9), so $X\tilde\theta = X\hat\theta$ and the losses agree (step 10). On a new input $x$ whose direction the training data did not pin down, $x^\top v$ need not be 0, so their predictions there can differ.
+  discriminates: [singular-normal-equations]
+
+- id: q-u1-l4-017
+  lesson: least-squares
+  concepts: [least-squares-convexity, least-squares-projection]
+  type: predict
+  difficulty: 2
+  source: "original"
+  prompt: |
+    In the MSE-bowl widget, you switch on standardization of the BMI feature (subtract its mean, divide by its standard deviation) and refit. Predict what happens.
+  options:
+    - { text: 'The contours become much rounder and the bottom moves to new coordinates, but the fitted line through the patients is the same', correct: true }
+    - { text: 'The fitted line changes, because the features changed' }
+    - { text: 'Nothing changes, because standardization is only for gradient descent' }
+    - { text: 'The bowl stops being convex' }
+  explanation: |
+    The columns $\mathbf{1}$ and the standardized BMI span the same column space as $\mathbf{1}$ and the raw BMI, so the projection $\hat y$, and with it the fitted line, is unchanged (der-1-4-3 step 8). The coordinates $\theta$ change because the features are measured differently. Centering makes the two columns orthogonal, which turns a long narrow valley into a nearly round bowl; lesson 2.5 shows why that speeds up gradient descent.
+  discriminates: [least-squares-projection]
+
+- id: q-u1-l4-018
+  lesson: least-squares
+  concepts: [least-squares-closed-form]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Least squares has a closed form. In which situation is gradient descent nevertheless the better tool?
+  options:
+    - { text: 'There are hundreds of thousands of features, or the data arrive in a stream and never sit in memory at once', correct: true }
+    - { text: 'The least-squares loss has local minima that the closed form can miss', misconception: lsq-local-minima }
+    - { text: 'Whenever $X^\top X$ is invertible' }
+    - { text: 'Never: the closed form is exact, so gradient descent has no use for linear regression' }
+  explanation: |
+    Forming $X^\top X$ costs about $n d^2$ operations and solving costs about $d^3$; gradient descent needs only $X^\top(X\theta - y)$ per step, about $n d$, and can use a minibatch at a time. The loss is convex, so there are no local minima to miss (der-1-4-2). HW1 Part II Q6 asked this question.

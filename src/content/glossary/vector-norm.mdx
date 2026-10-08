@@ -1,0 +1,12 @@
+---
+id: vector-norm
+term: Vector norm
+aliases: [L2 norm, Euclidean norm, squared norm, L1 norm, dot product, inner product]
+field: linear-algebra
+firstUsedIn: u1-linear-regression
+related: [euclidean-distance, transpose-rules, quadratic-form, orthogonal-projection]
+---
+
+**What it is.** The Euclidean (L2) norm of $v \in \mathbb{R}^n$ is its length, $\lVert v \rVert_2 = \sqrt{\sum_i v_i^2}$. Its square is an inner product: $\lVert v \rVert_2^2 = v^\top v = \sum_i v_i^2$. It is never negative and is zero only for $v = 0$. For two vectors, $\lVert a + b \rVert_2^2 = \lVert a \rVert_2^2 + 2a^\top b + \lVert b \rVert_2^2$; the cross term vanishes exactly when $a^\top b = 0$, which is Pythagoras. The L1 norm $\lVert v \rVert_1 = \sum_i \lvert v_i \rvert$ adds absolute values instead.
+
+**How ML uses it.** A sum of squared residuals is a squared norm, $\sum_i (f_\theta(x^{(i)}) - y^{(i)})^2 = \lVert X\theta - y \rVert_2^2$, so the mean squared error is $\frac1n \lVert X\theta - y \rVert_2^2$. The L1 norm of the residuals gives the MAE; applied to $\theta$, the norms give the lasso and ridge penalties.

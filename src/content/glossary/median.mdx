@@ -1,0 +1,12 @@
+---
+id: median
+term: Median
+aliases: [sample median, 50th percentile, conditional median]
+field: statistics
+firstUsedIn: u1-linear-regression
+related: [expectation, variance]
+---
+
+**What it is.** A median of the numbers $y^{(1)}, \dots, y^{(n)}$ is any value $m$ with at least half of the numbers $\le m$ and at least half $\ge m$. Sort them: for odd $n$ it is the middle value; for even $n$ every value between the two middle ones qualifies, and by convention we report their average. Unlike the mean, it does not move when the largest value is made larger still: it depends on the data only through their order near the middle.
+
+**How ML uses it.** The median is the constant that minimizes the mean absolute error, just as the mean minimizes the mean squared error. That is why absolute-error fits resist outliers, and why the best predictor under absolute error is the conditional median of $Y$ given $X$ rather than the conditional mean.
