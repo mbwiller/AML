@@ -9,6 +9,7 @@
 import type { WidgetModule } from './types';
 
 export const registry = {
+  'bow-nb-scorer': () => import('./bow-nb-scorer/Widget'),
   'gaussian-2d-covariance': () => import('./gaussian-2d-covariance/Widget'),
 } satisfies Record<string, () => Promise<WidgetModule>>;
 
