@@ -1,0 +1,96 @@
+---
+/**
+ * /homework: the course's homework calendar. Homework with a bridge page in
+ * `src/content/homework/` link to it; the rest of the calendar
+ * (`COURSE_HOMEWORK`) is listed with its due date only. Past-due rows are
+ * muted; the live homework carries the R17 badge. Dates are evaluated at
+ * build time (static site).
+ */
+import { getCollection } from 'astro:content';
+
+import Base from '@/layouts/Base.astro';
+import { COURSE_HOMEWORK, formatDueDate, homeworkState, isPastDue } from '@/lib/homework';
+
+const pages = (await getCollection('homework')).map((h) => h.data);
+const today = new Date();
+const byId = new Map(pages.map((p) => [p.id, p]));
+const rows = [
+  ...COURSE_HOMEWORK.map((c) => ({ id: c.id, title: c.title, due: c.due, page: byId.get(c.id) })),
+  ...pages
+    .filter((p) => !COURSE_HOMEWORK.some((c) => c.id === p.id))
+    .map((p) => ({ id: p.id, title: p.title, due: p.due, page: p })),
+]
+  .map((r) => ({
+    ...r,
+    title: r.page?.title ?? r.title,
+    due: r.page?.due ?? r.due,
+    past: isPastDue(r.page?.due ?? r.due, today),
+    state: r.page ? homeworkState(r.page, today) : undefined,
+  }))
+  .sort((a, b) => a.due.localeCompare(b.due));
+---
+
+<Base title="Homework" description="Every homework, its due date, and the readiness gate for it.">
+  <main id="main" class="mx-auto max-w-3xl px-4 py-10">
+    <h1 class="font-sans text-h1 leading-tight font-bold tracking-tight">Homework</h1>
+    <p class="mt-2 max-w-measure text-muted">
+      Each homework page lists the skills it needs, the lesson sections that teach them, and the
+      checks that practice them. Pages for past homework add a walkthrough of our solution. A live
+      homework gets the skills map and lesson links only.
+    </p>
+
+    <ol class="m-0 mt-8 grid list-none gap-3 p-0" data-homework-index>
+      {rows.map((r) => (
+        <li class="m-0" data-homework-row={r.id} data-past={r.past ? 'true' : 'false'}>
+          {r.page ? (
+            <a
+              href={`/homework/${r.id}`}
+              class:list={[
+                'hw-row block rounded-card border border-border bg-surface p-4 no-underline transition-colors duration-micro ease-standard hover:bg-surface-2',
+                r.past ? 'text-muted' : 'text-fg',
+              ]}
+            >
+              <span class="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-sans">
+                <span class="text-ui-lg font-semibold">{r.title}</span>
+                {r.state === 'live' && (
+                  <span class="hw-live text-ui-xs" data-live-badge>
+                    <span class="hw-dot" aria-hidden="true" />
+                    Live: skills map only
+                  </span>
+                )}
+              </span>
+              <span class="mt-1 block font-sans text-ui-sm text-muted">
+                {r.past ? 'Was due' : 'Due'} {formatDueDate(r.due)}
+              </span>
+            </a>
+          ) : (
+            <div class="rounded-card border border-dashed border-border p-4 font-sans text-muted">
+              <span class="text-ui-lg">{r.title}</span>
+              <span class="mt-1 block text-ui-sm">
+                {r.past ? 'Was due' : 'Due'} {formatDueDate(r.due)} · no readiness page yet
+              </span>
+            </div>
+          )}
+        </li>
+      ))}
+    </ol>
+  </main>
+</Base>
+
+<style>
+  .hw-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    color: var(--fg);
+  }
+  .hw-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: var(--radius-full);
+    background: var(--viz-negative);
+  }
+</style>

@@ -129,8 +129,19 @@ test('lesson 7.1 embeds the hydrated widget with its authored params', async ({ 
 });
 
 test('an unknown widget name still renders the placeholder', async ({ page }) => {
-  await page.goto('/dev/kitchen-sink');
-  const placeholder = page.locator('figure[data-widget="generative-vs-discriminative-toggle"]');
+  await page.goto('/dev/widget-placeholder');
+  const placeholder = page.locator('figure[data-widget="unregistered-placeholder-demo"]');
   await expect(placeholder).toHaveClass(/widget-placeholder/);
   await expect(placeholder).toContainText('Interactive explorable coming soon.');
+  await expect(placeholder.locator('.widget-challenge .katex')).toHaveCount(1);
+});
+
+test('the kitchen sink’s generative-vs-discriminative-toggle is now a registered widget', async ({
+  page,
+}) => {
+  await page.goto('/dev/kitchen-sink');
+  const figure = page.locator('figure[data-widget="generative-vs-discriminative-toggle"]');
+  await expect(figure).not.toHaveClass(/widget-placeholder/);
+  await figure.scrollIntoViewIfNeeded();
+  await expect(figure).toHaveAttribute('data-hydrated', '', { timeout: 15_000 });
 });

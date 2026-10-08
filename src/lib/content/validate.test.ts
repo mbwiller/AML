@@ -375,6 +375,36 @@ The answer is 42.
     );
   });
 
+  it('skips the live-homework Example warning when the Example carries homeworkReviewed', () => {
+    const body = LESSON_BODY.replace('$\\hat\\psi = 6/40$', '$\\hat\\psi = 0.15$');
+    for (const attr of ['homeworkReviewed', 'homeworkReviewed={true}']) {
+      const reviewed = body.replace('<Example case="notes"', `<Example case="notes" ${attr}`);
+      expect(reviewed).toContain(attr);
+      const result = runValidation(
+        baseFixture({
+          [`src/content/units/${UNIT}/03-naive-bayes.mdx`]: lessonText(reviewed),
+        }),
+        { now: NOW },
+      );
+      expect(messages(result.warnings)).not.toContainEqual(
+        expect.stringContaining('feeds a live homework'),
+      );
+    }
+    const notReviewed = body.replace(
+      '<Example case="notes"',
+      '<Example case="notes" homeworkReviewed={false}',
+    );
+    const result = runValidation(
+      baseFixture({
+        [`src/content/units/${UNIT}/03-naive-bayes.mdx`]: lessonText(notReviewed),
+      }),
+      { now: NOW },
+    );
+    expect(messages(result.warnings)).toContainEqual(
+      expect.stringContaining('feeds a live homework'),
+    );
+  });
+
   it('warns about due dates that disagree with the live flag', () => {
     const past = runValidation(baseFixture(), {
       now: new Date('2026-11-01T00:00:00Z'),

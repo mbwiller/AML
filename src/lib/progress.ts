@@ -1,7 +1,8 @@
 /**
  * Lesson position persistence (VISION §9.11): where you were, in the browser only.
  * Framework-free; the layout and the home page call these from vanilla scripts.
- * The full progress store (IndexedDB, FSRS state, export/import) lands in M2.
+ * The full progress store (IndexedDB, FSRS state, export/import) is src/lib/practice/store.ts;
+ * its export carries these keys too (src/lib/practice/transfer.ts).
  */
 export const LAST_LESSON_KEY = 'aml-last-lesson';
 

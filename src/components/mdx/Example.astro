@@ -3,7 +3,10 @@
  * `<Example case="notes" title="Scoring a report">` … `</Example>` — a
  * worked example whose numbers come from the generated case dataset
  * (docs/CONTENT_AUTHORING.md §4). The `h3` keeps it in the outline; `id`
- * defaults to `example-<slug of title>`. M1 adds the faded variant.
+ * defaults to `example-<slug of title>`. The case chip links to `/cases/<id>`.
+ * `homeworkReviewed` renders nothing: it records that the author checked the
+ * numbers are not answers to a live homework, and silences the R17 warning
+ * in `pnpm validate:content`. M1 adds the faded variant.
  */
 import { slugify } from '@/lib/markdown/numbering';
 import { renderInlineTex } from '@/lib/markdown/render-tex';
@@ -14,6 +17,8 @@ interface Props {
   case?: string | undefined;
   title?: string | undefined;
   id?: string | undefined;
+  /** Validator-only acknowledgement (VISION R17); never rendered. */
+  homeworkReviewed?: boolean | undefined;
 }
 const { case: caseId, title, id } = Astro.props;
 const sectionId = id ?? (title ? `example-${slugify(title)}` : 'example');

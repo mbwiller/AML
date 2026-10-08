@@ -18,6 +18,7 @@ import { getCollection } from 'astro:content';
 import type { QuizItem } from '@/lib/content/schemas';
 import { buildWhichStep, extractDerivationSteps, hashSeed } from '@/lib/graders';
 import { NUMERIC_FORMAT_HINT } from '@/lib/graders/numeric';
+import { derivationTargets } from '@/lib/graders/targets';
 import { renderDisplayTex, renderInlineTex } from '@/lib/markdown/render-tex';
 
 interface Props {
@@ -43,27 +44,9 @@ function stepsFor(derivationId: string): string[] | undefined {
   return undefined;
 }
 
-/**
- * Anchors a wrong answer can jump to, most specific first: `der-x-y-z-step-n`
- * for a step cited in the explanation ("der-7-1-4 step 10"), then the
- * derivation itself; the item's own `derivation`; the derivations that
- * establish the item's `concepts`. The controller shows the first that
- * exists on the page.
- */
-function derivationTargets(item: QuizItem, own?: string): string[] {
-  const out: string[] = [];
-  const add = (t: string | undefined) => {
-    if (t && !out.includes(t)) out.push(t);
-  };
-  if (own) add(own);
-  const text = `${item.explanation ?? ''} ${item.type === 'which-step' ? item.corrupt.explanation : ''}`;
-  for (const m of text.matchAll(/\b(der-\d+-\d+-\d+)(?:\s+steps?\s+(\d+))?/g)) {
-    if (m[2]) add(`${m[1]}-step-${m[2]}`);
-    add(m[1]);
-  }
-  for (const c of item.concepts) add(nodeDerivation.get(c));
-  return out;
-}
+/** Anchors a wrong answer can jump to (src/lib/graders/targets.ts); the controller shows the first on the page. */
+const targetsOf = (item: QuizItem, own?: string): string[] =>
+  derivationTargets(item, nodeDerivation, own);
 
 const prompt = (text: string | undefined): string =>
   text ? renderInlineTex(text.trim().replace(/\s*\n\s*/g, ' ')) : '';
@@ -131,7 +114,7 @@ function view(id: string): ItemView {
           })),
         }),
         seed,
-        targets: derivationTargets(item),
+        targets: targetsOf(item),
       };
     case 'numeric': {
       const seeded = Boolean(item.seeded && item.formula);
@@ -150,7 +133,7 @@ function view(id: string): ItemView {
           ...(seeded ? { seeded: item.seeded, formula: item.formula } : {}),
         }),
         seed,
-        targets: derivationTargets(item),
+        targets: targetsOf(item),
       };
     }
     case 'which-step': {
@@ -177,7 +160,7 @@ function view(id: string): ItemView {
         explanationHtml: prompt(item.corrupt.explanation),
         client: JSON.stringify({ type: 'which-step', corrupt: { step: item.corrupt.step } }),
         seed,
-        targets: derivationTargets(item, `${item.derivation}-step-${item.corrupt.step}`).concat(
+        targets: targetsOf(item, `${item.derivation}-step-${item.corrupt.step}`).concat(
           item.derivation,
         ),
       };
@@ -188,7 +171,7 @@ function view(id: string): ItemView {
         id,
         type: item.type,
         promptHtml: prompt(item.prompt),
-        note: `${item.type} items arrive with the practice engine.`,
+        note: `${item.type} items have no grader yet.`,
       };
   }
 }
@@ -211,6 +194,7 @@ const views = ids.map(view);
         return (
           <li
             class="check-item check-item-muted"
+            id={base}
             data-check-item={v.id}
             data-check-supported="false"
           >
@@ -227,6 +211,7 @@ const views = ids.map(view);
         return (
           <li
             class="check-item check-item-muted"
+            id={base}
             data-check-item={v.id}
             data-check-type={v.type}
             data-check-supported="false"

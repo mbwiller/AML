@@ -1,0 +1,35 @@
+---
+/**
+ * Table override used on /homework pages: wraps a markdown table in a
+ * horizontally scrollable region so a three-column readiness table never
+ * widens the page on a 360 px phone (STYLE_GUIDE §5). The region is
+ * focusable and labeled so keyboard users can scroll it.
+ */
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = HTMLAttributes<'table'>;
+const attrs = Astro.props;
+---
+
+<div class="scroll-table" tabindex="0" role="region" aria-label="Table">
+  <table {...attrs}>
+    <slot />
+  </table>
+</div>
+
+<style>
+  .scroll-table {
+    max-width: 100%;
+    overflow-x: auto;
+    margin-block: 1em;
+  }
+  .scroll-table > table {
+    margin: 0;
+  }
+  @media (width < 640px) {
+    .scroll-table :global(th),
+    .scroll-table :global(td) {
+      padding-inline: 0.25em;
+    }
+  }
+</style>

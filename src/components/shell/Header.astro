@@ -1,12 +1,13 @@
 ---
+import { SITE_NAV } from '@/components/shell/nav';
 import ThemeToggle from '@/components/shell/ThemeToggle.astro';
 
-const nav = [
-  { href: '/units', label: 'Units' },
-  { href: '/atlas', label: 'Atlas' },
-  { href: '/practice', label: 'Practice' },
-  { href: '/glossary', label: 'Glossary' },
-];
+/** Phones get Units, Atlas, Homework; ≥640 px adds Practice and Glossary; ≥768 px the rest. */
+const SHOW_FROM = {
+  all: 'inline-flex',
+  sm: 'hidden sm:inline-flex',
+  md: 'hidden md:inline-flex',
+} as const;
 const current = Astro.url.pathname;
 ---
 
@@ -22,11 +23,14 @@ const current = Astro.url.pathname;
       aria-label="Primary"
       class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-ui whitespace-nowrap"
     >
-      {nav.map((item) => (
+      {SITE_NAV.map((item) => (
         <a
           href={item.href}
           aria-current={current.startsWith(item.href) ? 'page' : undefined}
-          class="text-muted hover:bg-surface-2 hover:text-fg aria-[current=page]:text-fg rounded-control px-3 py-2 no-underline transition-colors duration-micro ease-standard"
+          class:list={[
+            SHOW_FROM[item.header],
+            'text-muted hover:bg-surface-2 hover:text-fg aria-[current=page]:text-fg rounded-control px-2 py-2 no-underline transition-colors duration-micro ease-standard sm:px-3',
+          ]}
         >
           {item.label}
         </a>

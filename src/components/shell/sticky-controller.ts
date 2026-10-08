@@ -43,6 +43,8 @@ interface State {
   pinned: boolean;
   openTimer: number | undefined;
   closeTimer: number | undefined;
+  /** A trigger dismissed with Escape or an outside press: hover does not reopen it until the pointer leaves. */
+  suppressed: HTMLElement | null;
 }
 
 export function initStickies(doc: Document = document): void {
@@ -63,6 +65,7 @@ export function initStickies(doc: Document = document): void {
     pinned: false,
     openTimer: undefined,
     closeTimer: undefined,
+    suppressed: null,
   };
 
   const triggerOf = (target: EventTarget | null): HTMLElement | null =>
@@ -158,6 +161,7 @@ export function initStickies(doc: Document = document): void {
   };
 
   const toggle = (trigger: HTMLElement): void => {
+    state.suppressed = null;
     if (state.trigger === trigger && state.pinned) close(false);
     else open(trigger, true);
   };
@@ -182,6 +186,9 @@ export function initStickies(doc: Document = document): void {
       return;
     }
     if (trigger.contains(event.relatedTarget as Node | null)) return;
+    // Content can move under a still pointer (late layout, hydration); that must
+    // not undo an explicit dismissal.
+    if (trigger === state.suppressed) return;
     window.clearTimeout(state.openTimer);
     state.openTimer = window.setTimeout(() => open(trigger, false), OPEN_DELAY);
   });
@@ -191,6 +198,7 @@ export function initStickies(doc: Document = document): void {
     const to = event.relatedTarget as Node | null;
     const trigger = triggerOf(event.target);
     if (trigger && !trigger.contains(to)) {
+      if (trigger === state.suppressed) state.suppressed = null;
       window.clearTimeout(state.openTimer);
       if (trigger === state.trigger && !host.contains(to)) scheduleClose();
     }
@@ -202,6 +210,7 @@ export function initStickies(doc: Document = document): void {
   doc.addEventListener('pointerdown', (event) => {
     if (!state.trigger) return;
     if (inHost(event.target) || triggerOf(event.target) === state.trigger) return;
+    state.suppressed = state.trigger;
     close(false);
   });
 
@@ -217,6 +226,7 @@ export function initStickies(doc: Document = document): void {
     if (event.key === 'Escape') {
       if (state.trigger) {
         event.preventDefault();
+        state.suppressed = state.trigger;
         close(true);
       }
       return;

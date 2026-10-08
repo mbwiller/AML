@@ -13,17 +13,22 @@
  * widget passes it.
  */
 import adverseJson from '@/data/adverse.json';
+import diabetesBmi20Json from '@/data/diabetes-bmi-20.json';
 import notesJson from '@/data/notes.json';
 import tropoJson from '@/data/tropo.json';
+import vascoJson from '@/data/vasco.json';
 
 import type { AdverseRow } from './adverse';
+import type { DiabetesBmi20Row } from './diabetes-bmi-20';
 import type { NotesRow } from './notes';
-import { createRng } from './random';
 import type { TropoRow } from './tropo';
-import type { CaseId, Dataset } from './types';
+import type { CaseId, Dataset, DatasetId, ReferenceId } from './types';
+import type { VascoRow } from './vasco';
 
 export type { AdverseDataset, AdverseRow } from './adverse';
 export { logit as adverseLogit, sigmoid, spec as adverseSpec } from './adverse';
+export type { DiabetesBmi20Dataset, DiabetesBmi20Row } from './diabetes-bmi-20';
+export { companion as diabetesBmi20Companion, spec as diabetesBmi20Spec } from './diabetes-bmi-20';
 export type { NotesDataset, NotesRow } from './notes';
 export {
   bagOfWords,
@@ -38,14 +43,29 @@ export { createRng, type Rng } from './random';
 export type { TropoDataset, TropoRow } from './tropo';
 export { spec as tropoSpec } from './tropo';
 export type { CaseId, Dataset, DatasetVariable, GenerativeModel, VariableType } from './types';
+export type { VascoArm, VascoDataset, VascoRow } from './vasco';
+export {
+  ARMS as VASCO_ARMS,
+  ARM_DOSES as VASCO_ARM_DOSES,
+  armMoments as vascoArmMoments,
+  spec as vascoSpec,
+  trueMean as vascoTrueMean,
+} from './vasco';
+export type { DatasetId, ReferenceId } from './types';
 
 export interface RowsByCase {
   notes: NotesRow;
   adverse: AdverseRow;
   tropo: TropoRow;
+  vasco: VascoRow;
 }
 
-function assertEnvelope(id: CaseId, json: unknown): void {
+/** Rows of every dataset: the cases above plus the reference datasets. */
+export interface RowsByDataset extends RowsByCase {
+  'diabetes-bmi-20': DiabetesBmi20Row;
+}
+
+function assertEnvelope(id: DatasetId, json: unknown): void {
   const d = json as Partial<Dataset<unknown>> | null;
   if (
     !d ||
@@ -63,19 +83,38 @@ const FILES: Record<CaseId, unknown> = {
   notes: notesJson,
   adverse: adverseJson,
   tropo: tropoJson,
+  vasco: vascoJson,
 };
 
-const cache = new Map<CaseId, Dataset<unknown>>();
+const REFERENCE_FILES: Record<ReferenceId, unknown> = {
+  'diabetes-bmi-20': diabetesBmi20Json,
+};
 
-/** The generated dataset for a case, validated once and cached. */
-export function loadDataset<K extends CaseId>(id: K): Dataset<RowsByCase[K]> {
+const cache = new Map<DatasetId, Dataset<unknown>>();
+
+/** The generated dataset for a case (or a reference dataset), validated once and cached. */
+export function loadDataset<K extends DatasetId>(id: K): Dataset<RowsByDataset[K]> {
   const hit = cache.get(id);
-  if (hit) return hit as Dataset<RowsByCase[K]>;
-  const json = FILES[id];
+  if (hit) return hit as Dataset<RowsByDataset[K]>;
+  const json = Object.hasOwn(FILES, id) ? FILES[id as CaseId] : REFERENCE_FILES[id as ReferenceId];
   assertEnvelope(id, json);
-  const dataset = json as Dataset<RowsByCase[K]>;
+  const dataset = json as Dataset<RowsByDataset[K]>;
   cache.set(id, dataset);
   return dataset;
+}
+
+/** True when `src/data/<id>.json` is wired into this accessor. */
+export function hasDataset(id: string): id is CaseId {
+  return Object.hasOwn(FILES, id);
+}
+
+/**
+ * The dataset for any case id, or undefined when it has not been generated
+ * yet (case pages render without a data sample rather than throwing).
+ */
+export function tryLoadDataset(id: string): Dataset<Record<string, unknown>> | undefined {
+  if (!hasDataset(id)) return undefined;
+  return loadDataset(id) as unknown as Dataset<Record<string, unknown>>;
 }
 
 const indexes = new WeakMap<Dataset<unknown>, Map<string, unknown>>();
@@ -93,23 +132,4 @@ export function findRow<Row extends { id: string }>(
   return index.get(id) as Row | undefined;
 }
 
-/**
- * `k` distinct rows chosen uniformly without replacement, in a seeded order
- * (partial Fisher–Yates), so a lesson's sample is the same on every build.
- */
-export function sampleRows<Row>(dataset: Dataset<Row>, k: number, seed: number): Row[] {
-  const n = dataset.rows.length;
-  const take = Math.max(0, Math.min(Math.trunc(k), n));
-  const rng = createRng(seed);
-  const order = Array.from({ length: n }, (_, i) => i);
-  const out: Row[] = [];
-  for (let i = 0; i < take; i++) {
-    const j = i + rng.int(0, n - i);
-    const oi = order[i] as number;
-    const oj = order[j] as number;
-    order[i] = oj;
-    order[j] = oi;
-    out.push(dataset.rows[oj] as Row);
-  }
-  return out;
-}
+export { sampleRows } from './sample';

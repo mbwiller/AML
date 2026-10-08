@@ -1,0 +1,585 @@
+---
+title: "Loss functions"
+unit: u1-linear-regression
+order: 3
+slug: loss-functions
+summary: "Turn the residual vector into one number: MAE, MSE, RMSE, and R² with the 1/n kept. Why squares (the mean, differentiability, outliers), the bounds of R², and where R² goes as n grows."
+lectures:
+  - { lecture: 2, pages: "27-31" }
+  - { lecture: 3, pages: "5-9" }
+  - { lecture: 3, pages: "19-20" }
+  - { lecture: 3, pages: "40" }
+concepts:
+  - per-example-loss
+  - residual
+  - mean-absolute-error
+  - mean-squared-error
+  - root-mean-squared-error
+  - coefficient-of-determination
+  - loss-vs-evaluation-metric
+  - best-constant-mean-median
+  - squared-loss-outlier-sensitivity
+  - r2-bounds
+  - r2-population-limit
+prerequisites:
+  - five-ml-components
+  - linear-model
+  - vectorized-predictions
+  - vector-norm
+  - median
+  - derivative
+  - chain-rule-calculus
+  - first-order-condition
+  - second-order-condition
+  - variance
+  - covariance
+  - law-of-large-numbers
+homework: [hw1]
+companions:
+  - { notebook: "Code Companions/Lecture2code_companion.ipynb", cells: "8-15" }
+estimatedMinutes: 50
+status: review
+authors: [matt]
+---
+
+{/* no-case-frontmatter: every number in this lesson comes from the 20 diabetes patients of the L2 code companion (cell 8 builds them; cell 15 prints the fitted slope and intercept). The metric values and the "typo" scenario were computed once from that data with NumPy and SciPy (script output recorded 2026-10-07); the VASCO case is not used here. */}
+
+<Frame
+  data="the 20 diabetes patients of the L2 companion: rescaled BMI $x^{(i)}$ and disease-progression score $y^{(i)}$"
+  model="lines $f_\theta(x) = \theta_0 + \theta_1 x$ (lesson 1.2)"
+  objective="this lesson: MAE, MSE, and RMSE as losses; $R^2$ as an evaluation metric"
+  optimizer="closed form (lesson 1.4); gradient descent (Unit 2)"
+/>
+
+<Objectives>
+
+- Define the per-example loss and the residual, and compute MAE, MSE, RMSE, and $R^2$ for a line, keeping the factor $\frac1n$.
+- Derive that the best constant prediction is the mean under squared error and a median under absolute error.
+- Explain why squared error is the default objective (differentiability, the mean, Gaussian noise) and why it is sensitive to outliers.
+- Prove that $R^2 = 1 - \mathrm{MSE}(\theta)/\mathrm{MSE}(\bar y)$, that $R^2 \le 1$, when it is negative, and why a least-squares fit with an intercept has $R^2 \ge 0$ on its own training data.
+- Derive the limit of $R^2$ for the least-squares line when the data come from a linear data-generating distribution.
+- Distinguish a loss, which the optimizer minimizes, from an evaluation metric, which we report.
+
+</Objectives>
+
+<Hook>
+
+Among the 20 diabetes patients of the L2 companion, one with a BMI of 23.3 has a progression score of 183, far above what any reasonable line through the cloud predicts. Suppose a data-entry slip had recorded 1830 instead.
+
+Refit the line by minimizing the average squared error, and the slope flips from $+37.4$ to $-23.6$: higher BMI now predicts slower progression. Refit by minimizing the average absolute error, and the line does not move at all. The same data, the same model class, two different answers. Which "best line" you get is decided by the loss, before any optimizer runs. What does each loss reward, and which should you trust?
+
+{/* hook-figure: the line-fit-playground widget in the Explore section is the hook's explorable; dragging one patient upward reproduces the scenario */}
+
+</Hook>
+
+## What a loss measures
+
+Lesson 1.2 fixed the model class: lines $f_\theta(x) = \theta_0 + \theta_1 x$, or $f_\theta(x) = \theta^\top x$ with $x_0 = 1$. L3 p.4 draws three of them through the BMI scatter, $45 + 4x$, $47 + 3.5x$, and $43 + 3x$, and calls each "a valid hypothesis of the true model" <SlideRef lecture={3} pages="4" />. To pick one, we need a number that says how badly each line fits. "Best fit" means a small distance between the predicted outcome and the true label, and because distance between vectors is not unique, there is more than one reasonable choice <SlideRef lecture={2} pages="27" />.
+
+<Definition id="def-1-3-1" title="Per-example loss and residual" source="L2 p.27">
+
+A **per-example loss** is a function $\ell(\hat y, y) \ge 0$ that scores a prediction $\hat y$ against the true label $y$, with $\ell(y, y) = 0$. For example $i$ the prediction is $\hat y^{(i)} = f_\theta(x^{(i)})$, and the **residual** is
+
+$$r^{(i)} = f_\theta(x^{(i)}) - y^{(i)},$$
+
+positive when the model over-predicts. Stacked over the dataset, the residuals are the vector $X\theta - y$ of lesson 1.2 (equation 1.2.1). <SlideRef lecture={2} pages="27" />
+
+Also written as: $\mathrm{loss}_\theta(\hat y^{(i)}, y^{(i)})$ (L2 p.27); the residual is often defined with the opposite sign, $y^{(i)} - \hat y^{(i)}$ (most statistics texts). Every loss in this lesson depends only on $\lvert r^{(i)} \rvert$, so the sign convention never changes a value.
+
+</Definition>
+
+<Callout type="slide">
+
+The slides use one name for two objects. L2 p.27 writes $\mathrm{loss}_\theta(\hat y^{(i)}, y^{(i)})$ for one example, while L2 pp.29–31 and L3 pp.5–8 write $\mathrm{loss}_\theta$ for the average over the dataset; L3 p.13 swaps the arguments to $\ell(\mathbf{y}, \hat{\mathbf{y}})$. We write $\ell(\hat y, y)$ for one example and give each dataset average its own name (MAE, MSE, RMSE). In Unit 2 the average of $\ell$ over the training set becomes the [[empirical-risk]] $\hat R(\theta) = \frac1n\sum_i \ell(f_\theta(x^{(i)}), y^{(i)})$.
+
+</Callout>
+
+## Absolute and squared error
+
+<Definition id="def-1-3-2" title="Mean absolute error" source="L2 pp.29-30">
+
+With the absolute loss $\ell(\hat y, y) = \lvert \hat y - y \rvert$, the dataset average is
+
+$$\mathrm{MAE}(\theta) = \frac{1}{n}\sum_{i=1}^{n} \big\lvert f_\theta(x^{(i)}) - y^{(i)} \big\rvert = \frac1n \lVert X\theta - y \rVert_1.$$
+
+Geometrically, it is the average length of the vertical segments from the points to the line. <SlideRef lecture={2} pages="29-30" /> <SlideRef lecture={3} pages="6" />
+
+Also written as: absolute error, L1 loss, least absolute deviations (when minimized).
+
+</Definition>
+
+<Definition id="def-1-3-3" title="Mean squared error" source="L2 p.31">
+
+With the squared loss $\ell(\hat y, y) = (\hat y - y)^2$, the dataset average is
+
+$$
+\mathrm{MSE}(\theta) = \frac{1}{n}\sum_{i=1}^{n} \big(f_\theta(x^{(i)}) - y^{(i)}\big)^2 = \frac1n \lVert X\theta - y \rVert_2^2. \tag{1.3.1} \htmlId{eq-1-3-1}{}
+$$
+
+Geometrically, each point contributes the area of a square whose side is its residual. MSE is "the most common" loss for linear regression <SlideRef lecture={2} pages="31" /> <SlideRef lecture={3} pages="7" />, and it is the empirical risk $\hat R(\theta)$ for the squared loss.
+
+Also written as: squared error, L2 loss, quadratic loss; $J(\theta_0, \theta_1)$ on the L3 p.14 surface plot.
+
+</Definition>
+
+The second form in each definition uses the residual vector: a sum of absolute values is an L1 norm, and a sum of squares is a squared [[vector-norm|L2 norm]]. Lesson 1.4 works entirely with the matrix form of <EqRef id="eq-1-3-1" />, $\frac1n\lVert X\theta - y \rVert_2^2$.
+
+<Definition id="def-1-3-4" title="Root mean squared error" source="L3 p.8">
+
+$$\mathrm{RMSE}(\theta) = \sqrt{\mathrm{MSE}(\theta)} = \sqrt{\frac{1}{n}\sum_{i=1}^{n} \big(f_\theta(x^{(i)}) - y^{(i)}\big)^2}.$$
+
+"RMSE puts the error back in the units of the label": MSE for a progression score is in squared score units, RMSE in score units. <SlideRef lecture={3} pages="8" />
+
+</Definition>
+
+The square root is increasing, so a $\theta$ that minimizes MSE also minimizes RMSE: the two losses always choose the same line. They differ only in the number reported.
+
+<Intuition>
+
+Compare two lines on ten patients. Line A misses every patient by 1. Line B fits nine patients exactly and misses the tenth by 10.
+
+Under absolute error they tie: A's errors add to $10 \times 1 = 10$, and B's to $9 \times 0 + 10 = 10$, so both have MAE 1. Under squared error, A pays $10 \times 1^2 = 10$ and B pays $10^2 = 100$, so B's MSE is 10, ten times A's.
+
+Squared error treats one large miss as far worse than many small ones. On L2 p.31 this is visible as area: the far point's square dwarfs the near point's. Whether that is what you want depends on what a miss costs. If a prediction feeds a dosing decision, many small misses and one dangerous miss are not equally bad, and the squared loss is the one that ranks the dangerous miss as worse.
+
+</Intuition>
+
+<Check ids={["q-u1-l3-001", "q-u1-l3-013"]} />
+
+## The best constant: mean or median
+
+What does each loss reward? The cleanest test is the simplest model: predict the same number $c$ for every patient, $f(x) = c$. Which $c$ does each loss choose?
+
+<Derivation
+  id="der-1-3-1"
+  title="The best constant is the mean under squared error and a median under absolute error"
+  goalTex="\argmin_{c \in \mathbb{R}} \frac1n\sum_{i=1}^{n}(c - y^{(i)})^2 \quad\text{and}\quad \argmin_{c \in \mathbb{R}} \frac1n\sum_{i=1}^{n}\lvert c - y^{(i)}\rvert"
+  resultTex="c^\star_{\mathrm{MSE}} = \bar y = \frac1n\sum_{i=1}^{n} y^{(i)}, \qquad c^\star_{\mathrm{MAE}} = \text{any median of } y^{(1)}, \dots, y^{(n)}"
+  source="L2 pp.29-31 (MAE and MSE stated; what each one is minimized by is not on the slides)"
+>
+
+<Chunk title="Squared error: differentiate and solve">
+
+<Step justification="MSE (def-1-3-3) of the constant model $f(x) = c$">
+$$\mathrm{MSE}(c) = \frac{1}{n}\sum_{i=1}^{n}\big(c - y^{(i)}\big)^2$$
+</Step>
+
+<Step justification="the derivative of a sum is the sum of the derivatives, and $\frac{d}{dc}(c - y^{(i)})^2 = 2(c - y^{(i)})$ by the chain rule" sticky="derivative">
+$$\mathrm{MSE}'(c) = \frac{2}{n}\sum_{i=1}^{n}\big(c - y^{(i)}\big)$$
+</Step>
+
+<Step justification="first-order condition: at a minimizer of a differentiable function the derivative is zero" sticky="first-order-condition">
+$$\frac{2}{n}\sum_{i=1}^{n}\big(c - y^{(i)}\big) = 0$$
+</Step>
+
+<Step justification="multiply by $\frac n2$; the sum of $n$ copies of $c$ is $nc$, so $nc = \sum_i y^{(i)}$; divide by $n$" fadeable>
+$$c = \frac{1}{n}\sum_{i=1}^{n} y^{(i)} = \bar y$$
+</Step>
+
+<Step justification="second-order condition: the second derivative is a positive constant, so $\bar y$ is the minimum" sticky="second-order-condition">
+$$\mathrm{MSE}''(c) = \frac{2}{n}\sum_{i=1}^{n} 1 = 2 \gt 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Absolute error: count the targets on each side">
+
+<Step justification="$\lvert u \rvert$ has slope $+1$ for $u \gt 0$ and $-1$ for $u \lt 0$, and a corner at $u = 0$; apply it with $u = c - y^{(i)}$">
+$$\frac{d}{dc}\,\big\lvert c - y^{(i)} \big\rvert = \begin{cases} +1 & c \gt y^{(i)} \\ -1 & c \lt y^{(i)} \end{cases}$$
+</Step>
+
+<Step justification="add the slopes of step 6 over all $i$, for any $c$ that is not equal to one of the targets" fadeable>
+$$\mathrm{MAE}'(c) = \frac{1}{n}\Big(\#\{i : y^{(i)} \lt c\} - \#\{i : y^{(i)} \gt c\}\Big)$$
+</Step>
+
+<Step justification="step 7 is negative while fewer targets lie below $c$ than above, and positive once more lie below; MAE is continuous, so it falls and then rises, and is smallest where at least half the targets are $\le c$ and at least half are $\ge c$: a median" sticky="median" fadeable>
+$$c^\star_{\mathrm{MAE}} \in \Big\{ m : \#\{i : y^{(i)} \le m\} \ge \tfrac n2 \ \text{ and } \ \#\{i : y^{(i)} \ge m\} \ge \tfrac n2 \Big\}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 4 and step 8 explain the hook. The mean is a balance point: every target pulls on it in proportion to its distance. The median is a vote: every target pulls with the same strength, one unit up or down, however far away it is. Make one target 1,000 larger and the mean moves by $1000/n$, since $\bar y$ is linear in each $y^{(i)}$. The median does not move at all if that target was already above it, because the counts in step 7 do not change.
+
+With an even number of targets, step 8 gives a whole interval. For the 20 patients, the sorted scores have 104 in 10th place and 111 in 11th, so every $c$ in $[104, 111]$ minimizes MAE; by convention the median is reported as $107.5$. The mean is $\bar y = 126.2$, pulled up by the long right tail of high scores.
+
+## Why squares
+
+L3 asks, as a poll, which objective is most common for linear regression <SlideRef lecture={3} pages="19" />. The answer is the mean squared error. Three reasons, in increasing depth: it estimates the mean (der-1-3-1), it is differentiable everywhere, and it is what Gaussian noise implies. The second reason and its cost, outlier sensitivity, come from the same computation.
+
+<Derivation
+  id="der-1-3-2"
+  title="How hard one residual pulls on θ: in proportion under squared loss, with bounded force under absolute loss"
+  goalTex="\frac{\partial}{\partial \theta_j}\,\ell\big(f_\theta(x^{(i)}), y^{(i)}\big) \ \text{ for } \ \ell = (\hat y - y)^2 \ \text{ and } \ \ell = \lvert \hat y - y \rvert"
+  resultTex="\frac{\partial}{\partial\theta_j}\big(r^{(i)}\big)^2 = 2\,r^{(i)} x^{(i)}_j, \qquad \frac{\partial}{\partial\theta_j}\big\lvert r^{(i)}\big\rvert = \operatorname{sgn}\big(r^{(i)}\big)\, x^{(i)}_j \ \ (r^{(i)} \ne 0), \qquad r^{(i)} = f_\theta(x^{(i)}) - y^{(i)}"
+  source="L2 pp.29-31 (losses stated); course map L2 derivation gap 3 (differentiability and outliers are not on the slides)"
+>
+
+<Chunk title="Differentiate each loss with respect to the prediction">
+
+<Step justification="power rule: the derivative of $u^2$ with respect to $u = \hat y - y$ is $2u$, and $\partial u / \partial \hat y = 1$" sticky="derivative">
+$$\frac{\partial}{\partial \hat y}\,(\hat y - y)^2 = 2(\hat y - y)$$
+</Step>
+
+<Step justification="away from $\hat y = y$, $\lvert \hat y - y \rvert$ has slope $\pm 1$ (der-1-3-1 step 6); at $\hat y = y$ the left slope $-1$ and the right slope $+1$ differ, so no derivative exists there">
+$$\frac{\partial}{\partial \hat y}\,\lvert \hat y - y \rvert = \operatorname{sgn}(\hat y - y) \quad (\hat y \ne y)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Pass the derivative to the parameters">
+
+<Step justification="$f_\theta(x) = \sum_k \theta_k x_k$, and only the term $\theta_j x_j$ contains $\theta_j$">
+$$\frac{\partial f_\theta(x^{(i)})}{\partial \theta_j} = x^{(i)}_j$$
+</Step>
+
+<Step justification="chain rule through $\hat y = f_\theta(x^{(i)})$: step 1 times step 3, with the residual $r^{(i)} = f_\theta(x^{(i)}) - y^{(i)}$" sticky="chain-rule-calculus" fadeable>
+$$\frac{\partial}{\partial \theta_j}\big(r^{(i)}\big)^2 = 2\,r^{(i)}\,x^{(i)}_j$$
+</Step>
+
+<Step justification="chain rule again: step 2 times step 3, wherever $r^{(i)} \ne 0$" fadeable>
+$$\frac{\partial}{\partial \theta_j}\big\lvert r^{(i)} \big\rvert = \operatorname{sgn}\big(r^{(i)}\big)\, x^{(i)}_j$$
+</Step>
+
+<Step justification="compare sizes: under squared loss the pull grows without bound with the residual; under absolute loss it never exceeds $\lvert x^{(i)}_j \rvert$, whatever the residual">
+$$\big\lvert 2\,r^{(i)} x^{(i)}_j \big\rvert \to \infty \ \text{ as } \ \lvert r^{(i)} \rvert \to \infty, \qquad \big\lvert \operatorname{sgn}(r^{(i)})\, x^{(i)}_j \big\rvert = \lvert x^{(i)}_j \rvert$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 4 is the reason squared error is convenient: the loss is differentiable for every $\theta$, and its gradient is a residual times an input, a formula that lesson 1.4 sets to zero and lesson 2.4 follows downhill. Step 2 is the price of absolute error: its derivative jumps at every point the line passes through exactly, which is why it has no "set the derivative to zero" closed form. Step 6 is the price of squared error: a patient with residual 100 pulls on $\theta$ a hundred times as hard as a patient with residual 1. One badly wrong target can drag the whole line, which is what the hook's typo does.
+
+<Callout type="beyond">
+
+**Squared error is what Gaussian noise implies.** Suppose each target is a line plus noise, $y^{(i)} = \theta^\top x^{(i)} + \varepsilon^{(i)}$, with independent $\varepsilon^{(i)} \sim \mathcal{N}(0, \sigma_\varepsilon^2)$ (second argument a variance). The log of the [[gaussian]] density of one target is $-\frac12\log(2\pi\sigma_\varepsilon^2) - \frac{(y^{(i)} - \theta^\top x^{(i)})^2}{2\sigma_\varepsilon^2}$, and independence makes the log-density of the whole dataset the sum of $n$ such terms:
+
+$$\sum_{i=1}^{n}\log p\big(y^{(i)} \mid x^{(i)}; \theta\big) = -\frac n2 \log(2\pi\sigma_\varepsilon^2) - \frac{n}{2\sigma_\varepsilon^2}\,\mathrm{MSE}(\theta).$$
+
+The first term does not contain $\theta$, and $\frac{n}{2\sigma_\varepsilon^2} \gt 0$, so the $\theta$ that makes the observed targets most probable is the $\theta$ that minimizes MSE. Lesson 3.4 derives this carefully as maximum likelihood. The same argument with Laplace noise, density proportional to $e^{-\lvert \varepsilon \rvert / b}$, gives the MAE: the choice of loss is a statement about how you believe the errors are distributed.
+
+</Callout>
+
+<Check ids={["q-u1-l3-008", "q-u1-l3-009", "q-u1-l3-010", "q-u1-l3-014"]} />
+
+## The coefficient of determination
+
+What is a good MSE? The diabetes scores run from 48 to 310, so an MSE of 2,000 means something different there than for a lab value between 0 and 1. L3 p.8 answers in words, "depending on the variance of the data", and then introduces a scale-free number <SlideRef lecture={3} pages="8-9" />.
+
+<Definition id="def-1-3-5" title="Coefficient of determination R²" source="L3 pp.9, 40">
+
+With $\bar y = \frac1n\sum_i y^{(i)}$, the residual sum of squares and the total sum of squares are
+
+$$\mathrm{RSS}(\theta) = \sum_{i=1}^{n}\big(y^{(i)} - f_\theta(x^{(i)})\big)^2, \qquad \mathrm{TSS} = \sum_{i=1}^{n}\big(y^{(i)} - \bar y\big)^2,$$
+
+and, whenever $\mathrm{TSS} \gt 0$ (not all targets equal),
+
+$$R^2(\theta) = 1 - \frac{\mathrm{RSS}(\theta)}{\mathrm{TSS}}.$$
+
+It "measures the amount of variance explained" by the model and "moves closer to 1 as the fit becomes better". <SlideRef lecture={3} pages="9" /> <SlideRef lecture={3} pages="40" />
+
+Also written as: $SS_{\text{res}}$ and $SS_{\text{tot}}$ (L3 p.9); "R squared"; `r2_score` and `model.score` in scikit-learn.
+
+</Definition>
+
+<Definition id="def-1-3-6" title="Loss versus evaluation metric" source="L3 p.8">
+
+A **loss** (objective) is the function of $\theta$ that the optimizer minimizes during training. An **evaluation metric** is a number reported to judge a trained model, on the training data or, better, on data it has not seen. MAE, MSE, and RMSE can serve as both. $R^2$ is "an evaluation metric, not a loss function". <SlideRef lecture={3} pages="8" />
+
+</Definition>
+
+$R^2$ is a ratio of two sums over the same examples, so the factor $\frac1n$ cancels from it. That turns out to be the key to everything we can say about it.
+
+<Derivation
+  id="der-1-3-3"
+  title="R² compares a model's MSE with the MSE of the mean, so it is at most 1 and can be negative"
+  goalTex="R^2 = 1 - \frac{\mathrm{RSS}}{\mathrm{TSS}} \ \text{ in terms of MSE; its range}"
+  resultTex="R^2(\theta) = 1 - \frac{\mathrm{MSE}(\theta)}{\mathrm{MSE}(\bar y)} = 1 - \Big(\frac{\mathrm{RMSE}(\theta)}{s_y}\Big)^2; \quad R^2 \le 1; \quad R^2(\bar y) = 0; \quad R^2 \lt 0 \iff \mathrm{MSE}(\theta) \gt s_y^2; \quad \text{least squares with an intercept: } R^2 \ge 0 \text{ on its training data}"
+  source="L3 pp.8-9, 40 (R² stated; 'R² can be negative if your model is really bad' stated without the conditions)"
+>
+
+<Chunk title="Rewrite R² with mean squared errors">
+
+<Step justification="definition of $R^2$ (def-1-3-5)">
+$$R^2(\theta) = 1 - \frac{\mathrm{RSS}(\theta)}{\mathrm{TSS}}$$
+</Step>
+
+<Step justification="$(y - \hat y)^2 = (\hat y - y)^2$, so RSS is $n$ times the MSE of def-1-3-3">
+$$\mathrm{RSS}(\theta) = n\,\mathrm{MSE}(\theta)$$
+</Step>
+
+<Step justification="TSS is the RSS of the constant prediction $\hat y^{(i)} = \bar y$, the best constant of der-1-3-1">
+$$\mathrm{TSS} = n\,\mathrm{MSE}(\bar y)$$
+</Step>
+
+<Step justification="substitute steps 2 and 3 into step 1; the $n$ cancels" fadeable>
+$$R^2(\theta) = 1 - \frac{\mathrm{MSE}(\theta)}{\mathrm{MSE}(\bar y)}$$
+</Step>
+
+<Step justification="$\mathrm{MSE}(\bar y) = \frac1n\sum_i (y^{(i)} - \bar y)^2$ is the sample variance of the targets with $\frac1n$; write it $s_y^2$, so the RMSE of the mean is the standard deviation $s_y$" sticky="variance">
+$$\mathrm{MSE}(\bar y) = s_y^2, \qquad \mathrm{RMSE}(\bar y) = s_y$$
+</Step>
+
+<Step justification="substitute step 5 into step 4 and use $\mathrm{MSE} = \mathrm{RMSE}^2$ (def-1-3-4)">
+$$R^2(\theta) = 1 - \Big(\frac{\mathrm{RMSE}(\theta)}{s_y}\Big)^2$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Read off the range">
+
+<Step justification="$\mathrm{MSE}(\theta) \ge 0$ because it averages squares, and it is 0 only if every residual is 0">
+$$R^2(\theta) \le 1, \quad \text{with equality exactly when } f_\theta(x^{(i)}) = y^{(i)} \text{ for every } i$$
+</Step>
+
+<Step justification="step 4 with the constant model $\bar y$ itself: the ratio is 1">
+$$R^2(\bar y) = 1 - \frac{\mathrm{MSE}(\bar y)}{\mathrm{MSE}(\bar y)} = 0$$
+</Step>
+
+<Step justification="by step 4, the ratio exceeds 1 exactly when the model's MSE exceeds the mean's: the model does worse than ignoring the inputs" fadeable>
+$$R^2(\theta) \lt 0 \iff \mathrm{MSE}(\theta) \gt \mathrm{MSE}(\bar y) = s_y^2$$
+</Step>
+
+<Step justification="a least-squares fit $\hat\theta$ minimizes training MSE over a class that contains the constant $\bar y$ (take $\theta_0 = \bar y$ and every other $\theta_j = 0$), so it does at least as well as that constant; then step 4" fadeable>
+$$\mathrm{MSE}(\hat\theta) \le \mathrm{MSE}(\bar y) \ \Longrightarrow\ R^2(\hat\theta) \ge 0 \ \text{ on the training data}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+R^2(\theta) = 1 - \frac{\mathrm{MSE}(\theta)}{\mathrm{MSE}(\bar y)} = 1 - \frac{\mathrm{MSE}(\theta)}{s_y^2} \tag{1.3.2} \htmlId{eq-1-3-2}{}
+$$
+
+<EqRef id="eq-1-3-2" /> says that $R^2$ is the MSE measured in units of the variance of the targets, which is exactly L3 p.8's "what is good RMSE? Depending on the variance of the data". It also says that, for a fixed dataset, $R^2$ is a decreasing function of MSE, so ranking models on one dataset by $R^2$ or by MSE gives the same order. The normalization pays off across datasets, which L3 p.9 calls "goodness-of-fit comparison across different datasets".
+
+Step 9 is the slide's "$R^2$ can be negative if your model is really bad" <SlideRef lecture={3} pages="40" />, with the condition made exact: negative means worse than predicting the mean. Step 10 says when it cannot happen: a least-squares fit, with an intercept, scored on the data it was fit to. Everything else can go negative: a line chosen by hand, a model with no intercept, and above all any model scored on new data, where nothing guarantees it beats the new data's mean.
+
+<Check ids={["q-u1-l3-002", "q-u1-l3-003", "q-u1-l3-004", "q-u1-l3-005", "q-u1-l3-006", "q-u1-l3-007", "q-u1-l3-011", "q-u1-l3-015"]} />
+
+## Where R² goes as n grows
+
+L3 p.40 asks: if the data truly come from a line plus noise, $Y = \alpha + \beta X + \varepsilon$, and we fit linear regression, what does $R^2$ converge to as $n \to \infty$? <SlideRef lecture={3} pages="40" /> Lesson 2.1 identifies the answer as the share of $\Var(Y)$ that the best predictor explains (der-2-1-6). Here we carry out the convergence argument for the least-squares line.
+
+<Callout type="beyond">
+
+This section uses random variables, the linear data-generating distribution of lesson 2.1 (def-2-1-7: $\varepsilon$ independent of $X$, mean 0, variance $\sigma_\varepsilon^2$; $\Var(X) = \sigma_X^2 \gt 0$), and the [[law-of-large-numbers]] of lesson 2.2. You can read it now for the algebra and return after Unit 2 for the probability. It gives the general result only; HW2, which posed the question on the slide's parameters, is past.
+
+</Callout>
+
+Write the sample moments with the factor $\frac1n$: $s_{xx} = \frac1n\sum_i (x^{(i)} - \bar x)^2$, $s_{yy} = s_y^2 = \frac1n\sum_i (y^{(i)} - \bar y)^2$, and $s_{xy} = \frac1n\sum_i (x^{(i)} - \bar x)(y^{(i)} - \bar y)$, the sample [[covariance]].
+
+<Derivation
+  id="der-1-3-4"
+  title="The R² of the least-squares line converges to the explained share of variance"
+  goalTex="\lim_{n\to\infty} R^2(\hat\theta) \ \text{ when } \ Y = \alpha + \beta X + \varepsilon \ \text{ and } \ \hat\theta \ \text{ minimizes the training MSE over lines}"
+  resultTex="R^2(\hat\theta) = \frac{s_{xy}^2}{s_{xx}\,s_{yy}} \ \longrightarrow\ \frac{\beta^2\sigma_X^2}{\beta^2\sigma_X^2 + \sigma_\varepsilon^2}"
+  source="L3 p.40 (the question is posed; the answer and its derivation are not on the slides)"
+>
+
+<Chunk title="Find the best line's training MSE">
+
+<Step justification="def-1-3-3 for the line $\theta_0 + \theta_1 x$; the square does not see the sign, so write the residual as $(y^{(i)} - \theta_1 x^{(i)}) - \theta_0$">
+$$\mathrm{MSE}(\theta_0, \theta_1) = \frac1n\sum_{i=1}^{n}\Big(\big(y^{(i)} - \theta_1 x^{(i)}\big) - \theta_0\Big)^2$$
+</Step>
+
+<Step justification="for fixed $\theta_1$ this is the best-constant problem of der-1-3-1 for the numbers $y^{(i)} - \theta_1 x^{(i)}$, whose mean is $\bar y - \theta_1 \bar x$">
+$$\theta_0^\star(\theta_1) = \bar y - \theta_1 \bar x$$
+</Step>
+
+<Step justification="substitute step 2 into step 1 and regroup each residual">
+$$\min_{\theta_0}\mathrm{MSE} = \frac1n\sum_{i=1}^{n}\Big(\big(y^{(i)} - \bar y\big) - \theta_1\big(x^{(i)} - \bar x\big)\Big)^2$$
+</Step>
+
+<Step justification="expand the square and average term by term: the three averages are $s_{yy}$, $s_{xy}$, and $s_{xx}$" sticky="covariance">
+$$\min_{\theta_0}\mathrm{MSE} = s_{yy} - 2\theta_1 s_{xy} + \theta_1^2 s_{xx}$$
+</Step>
+
+<Step justification="complete the square in $\theta_1$; $s_{xx} \gt 0$ unless every $x^{(i)}$ is equal" fadeable>
+$$\min_{\theta_0}\mathrm{MSE} = s_{xx}\Big(\theta_1 - \frac{s_{xy}}{s_{xx}}\Big)^2 + s_{yy} - \frac{s_{xy}^2}{s_{xx}}$$
+</Step>
+
+<Step justification="the square is $\ge 0$ and equals 0 at $\theta_1 = s_{xy}/s_{xx}$, so that is the least-squares slope and the rest is the minimum">
+$$\hat\theta_1 = \frac{s_{xy}}{s_{xx}}, \qquad \mathrm{MSE}(\hat\theta) = s_{yy} - \frac{s_{xy}^2}{s_{xx}}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="R² of the best line is a squared correlation">
+
+<Step justification="der-1-3-3 step 4, with $\mathrm{MSE}(\bar y) = s_{yy}$ (der-1-3-3 step 5) and step 6">
+$$R^2(\hat\theta) = 1 - \frac{s_{yy} - s_{xy}^2 / s_{xx}}{s_{yy}}$$
+</Step>
+
+<Step justification="$1 - \frac{s_{yy}}{s_{yy}} = 0$; what is left is the squared sample correlation of $x$ and $y$" fadeable>
+$$R^2(\hat\theta) = \frac{s_{xy}^2}{s_{xx}\,s_{yy}}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Let n grow">
+
+<Step justification="law of large numbers for the averages of $x$, $y$, $x^2$, $xy$, $y^2$ over iid pairs; each sample moment is a continuous function of those averages, such as $s_{xx} = \overline{x^2} - \bar x^2$ (assuming the moments involved are finite)" sticky="law-of-large-numbers">
+$$s_{xx} \to \sigma_X^2, \qquad s_{xy} \to \Cov(X, Y), \qquad s_{yy} \to \Var(Y)$$
+</Step>
+
+<Step justification="covariance is linear in its second argument, constants have zero covariance, and $\Cov(X, \varepsilon) = 0$ because $\varepsilon$ is independent of $X$" sticky="covariance">
+$$\Cov(X, Y) = \Cov(X, \alpha + \beta X + \varepsilon) = \beta\,\sigma_X^2$$
+</Step>
+
+<Step justification="der-2-1-6 step 7: the variances of the independent parts add, and scaling by $\beta$ scales a variance by $\beta^2$" sticky="variance">
+$$\Var(Y) = \beta^2\sigma_X^2 + \sigma_\varepsilon^2$$
+</Step>
+
+<Step justification="substitute steps 9 to 11 into step 8; a ratio of convergent quantities converges to the ratio of the limits when the limiting denominator is positive">
+$$R^2(\hat\theta) \to \frac{(\beta\sigma_X^2)^2}{\sigma_X^2\big(\beta^2\sigma_X^2 + \sigma_\varepsilon^2\big)}$$
+</Step>
+
+<Step justification="cancel one factor $\sigma_X^2$" fadeable>
+$$R^2(\hat\theta) \to \frac{\beta^2\sigma_X^2}{\beta^2\sigma_X^2 + \sigma_\varepsilon^2}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Three readings. First, the limit is less than 1 whenever there is noise: even the true line leaves $\sigma_\varepsilon^2$ unexplained, so an $R^2$ well below 1 is not evidence of a wrong model. Second, it does not depend on $\alpha$, and it depends on $\beta$ and $\sigma_X$ only through the signal variance $\beta^2\sigma_X^2$: the same physiology measured in a more varied population gives a higher $R^2$. Third, steps 2 and 6 are the least-squares line in one feature, $\hat\theta_1 = s_{xy}/s_{xx}$ and $\hat\theta_0 = \bar y - \hat\theta_1\bar x$; lesson 1.4 reaches the same formulas from the normal equations (der-1-4-5).
+
+The convergence in step 9 is convergence in probability, the sense of the [[law-of-large-numbers]]: for a large sample, $R^2$ is close to the limit with high probability. The slide's own example writes $X \sim N(168, 30)$ and $\varepsilon \sim N(0, 20)$ without saying whether 30 and 20 are variances or standard deviations, and does not give $\beta$; lesson 2.1's Pitfalls discuss the convention.
+
+## Explore
+
+<Widget
+  name="line-fit-playground"
+  dataset="diabetes-bmi-20"
+  challenge="Drag the slope and intercept until MAE and MSE are both as small as you can make them. Are they smallest at the same line? Then drag the patient with BMI 23.3 far upward: which loss moves the line, and which barely notices?"
+/>
+
+The playground draws the 20 patients, a line you control, the vertical residual segments that MAE averages, and the squares that MSE averages. Move the line to the constant $\bar y$ and $R^2$ reads 0 (der-1-3-3 step 8); tilt it the wrong way and $R^2$ goes negative (step 9).
+
+## Worked example
+
+<Example title="Four lines on the twenty diabetes patients">
+
+The L2 companion builds the training set in cell 8 (<Notebook path="Code Companions/Lecture2code_companion.ipynb" cells="8" />): the last 20 patients of the scikit-learn diabetes data, with BMI rescaled as `bmi * 30 + 25`, so $x$ runs from 22.78 to 27.66, and the progression score $y$ from 48 to 310. Cell 15 fits a line with `LinearRegression` and prints slope `37.37884216052121` and intercept `-797.0817390343262` (<Notebook path="Code Companions/Lecture2code_companion.ipynb" cells="15" />). The companion computes no loss, so we add the four metrics:
+
+```python
+import numpy as np
+from sklearn import datasets
+
+diabetes_X, diabetes_y = datasets.load_diabetes(return_X_y=True, as_frame=True)
+x = (diabetes_X['bmi'] * 30 + 25).iloc[-20:].to_numpy()   # companion cell 8
+y = diabetes_y.iloc[-20:].to_numpy()
+
+def report(theta0, theta1):
+    r = theta0 + theta1 * x - y                 # residuals f(x) - y
+    mse = (r ** 2).mean()
+    r2 = 1 - (r ** 2).sum() / ((y - y.mean()) ** 2).sum()
+    return [round(v, 4) for v in (np.abs(r).mean(), mse, np.sqrt(mse), r2)]
+
+print(report(45, 4))                                  # L3 p.4
+print(report(y.mean(), 0))                            # the constant y-bar
+print(report(-797.0817390343262, 37.37884216052121))  # companion cell 15
+```
+
+```text
+[58.8078, 4603.1477, 67.8465, 0.0472]
+[57.14, 4831.16, 69.5065, 0.0]
+[34.5447, 2176.0009, 46.6476, 0.5496]
+```
+
+Adding the other two lines of L3 p.4:
+
+| Line | MAE | MSE | RMSE | $R^2$ |
+|---|---|---|---|---|
+| $45 + 4x$ (L3 p.4) | 58.81 | 4603.15 | 67.85 | 0.047 |
+| $47 + 3.5x$ (L3 p.4) | 56.08 | 4409.80 | 66.41 | 0.087 |
+| $43 + 3x$ (L3 p.4) | 53.61 | 4504.84 | 67.12 | 0.068 |
+| constant $\bar y = 126.2$ | 57.14 | 4831.16 | 69.51 | 0 |
+| least squares (cell 15) | 34.54 | 2176.00 | 46.65 | 0.550 |
+
+**Reading the table.** The hand-drawn lines of L3 p.4 are schematic: on this BMI axis their predictions stay between about 111 and 156, close to the mean 126.2 for every patient, so they do barely better than the constant $\bar y$ and their $R^2$ is under 0.09. The least-squares line has the smallest MSE of any line, as it must. Its RMSE, 46.65, is about two thirds of the standard deviation $s_y = 69.51$, and $1 - (46.65/69.51)^2 \approx 0.55$ is the $R^2$ (<EqRef id="eq-1-3-2" />).
+
+**One patient, two losses.** The largest residual belongs to the patient with BMI 23.29 and score 183, under-predicted by 109.375. That one patient is 27.5% of the least-squares line's sum of squared residuals but only 15.8% of its sum of absolute residuals: squaring magnifies the far point, as der-1-3-2 step 6 predicts.
+
+Now record that patient's score as 1830, the hook's typo, and refit. The mean of the 20 scores jumps from 126.2 to 208.55; the median stays at 107.5 (der-1-3-1). The least-squares line becomes $790.79 - 23.57x$, with a negative slope. A line that minimizes MAE, computed by linear programming, is $-868.36 + 40.29x$ both before and after the typo. Scored on the correct data, the line fit to the typo has $R^2 = -2.32$: a model that is far worse than predicting the mean, which is exactly what der-1-3-3 step 9 allows.
+
+**Your turn (faded).** A different line on the same 20 patients has MSE 3,000. Using $s_y = 69.5065$, compute its RMSE and $R^2$. *Answer:* $\mathrm{RMSE} = \sqrt{3000} \approx 54.77$; $R^2 = 1 - 3000/4831.16 \approx 0.379$, from <EqRef id="eq-1-3-2" /> with $s_y^2 = 4831.16$.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u1-l3-012", "q-u1-l3-016", "q-u1-l3-017", "q-u1-l3-018"]} />
+
+## Pitfalls
+
+<Pitfall title="Spot the notation drift: one name, two objects" misconception="loss-per-example-vs-average">
+
+L2 p.27 writes $\mathrm{loss}_\theta(\hat y^{(i)}, y^{(i)})$ for one example; two slides later, L2 p.29 writes $\mathrm{loss}_\theta$ for the average over all $n$ examples, and L3 p.13 swaps the arguments to $\ell(\mathbf{y}, \hat{\mathbf{y}})$. The fix: a per-example loss $\ell(\hat y, y)$ scores one prediction; the dataset averages (MAE, MSE, RMSE, and in Unit 2 the empirical risk $\hat R$) are functions of $\theta$. The optimizer minimizes the average, and its gradient is the average of the per-example gradients of der-1-3-2.
+
+</Pitfall>
+
+<Pitfall title="R² is not a loss" misconception="r2-is-a-loss">
+
+The belief: training should maximize $R^2$. The fix: on a fixed training set, $\mathrm{MSE}(\bar y)$ does not depend on $\theta$, so maximizing $R^2$ is the same as minimizing MSE (<EqRef id="eq-1-3-2" />); it adds nothing as an objective. Its value is as a report, normalized by the variance of the targets so that fits on different datasets can be compared, which is why L3 p.8 calls it an evaluation metric and not a loss.
+
+</Pitfall>
+
+<Pitfall title="R² is not always between 0 and 1" misconception="r2-always-nonnegative">
+
+The belief: $R^2$ is a proportion, so it lies in $[0, 1]$. The fix: it is at most 1 (der-1-3-3 step 7), but it is negative whenever the model's MSE exceeds that of the constant $\bar y$ (step 9). The guarantee $R^2 \ge 0$ holds only for a least-squares fit with an intercept, scored on its own training data (step 10). On a test set, for a model without an intercept, or for a hand-picked line, negative values are possible; the worked example has one at $-2.32$.
+
+</Pitfall>
+
+<Pitfall title="MSE and RMSE do not pick different lines" misconception="rmse-different-minimizer">
+
+The belief: switching the objective from MSE to RMSE changes the fitted model. The fix: $\sqrt{\cdot}$ is increasing, so $\mathrm{RMSE}(\theta) \le \mathrm{RMSE}(\theta')$ exactly when $\mathrm{MSE}(\theta) \le \mathrm{MSE}(\theta')$, and the minimizer is the same. The same holds for dropping the $\frac1n$, as L3 p.12 does when it minimizes the sum of squared errors: a positive constant factor does not move the minimizer. It does rescale the gradient, which matters for the step size in Unit 2.
+
+</Pitfall>
+
+<Pitfall title="Squared error is not robust to outliers" misconception="mse-robust-to-outliers">
+
+The belief: the least-squares line reflects the bulk of the data. The fix: each residual pulls on $\theta$ in proportion to its size (der-1-3-2 step 6), so one wrong target can flip the slope, as the worked example's typo does. Check residuals for implausible values before trusting a least-squares fit, or use absolute error when large errors are data problems rather than real outcomes.
+
+</Pitfall>
+
+<Pitfall title="The mean does not minimize absolute error" misconception="mean-minimizes-mae">
+
+The belief: the best single prediction is the average, whatever the loss. The fix: the average minimizes squared error; absolute error is minimized by a median (der-1-3-1 steps 4 and 8). For the 20 patients these are 126.2 and 107.5. Lesson 2.1 states the population version: the best predictor is the conditional mean under squared error and the conditional median under absolute error.
+
+</Pitfall>
+
+<Pitfall title="A small MSE is not automatically a good fit" misconception="mse-scale-free">
+
+The belief: an MSE of 2,176 is large and an MSE of 0.02 is small. The fix: MSE has the squared units of the target, so its size means nothing on its own. Compare it with the variance of the targets, which is what $R^2$ does (<EqRef id="eq-1-3-2" />), or report RMSE next to the standard deviation $s_y$.
+
+</Pitfall>
+
+<Connections>
+
+- Companion: <Notebook path="Code Companions/Lecture2code_companion.ipynb" cells="8-15" /> builds the 20 patients and fits the line; the worked example adds the four metrics it does not compute.
+- Previous: 1.2 Datasets, models, and model classes defines the residual vector $X\theta - y$ (equation 1.2.1) that every loss here summarizes.
+- Next: 1.4 Least squares minimizes $\frac1n\lVert X\theta - y\rVert_2^2$ in closed form and reaches the one-feature formulas of der-1-3-4 steps 2 and 6 from the normal equations.
+- Unit 2: lesson 2.1 identifies the population $R^2$ of der-1-3-4 as the share of variance the regression function explains; lesson 2.2 averages a per-example loss into the empirical risk and asks how well it estimates the true risk; lesson 2.4 differentiates the MSE for gradient descent.
+- Unit 3: lesson 3.4 derives least squares as maximum likelihood under Gaussian noise, the callout above made rigorous.
+- Homework: HW1 Part II Q5 asks for the training MSE and $R^2$ of an OLS fit.
+- Graph neighbors: [[empirical-risk]], [[variance]], [[median]], [[vector-norm]].
+
+</Connections>
+
+<HomeworkBridge hw="hw1" skills={["mean-squared-error", "coefficient-of-determination", "r2-bounds"]} />
+
+<Summary>
+
+- **Per-example loss** $\ell(\hat y, y)$; **residual** $r^{(i)} = f_\theta(x^{(i)}) - y^{(i)}$, stacked as $X\theta - y$.
+- **MAE** $= \frac1n\sum_i \lvert r^{(i)} \rvert$; **MSE** $= \frac1n\sum_i (r^{(i)})^2 = \frac1n\lVert X\theta - y\rVert_2^2$; **RMSE** $= \sqrt{\mathrm{MSE}}$, in the units of $y$, with the same minimizer as MSE.
+- **Best constant:** the mean $\bar y$ under MSE, a median under MAE. The mean moves by $\Delta/n$ when one target moves by $\Delta$; the median need not move.
+- **Why squares:** differentiable everywhere, with per-example gradient $2\,r^{(i)} x^{(i)}$; the Gaussian-noise MLE. **The cost:** a residual's pull grows with its size, so outliers dominate.
+- **$R^2$** $= 1 - \mathrm{RSS}/\mathrm{TSS} = 1 - \mathrm{MSE}(\theta)/s_y^2$: at most 1, 0 for the mean, negative when worse than the mean, $\ge 0$ for least squares with an intercept on its training data. An evaluation metric, not a loss.
+- **Limit under a linear DGP:** $R^2(\hat\theta) = s_{xy}^2/(s_{xx}s_{yy}) \to \beta^2\sigma_X^2/(\beta^2\sigma_X^2 + \sigma_\varepsilon^2)$.
+
+</Summary>

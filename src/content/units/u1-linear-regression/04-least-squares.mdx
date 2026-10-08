@@ -1,0 +1,721 @@
+---
+title: "Least squares"
+unit: u1-linear-regression
+order: 4
+slug: least-squares
+summary: "Minimize (1/n)‖Xθ − y‖² in closed form: the gradient and the normal equations XᵀXθ = Xᵀy derived, convexity from the Hessian, the projection picture, the singular case, and the companion's 37.3788 / −797.08 reproduced."
+lectures:
+  - { lecture: 2, pages: "20-21" }
+  - { lecture: 3, pages: "10-15" }
+  - { lecture: 3, pages: "21-22" }
+concepts:
+  - training-as-optimization
+  - least-squares-problem
+  - normal-equations
+  - least-squares-closed-form
+  - least-squares-convexity
+  - least-squares-projection
+  - singular-normal-equations
+  - simple-linear-regression-closed-form
+prerequisites:
+  - mean-squared-error
+  - residual
+  - design-matrix
+  - vectorized-predictions
+  - dummy-variable-trap
+  - vector-norm
+  - transpose-rules
+  - matrix-calculus-identities
+  - first-order-condition
+  - hessian
+  - quadratic-form
+  - positive-semidefinite
+  - convex-function
+  - matrix-inverse
+  - linear-independence
+  - orthogonal-projection
+  - covariance
+homework: [hw1]
+companions:
+  - { notebook: "Code Companions/Lecture2code_companion.ipynb", cells: "8-15" }
+estimatedMinutes: 55
+status: review
+authors: [matt]
+---
+
+{/* no-case-frontmatter: the hook and the second worked example use the VASCO dose-finding trial (docs/reference/pedagogy-and-curriculum.md Part C, C1), and src/data/vasco.json now exists, but there is no src/content/cases/vasco.mdx page yet; add `cases: [vasco]` when it lands. The worked example deliberately uses the population arm means, the fit a large trial approaches, so the residual pattern is exact rather than one sample's noise. The arm means come from the C1 specification (E0 = -3, Emax = -22 mmHg, ED50 = 6 mg, baseline term 0.15(B - 150) with B ~ N(155, 12^2), 50 patients per arm), and the fits and residuals were computed once from them with NumPy (script output recorded 2026-10-07). The diabetes numbers come from the L2 companion (cells 8 and 15) and were reproduced with the code shown. */}
+
+<Frame
+  data="the design matrix $X \in \mathbb{R}^{n \times (d+1)}$ with a column of ones, and the targets $y \in \mathbb{R}^n$"
+  model="linear, $f_\theta(x) = \theta^\top x$, so the predictions are $\hat y = X\theta$"
+  objective="mean squared error $\hat R(\theta) = \frac1n \lVert X\theta - y\rVert_2^2$ (lesson 1.3)"
+  optimizer="closed form: solve $X^\top X\theta = X^\top y$ (this lesson); gradient descent (lesson 2.4)"
+/>
+
+<Objectives>
+
+- Write the least-squares problem in matrix form, $\min_\theta \frac1n\lVert X\theta - y\rVert_2^2$, and explain why the slide's $\theta^\top X$ must be read as $X\theta$.
+- Derive the gradient $\frac2n X^\top(X\theta - y)$ and the normal equations $X^\top X\theta = X^\top y$, one algebraic move per step.
+- Prove that the objective is convex, and that every solution of the normal equations is a global minimizer: the fitted values are the orthogonal projection of $y$ onto the columns of $X$.
+- State when $X^\top X$ is invertible, and describe every solution when it is not (collinear features, the dummy-variable trap, more parameters than examples).
+- Reproduce the companion's slope 37.3788 and intercept −797.08 from the normal equations, and read a residual plot.
+- Say when gradient descent is preferable to the closed form.
+
+</Objectives>
+
+<Hook>
+
+The VASCO trial gave 300 patients one of six doses and recorded the change in their systolic blood pressure. The statistician fits a line in $\log(1 + D)$, scored by mean squared error, and reports it the same afternoon. No iterations, no learning rate: two unknowns, two linear equations, one solve.
+
+Which two equations? Why is their solution the best line and not merely a flat spot on the loss surface? And what happens if every patient had received the same dose, or if dose had been entered twice, once in milligrams and once in grams? This lesson derives the equations, proves they give the minimum, and says exactly when they stop having a unique answer.
+
+{/* hook-figure: the mse-bowl-gd widget in the Explore section shows the loss surface whose bottom the normal equations find */}
+
+</Hook>
+
+## Training is minimization
+
+Lesson 1.3 chose the loss. The last component of the recipe is the learning rule: once the model class is fixed there are infinitely many parameter values, so how should we choose one? "Find the minimizer of the objective" <SlideRef lecture={3} pages="10" />.
+
+<Definition id="def-1-4-1" title="Training as minimization" source="L3 p.10">
+
+An **optimizer** takes a loss and a model class $\mathcal{M}$ and returns a model with the smallest loss, $\min_{f \in \mathcal{M}} \mathrm{loss}(f)$. When the class is parametrized, $\mathcal{M} = \{f_\theta \mid \theta \in \Theta\}$, this is a minimization over parameters:
+
+$$\hat\theta \in \argmin_{\theta \in \Theta}\ \hat R(\theta), \qquad \hat R(\theta) = \frac1n\sum_{i=1}^{n}\ell\big(f_\theta(x^{(i)}), y^{(i)}\big).$$
+
+<SlideRef lecture={3} pages="10" />
+
+Also written as: fitting, training, `model.fit(X, y)`. We write $\in \argmin$ because the minimizer need not be unique; this lesson finds out when it is.
+
+</Definition>
+
+<Definition id="def-1-4-2" title="The least-squares problem" source="L3 pp.12-13">
+
+For the linear model $f_\theta(x) = \theta^\top x$ with $x_0 = 1$ and the squared loss, training is
+
+$$
+\min_{\theta \in \mathbb{R}^{d+1}}\ \hat R(\theta), \qquad \hat R(\theta) = \frac1n\sum_{i=1}^{n}\big(\theta^\top x^{(i)} - y^{(i)}\big)^2 = \frac1n\lVert X\theta - y\rVert_2^2, \tag{1.4.1} \htmlId{eq-1-4-1}{}
+$$
+
+where $X \in \mathbb{R}^{n \times (d+1)}$ is the [[design-matrix]] with a first column of ones and $y \in \mathbb{R}^n$ is the target vector. A minimizer $\hat\theta$ is a **least-squares solution**. <SlideRef lecture={3} pages="12-13" />
+
+Also written as: ordinary least squares (OLS); $\min \sum (\cdots)^2$ without the $\frac1n$ (L3 p.12).
+
+</Definition>
+
+<Callout type="slide">
+
+L3 p.12 writes the problem as $\min_\theta \lVert \theta^\top X - y \rVert_2^2$ "with $x_0 = 1$", and L3 p.13 continues $\ell(\mathbf{y}, \hat{\mathbf{y}}) = \lVert \theta^\top X - y\rVert_2^2 = \sum_i (y_i - \theta^\top \mathbf{x}^{(i)})^2 = (\mathbf{y} - \theta^\top X)^\top(\mathbf{y} - \theta^\top X)$. With $X$ as the slides define it on p.11, one example per row, plus the column of ones that p.12 adds, $X$ is $n \times (d+1)$, so $\theta^\top X$ is not defined: $\theta^\top$ is $1 \times (d+1)$ and $X$ has $n$ rows. The well-typed product is $X\theta$, an $n$-vector of predictions (equation 1.2.1 in lesson 1.2). The slides also drop the $\frac1n$ ("minimize the sum of the squared errors"), which does not move the minimizer, and mix $y_i$, $\mathbf{x}_i$ with $x^{(i)}$. We write <EqRef id="eq-1-4-1" />. L3 p.13 notes that "the derivation was presented in the first review session" and never writes the solution; the next section supplies both.
+
+</Callout>
+
+<Check ids={["q-u1-l4-012", "q-u1-l4-013"]} />
+
+## Deriving the normal equations
+
+<Intuition>
+
+Start with one feature and no intercept, $f_\theta(x) = \theta x$. The loss $\hat R(\theta) = \frac1n\sum_i (\theta x^{(i)} - y^{(i)})^2$ is a parabola in $\theta$ that opens upward, so its minimum is where its slope is zero. Its derivative is $\frac2n\sum_i x^{(i)}(\theta x^{(i)} - y^{(i)})$: each residual, weighted by its own input. Setting it to zero gives $\theta \sum_i (x^{(i)})^2 = \sum_i x^{(i)} y^{(i)}$, one linear equation in one unknown.
+
+With $d + 1$ parameters the same thing happens in every coordinate at once. Each partial derivative is a residual-weighted sum of one feature column, so "all partials are zero" is $d + 1$ linear equations, and the matrix $X^\top$ does the weighting for all columns together.
+
+</Intuition>
+
+<Derivation
+  id="der-1-4-1"
+  title="The gradient of the least-squares objective and the normal equations"
+  goalTex="\nabla_\theta \hat R(\theta) = 0 \ \text{ for } \ \hat R(\theta) = \frac1n\lVert X\theta - y\rVert_2^2"
+  resultTex="\nabla_\theta \hat R(\theta) = \frac2n X^\top(X\theta - y), \qquad X^\top X\hat\theta = X^\top y, \qquad \hat\theta = (X^\top X)^{-1}X^\top y \ \text{ when } X^\top X \text{ is invertible}"
+  source="L3 pp.12-13 (closed form asserted; 'the derivation was presented in the first review session')"
+>
+
+<Chunk title="Write the objective as a quadratic in θ">
+
+<Step justification="mean squared error (def-1-3-3) of the linear model, whose prediction on example $i$ is $(x^{(i)})^\top\theta = \theta^\top x^{(i)}$ (der-1-2-1 step 3)">
+$$\hat R(\theta) = \frac1n\sum_{i=1}^{n}\big(\theta^\top x^{(i)} - y^{(i)}\big)^2$$
+</Step>
+
+<Step justification="entry $i$ of $X\theta - y$ is the residual $\theta^\top x^{(i)} - y^{(i)}$ (eq. 1.2.1), and a sum of squared entries is a squared norm" sticky="vector-norm">
+$$\hat R(\theta) = \frac1n\lVert X\theta - y\rVert_2^2$$
+</Step>
+
+<Step justification="a squared norm is the inner product of the vector with itself, $\lVert v \rVert_2^2 = v^\top v$" sticky="vector-norm">
+$$\hat R(\theta) = \frac1n(X\theta - y)^\top(X\theta - y)$$
+</Step>
+
+<Step justification="transpose the first factor, $(X\theta - y)^\top = \theta^\top X^\top - y^\top$, then multiply out the four products" sticky="transpose-rules">
+$$\hat R(\theta) = \frac1n\big(\theta^\top X^\top X\theta - \theta^\top X^\top y - y^\top X\theta + y^\top y\big)$$
+</Step>
+
+<Step justification="$\theta^\top X^\top y$ is a scalar, so it equals its transpose $y^\top X\theta$; write both as $(X^\top y)^\top\theta$" sticky="transpose-rules" fadeable>
+$$\hat R(\theta) = \frac1n\big(\theta^\top X^\top X\theta - 2\,(X^\top y)^\top\theta + y^\top y\big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Differentiate term by term">
+
+<Step justification="$\nabla_\theta\,\theta^\top A\theta = 2A\theta$ for a symmetric matrix $A$; here $A = X^\top X$, which is symmetric because $(X^\top X)^\top = X^\top X$" sticky="matrix-calculus-identities">
+$$\nabla_\theta\,\theta^\top X^\top X\theta = 2X^\top X\theta$$
+</Step>
+
+<Step justification="$\nabla_\theta\, b^\top\theta = b$ for a constant vector $b$; here $b = X^\top y$" sticky="matrix-calculus-identities">
+$$\nabla_\theta\,(X^\top y)^\top\theta = X^\top y$$
+</Step>
+
+<Step justification="$y^\top y$ does not contain $\theta$">
+$$\nabla_\theta\, y^\top y = 0$$
+</Step>
+
+<Step justification="the gradient of a sum is the sum of the gradients: combine steps 6 to 8 with the coefficients of step 5">
+$$\nabla_\theta \hat R(\theta) = \frac1n\big(2X^\top X\theta - 2X^\top y\big)$$
+</Step>
+
+<Step justification="factor $\frac2n X^\top$ out on the left" fadeable>
+$$\nabla_\theta \hat R(\theta) = \frac2n X^\top(X\theta - y)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Set the gradient to zero and solve">
+
+<Step justification="first-order condition: at a minimizer of a differentiable function, the gradient is zero" sticky="first-order-condition">
+$$\frac2n X^\top(X\hat\theta - y) = 0$$
+</Step>
+
+<Step justification="multiply by $\frac n2$, distribute $X^\top$, and move $X^\top y$ to the right-hand side" fadeable>
+$$X^\top X\hat\theta = X^\top y$$
+</Step>
+
+<Step justification="if $X^\top X$ is invertible, multiply both sides on the left by its inverse; $(X^\top X)^{-1}X^\top X = I$" sticky="matrix-inverse">
+$$\hat\theta = (X^\top X)^{-1}X^\top y$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+X^\top X\hat\theta = X^\top y \tag{1.4.2} \htmlId{eq-1-4-2}{}
+$$
+
+$$
+\hat\theta = (X^\top X)^{-1}X^\top y \quad \text{when } X^\top X \text{ is invertible} \tag{1.4.3} \htmlId{eq-1-4-3}{}
+$$
+
+<EqRef id="eq-1-4-2" /> are the **normal equations**: $d + 1$ linear equations in the $d + 1$ unknowns $\theta_0, \dots, \theta_d$. Check the shapes: $X^\top X$ is $(d+1) \times (d+1)$, and $X^\top y$ is $(d+1) \times 1$. The name comes from the gradient of step 10: it is zero exactly when $X^\top(X\hat\theta - y) = 0$, that is, when the residual vector is orthogonal ("normal") to every column of $X$. Lesson 2.4 derives the gradient a second way, one example at a time, and uses it to walk downhill instead of solving (der-2-4-3, der-2-4-4).
+
+Two questions remain. Step 11 is a necessary condition: a minimizer must satisfy it, but so would a maximum or a saddle point ([[first-order-condition]]). And step 13 needs an inverse that may not exist. The next three sections settle both.
+
+<Callout type="note">
+
+In code, solve the system rather than forming the inverse: `np.linalg.solve(X.T @ X, X.T @ y)` is faster and more accurate than `np.linalg.inv(X.T @ X) @ X.T @ y`. Library routines such as `np.linalg.lstsq` and scikit-learn's `LinearRegression` go further and avoid forming $X^\top X$ at all, which matters when its condition number is large.
+
+</Callout>
+
+<Check ids={["q-u1-l4-008", "q-u1-l4-009", "q-u1-l4-014"]} />
+
+## The bowl is convex
+
+L3 p.14 plots the mean squared error over $(\theta_0, \theta_1)$ as a bowl, and p.15 defines the property that makes a bowl a bowl <SlideRef lecture={3} pages="14-15" />.
+
+<Definition id="def-1-4-3" title="Convex function" source="L3 p.15">
+
+A function $f$ is [[convex-function|convex]] if, for all $\theta, \theta'$ in its domain and all $0 \le t \le 1$,
+
+$$f\big(t\theta + (1 - t)\theta'\big) \le t f(\theta) + (1 - t) f(\theta').$$
+
+The chord between any two points of the graph lies on or above the graph. It is **strictly convex** if the inequality is strict whenever $\theta \ne \theta'$ and $0 \lt t \lt 1$. <SlideRef lecture={3} pages="15" />
+
+Also written as: "bowl-shaped"; $\nabla^2 f \succeq 0$ everywhere, for twice-differentiable $f$ (an equivalent test).
+
+</Definition>
+
+The slides show the bowl but do not prove it is one. We check the slide's definition directly, then connect it to the [[hessian]].
+
+<Derivation
+  id="der-1-4-2"
+  title="The least-squares objective is convex, with Hessian (2/n)XᵀX, and strictly convex exactly when X has full column rank"
+  goalTex="\hat R\big(t\theta + (1-t)\theta'\big) \ \text{ versus } \ t\hat R(\theta) + (1-t)\hat R(\theta'), \qquad \nabla^2_\theta \hat R(\theta)"
+  resultTex="\hat R\big(t\theta + (1-t)\theta'\big) = t\hat R(\theta) + (1-t)\hat R(\theta') - \tfrac{t(1-t)}{n}\lVert X(\theta - \theta')\rVert_2^2, \qquad \nabla^2_\theta \hat R = \tfrac2n X^\top X \succeq 0, \qquad \text{strict} \iff \operatorname{null}(X) = \{0\} \Rightarrow X^\top X \text{ invertible}"
+  source="L3 pp.14-15 (bowl plotted and convexity defined; convexity of MSE not proven)"
+>
+
+<Chunk title="Differentiate the gradient once more">
+
+<Step justification="der-1-4-1 step 9, with the $\frac1n$ distributed">
+$$\nabla_\theta \hat R(\theta) = \frac2n X^\top X\theta - \frac2n X^\top y$$
+</Step>
+
+<Step justification="the matrix of partial derivatives of $A\theta$ is $A$, and the constant term drops out; the Hessian is the same at every $\theta$" sticky="hessian">
+$$\nabla^2_\theta \hat R(\theta) = \frac2n X^\top X$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Check the chord inequality of L3 p.15">
+
+<Step justification="write $a = X\theta - y$ and $b = X\theta' - y$; $X$ distributes over the combination, and $y = t\,y + (1 - t)\,y$">
+$$X\big(t\theta + (1 - t)\theta'\big) - y = t\,a + (1 - t)\,b$$
+</Step>
+
+<Step justification="expand both sides with $\lVert u \rVert_2^2 = u^\top u$: each equals $t^2\lVert a \rVert^2 + 2t(1-t)\,a^\top b + (1-t)^2\lVert b \rVert^2$" sticky="vector-norm">
+$$\lVert t\,a + (1-t)\,b \rVert_2^2 = t\lVert a \rVert_2^2 + (1-t)\lVert b \rVert_2^2 - t(1-t)\lVert a - b \rVert_2^2$$
+</Step>
+
+<Step justification="divide by $n$; the left side is $\hat R$ at the combination by step 3, and $a - b = X(\theta - \theta')$">
+$$\hat R\big(t\theta + (1-t)\theta'\big) = t\hat R(\theta) + (1-t)\hat R(\theta') - \frac{t(1-t)}{n}\lVert X(\theta - \theta')\rVert_2^2$$
+</Step>
+
+<Step justification="$t(1 - t) \ge 0$ for $0 \le t \le 1$ and a squared norm is $\ge 0$, so the last term only lowers the right side: this is def-1-4-3" sticky="convex-function" fadeable>
+$$\hat R\big(t\theta + (1-t)\theta'\big) \le t\hat R(\theta) + (1-t)\hat R(\theta')$$
+</Step>
+
+</Chunk>
+
+<Chunk title="When the bowl has a single bottom">
+
+<Step justification="for $0 \lt t \lt 1$ the gap in step 5 is zero exactly when the squared norm is, since a squared norm vanishes only at the zero vector" sticky="vector-norm">
+$$\text{equality in step 6} \iff X(\theta - \theta') = 0$$
+</Step>
+
+<Step justification="the Hessian's quadratic form in a direction $v$, using $v^\top X^\top X v = (Xv)^\top(Xv)$: it is never negative, which is the Hessian test for convexity, and it vanishes exactly along the directions of step 7" sticky="positive-semidefinite">
+$$v^\top \nabla^2_\theta \hat R\, v = \frac2n\lVert Xv \rVert_2^2 \ge 0$$
+</Step>
+
+<Step justification="by step 7, a flat chord between two different points exists exactly when some $v = \theta - \theta' \ne 0$ has $Xv = 0$; so $\hat R$ is strictly convex exactly when the null space of $X$ is $\{0\}$, which is full column rank" sticky="linear-independence" fadeable>
+$$\hat R \text{ strictly convex} \iff \operatorname{null}(X) = \{0\} \iff \operatorname{rank}(X) = d + 1$$
+</Step>
+
+<Step justification="if $X^\top X v = 0$ then $v^\top X^\top X v = \lVert Xv \rVert_2^2 = 0$, so $Xv = 0$, and full column rank forces $v = 0$; a square matrix whose null space is $\{0\}$ is invertible" sticky="matrix-inverse">
+$$\operatorname{rank}(X) = d + 1 \ \Longrightarrow\ X^\top X \text{ is invertible}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 6 is the bowl of L3 p.14, proven; step 8 is the same fact read off the Hessian, which is how lessons 2.3 and 2.5 use it. Convexity is why L3 p.21 can promise that gradient descent with a suitable step size reaches the global optimum of this loss, and why the "local minimum" option of the L3 p.22 poll cannot explain a high least-squares loss: a convex function has no local minimum that is not global. Step 10 settles the inverse in <EqRef id="eq-1-4-3" />: it exists whenever the columns of $X$ are linearly independent. The converse holds too, as der-1-4-4 shows.
+
+## The projection picture
+
+We still have not shown that a solution of the normal equations is a minimum rather than just a flat point. Convexity gives this through a general theorem about convex functions; for least squares there is a direct argument that also shows what the solution is, geometrically.
+
+<Intuition>
+
+Think of the $n$ targets as one vector $y \in \mathbb{R}^n$, and of every possible prediction vector $X\theta$ as a point in the set $\{X\theta : \theta \in \mathbb{R}^{d+1}\}$, the column space of $X$. With $n = 3$ patients and a line ($d + 1 = 2$ columns: the ones and the BMI column), that set is a plane through the origin in $\mathbb{R}^3$, and $y$ is a point usually off the plane.
+
+Choosing $\theta$ means choosing a point on the plane, and $\lVert X\theta - y\rVert_2$ is its distance to $y$. The closest point is the foot of the perpendicular dropped from $y$: the error vector meets the plane at a right angle. "Perpendicular to the plane" means "orthogonal to both columns", which is $X^\top(X\theta - y) = 0$, the normal equations again.
+
+</Intuition>
+
+<Derivation
+  id="der-1-4-3"
+  title="Every solution of the normal equations is a global minimizer: Pythagoras in the column space"
+  goalTex="\lVert X\theta - y\rVert_2^2 \ \text{ versus } \ \lVert X\hat\theta - y\rVert_2^2 \ \text{ for every } \theta, \ \text{ when } \ X^\top X\hat\theta = X^\top y"
+  resultTex="\lVert X\theta - y\rVert_2^2 = \lVert X\hat\theta - y\rVert_2^2 + \lVert X(\theta - \hat\theta)\rVert_2^2 \ \ge\ \lVert X\hat\theta - y\rVert_2^2, \quad \text{equality} \iff X\theta = X\hat\theta; \quad X\hat\theta \text{ is the orthogonal projection of } y \text{ onto } \operatorname{col}(X)"
+  source="beyond the slides (course map L3 derivation gap 1; the projection view is not on the slides)"
+>
+
+<Chunk title="The residual is orthogonal to every column">
+
+<Step justification="move $X^\top y$ to the left in the normal equations (der-1-4-1 step 12) and factor out $X^\top$">
+$$X^\top\big(X\hat\theta - y\big) = 0$$
+</Step>
+
+<Step justification="row $j$ of $X^\top$ is column $j$ of $X$, written $X_{:,j}$: the residual vector $\hat r = X\hat\theta - y$ is orthogonal to every feature column, including the column of ones" fadeable>
+$$X_{:,j}^\top\,\hat r = 0 \quad \text{for } j = 0, 1, \dots, d$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Split any residual vector into two orthogonal pieces">
+
+<Step justification="add and subtract $X\hat\theta$">
+$$X\theta - y = X(\theta - \hat\theta) + \big(X\hat\theta - y\big)$$
+</Step>
+
+<Step justification="$\lVert a + b\rVert_2^2 = \lVert a\rVert_2^2 + 2a^\top b + \lVert b\rVert_2^2$ with $a = X(\theta - \hat\theta)$, whose transpose is $(\theta - \hat\theta)^\top X^\top$" sticky="vector-norm">
+$$\lVert X\theta - y\rVert_2^2 = \lVert X(\theta - \hat\theta)\rVert_2^2 + 2(\theta - \hat\theta)^\top X^\top\big(X\hat\theta - y\big) + \lVert X\hat\theta - y\rVert_2^2$$
+</Step>
+
+<Step justification="the cross term is zero by step 1: Pythagoras" fadeable>
+$$\lVert X\theta - y\rVert_2^2 = \lVert X\hat\theta - y\rVert_2^2 + \lVert X(\theta - \hat\theta)\rVert_2^2$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Read off the minimum and the projection">
+
+<Step justification="divide by $n$ and drop the nonnegative term $\lVert X(\theta - \hat\theta)\rVert_2^2$" fadeable>
+$$\hat R(\theta) \ge \hat R(\hat\theta) \quad \text{for every } \theta \in \mathbb{R}^{d+1}$$
+</Step>
+
+<Step justification="equality in step 6 holds exactly when the dropped term is zero, that is, when $\theta$ makes the same predictions as $\hat\theta$">
+$$\hat R(\theta) = \hat R(\hat\theta) \iff X\theta = X\hat\theta$$
+</Step>
+
+<Step justification="by step 2 the vector $y - X\hat\theta$ is orthogonal to every column, hence to every $Xv$; by step 5 with $X\theta$ ranging over the column space, $X\hat\theta$ is its closest point to $y$" sticky="orthogonal-projection">
+$$\hat y = X\hat\theta = \text{the orthogonal projection of } y \text{ onto } \operatorname{col}(X)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+So the normal equations are not just necessary but sufficient: any $\hat\theta$ that solves them is a global minimizer, with no appeal to second derivatives. Step 7 adds that the minimizers are exactly the parameter vectors that produce the same fitted values; when $X$ has full column rank, $X\theta = X\hat\theta$ forces $\theta = \hat\theta$, so the minimizer is unique.
+
+Step 2 has a consequence worth remembering. With an intercept, the column of ones is one of the columns, so $\mathbf{1}^\top \hat r = \sum_i \hat r^{(i)} = 0$: the residuals of a least-squares fit with an intercept sum to zero, and the fitted values have the same mean as the targets. This is why lesson 1.3 could promise $R^2 \ge 0$ for such a fit (der-1-3-3 step 10).
+
+<Theorem id="thm-1-4-1" title="Least-squares solutions" source="L3 p.13 (existence of a closed form asserted; no conditions stated)">
+
+For every design matrix $X$ and target vector $y$:
+
+1. The normal equations $X^\top X\theta = X^\top y$ have at least one solution, and the least-squares solutions are exactly their solutions (der-1-4-1, der-1-4-3, der-1-4-4).
+2. If $X$ has full column rank, the solution is unique: $\hat\theta = (X^\top X)^{-1}X^\top y$ (der-1-4-2 step 10).
+3. Otherwise there are infinitely many solutions, $\hat\theta + v$ for every $v$ with $Xv = 0$, and all of them make the same predictions and reach the same minimum (der-1-4-4).
+
+</Theorem>
+
+<Proof collapsed title="The projection matrix H = X(XᵀX)⁻¹Xᵀ is symmetric and idempotent" keyIdea="substitute the closed form into ŷ = Xθ̂ and use (XᵀX)⁻¹XᵀX = I">
+
+Assume $X$ has full column rank. By <EqRef id="eq-1-4-3" />, $\hat y = X\hat\theta = X(X^\top X)^{-1}X^\top y = Hy$ with $H = X(X^\top X)^{-1}X^\top$, an $n \times n$ matrix that depends only on the inputs.
+
+*Symmetric.* By the [[transpose-rules]], $H^\top = (X^\top)^\top\big((X^\top X)^{-1}\big)^\top X^\top = X\big((X^\top X)^\top\big)^{-1}X^\top = X(X^\top X)^{-1}X^\top = H$, using that the transpose of an inverse is the inverse of the transpose and that $X^\top X$ is symmetric.
+
+*Idempotent.* $H^2 = X(X^\top X)^{-1}(X^\top X)(X^\top X)^{-1}X^\top = X(X^\top X)^{-1}X^\top = H$: projecting a second time changes nothing, because $\hat y$ is already in the column space.
+
+*Residuals.* $y - \hat y = (I - H)y$, and $X^\top(I - H) = X^\top - X^\top X(X^\top X)^{-1}X^\top = 0$, which is der-1-4-3 step 1 again.
+
+</Proof>
+
+<Check ids={["q-u1-l4-015", "q-u1-l4-016"]} />
+
+## When XᵀX is singular
+
+L3 p.13 asserts that linear regression "admits a closed-form solution" and does not say when. The L3 p.22 poll comes closest: among the possible reasons a regression's loss is high it lists "the features in my dataset are not linearly independent of each other" <SlideRef lecture={3} pages="22" />. Lesson 1.1 met one such case already, the dummy-variable trap (der-1-1-1 step 12). Here is what linear dependence actually does.
+
+<Definition id="def-1-4-4" title="Column space, null space, and full column rank" source="beyond the slides (needed for the L3 p.22 poll option on linearly dependent features)">
+
+For $X \in \mathbb{R}^{n \times (d+1)}$, the **column space** $\operatorname{col}(X) = \{Xv : v \in \mathbb{R}^{d+1}\}$ is the set of all prediction vectors a linear model can produce, and the **null space** $\operatorname{null}(X) = \{v : Xv = 0\}$ is the set of parameter changes that change no prediction. $X$ has **full column rank** when its $d + 1$ columns are [[linear-independence|linearly independent]], equivalently $\operatorname{rank}(X) = d + 1$, equivalently $\operatorname{null}(X) = \{0\}$.
+
+</Definition>
+
+<Derivation
+  id="der-1-4-4"
+  title="When XᵀX is singular, the normal equations still have solutions, but infinitely many, all with the same predictions"
+  goalTex="\text{the solutions of } X^\top X\theta = X^\top y \ \text{ when } \ \operatorname{rank}(X) \lt d + 1"
+  resultTex="\operatorname{null}(X^\top X) = \operatorname{null}(X); \quad \text{a solution } \hat\theta \text{ always exists}; \quad \text{all solutions are } \hat\theta + v,\ Xv = 0, \text{ with identical predictions } X\hat\theta \text{ and minimum } \hat R(\hat\theta)"
+  source="L3 p.22 (poll option 'features not linearly independent'; the consequence is not on the slides)"
+>
+
+<Chunk title="XᵀX loses exactly the directions X loses">
+
+<Step justification="multiply $Xv = 0$ on the left by $X^\top$">
+$$Xv = 0 \ \Longrightarrow\ X^\top X v = 0$$
+</Step>
+
+<Step justification="multiply $X^\top X v = 0$ on the left by $v^\top$; the result is a squared norm, which is zero only for the zero vector" sticky="vector-norm">
+$$X^\top X v = 0 \ \Longrightarrow\ \lVert Xv \rVert_2^2 = v^\top X^\top X v = 0 \ \Longrightarrow\ Xv = 0$$
+</Step>
+
+<Step justification="steps 1 and 2 are the two inclusions">
+$$\operatorname{null}(X^\top X) = \operatorname{null}(X)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="A solution always exists">
+
+<Step justification="rank–nullity for the two matrices, each with $d + 1$ columns, whose null spaces agree by step 3; a matrix and its transpose have the same rank" sticky="linear-independence">
+$$\operatorname{rank}(X^\top X) = \operatorname{rank}(X) = \operatorname{rank}(X^\top)$$
+</Step>
+
+<Step justification="$X^\top X v = X^\top (Xv)$ is $X^\top$ times a vector, so every column of $X^\top X$ lies in the column space of $X^\top$">
+$$\operatorname{col}(X^\top X) \subseteq \operatorname{col}(X^\top)$$
+</Step>
+
+<Step justification="a subspace contained in another subspace of the same dimension equals it; the dimensions agree by step 4">
+$$\operatorname{col}(X^\top X) = \operatorname{col}(X^\top)$$
+</Step>
+
+<Step justification="$X^\top y$ lies in $\operatorname{col}(X^\top)$ by definition, so by step 6 it equals $X^\top X\hat\theta$ for some $\hat\theta$" fadeable>
+$$\exists\, \hat\theta: \ X^\top X\hat\theta = X^\top y$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Every other solution differs by a direction the data cannot see">
+
+<Step justification="if $\theta$ also solves the normal equations, subtract the two systems" fadeable>
+$$X^\top X(\theta - \hat\theta) = 0$$
+</Step>
+
+<Step justification="by step 3 the difference lies in the null space of $X$">
+$$\theta = \hat\theta + v \quad \text{with} \quad Xv = 0$$
+</Step>
+
+<Step justification="$X\theta = X\hat\theta + Xv = X\hat\theta$; by der-1-4-3 step 7, equal predictions give equal loss" fadeable>
+$$X\theta = X\hat\theta, \qquad \hat R(\theta) = \hat R(\hat\theta)$$
+</Step>
+
+<Step justification="the rank is at most the number of rows and at most the number of columns, and a column that is a combination of others adds nothing to it; any of these makes $\operatorname{null}(X) \ne \{0\}$, so by step 9 the solution is not unique" sticky="linear-independence">
+$$n \lt d + 1 \ \text{ or a collinear column} \ \Longrightarrow\ \operatorname{rank}(X) \lt d + 1$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Together with der-1-4-2 step 10, this proves the theorem: $X^\top X$ is invertible exactly when $X$ has full column rank. When it is not, the loss surface is not a bowl with one bottom but a trough: a valley floor along the null-space directions, all at the same height (der-1-4-2 step 7).
+
+Three ways it happens in practice:
+
+- **Collinear features.** A column is a combination of others: BMI recorded twice, in different units; total cholesterol next to its components when the components sum to it.
+- **The dummy-variable trap.** All $K$ one-hot columns plus an intercept: the one-hot columns sum to the ones column (lesson 1.1, der-1-1-1 steps 11–12).
+- **More parameters than examples.** With $d + 1 \gt n$, as with gene-expression data (thousands of genes, dozens of patients), the rank is at most $n$, so infinitely many parameter vectors fit the training data equally well, often perfectly.
+
+So the L3 p.22 poll's option is a reason for a non-unique $\hat\theta$, not for a high loss: every solution reaches the same minimum (step 10). What breaks is interpretation. Individual coefficients are no longer determined by the data, only the combinations that the predictions depend on.
+
+<Callout type="beyond">
+
+**What software returns.** `np.linalg.lstsq` returns, among all least-squares solutions, the one with the smallest norm $\lVert\theta\rVert_2$; this is the solution given by the Moore–Penrose pseudo-inverse. `np.linalg.solve(X.T @ X, X.T @ y)` is not safe here: in floating point a singular $X^\top X$ is usually only nearly singular, so it may raise an error or return huge, meaningless coefficients. The standard repair is ridge regression, which minimizes $\hat R(\theta) + \lambda\lVert\theta\rVert_2^2$ and solves $(X^\top X + n\lambda I)\theta = X^\top y$; the added $n\lambda I$ makes the matrix invertible for every $\lambda \gt 0$ (Unit 5).
+
+</Callout>
+
+<Check ids={["q-u1-l4-001", "q-u1-l4-002", "q-u1-l4-003", "q-u1-l4-004", "q-u1-l4-005", "q-u1-l4-010", "q-u1-l4-011"]} />
+
+## Explore
+
+<Widget
+  name="mse-bowl-gd"
+  dataset="diabetes-bmi-20"
+  eta={0.1}
+  init={[2, 1]}
+  standardize={false}
+  showResiduals={true}
+  challenge="Locate the bottom of the bowl by eye and compare it with the least-squares point the normal equations give. Then turn on standardization: how does the shape of the contours change, and do the fitted values change at all?"
+/>
+
+The surface is $\hat R(\theta)$ for the 20 companion patients, the bowl of L3 p.14. Its bottom is the solution of <EqRef id="eq-1-4-2" />, and the level sets are ellipses whose axes are the eigenvectors of the Hessian $\frac2n X^\top X$ (der-1-4-2 step 2). Standardizing the feature changes the coordinates of the bottom but not the fitted line, because the new columns span the same column space (der-1-4-3 step 8). Running gradient descent from the start point previews lesson 2.4.
+
+## One feature: the companion's numbers
+
+With one feature the normal equations are two equations in two unknowns, and they can be solved by hand.
+
+<Derivation
+  id="der-1-4-5"
+  title="With one feature, the normal equations give slope s_xy / s_xx and intercept ȳ − slope · x̄"
+  goalTex="\hat\theta = (\hat\theta_0, \hat\theta_1) \ \text{ solving } \ X^\top X\theta = X^\top y \ \text{ for } \ f_\theta(x) = \theta_0 + \theta_1 x"
+  resultTex="\hat\theta_1 = \frac{s_{xy}}{s_{xx}}, \qquad \hat\theta_0 = \bar y - \hat\theta_1\bar x, \qquad s_{xy} = \frac1n\sum_{i}(x^{(i)} - \bar x)(y^{(i)} - \bar y), \quad s_{xx} = \frac1n\sum_{i}(x^{(i)} - \bar x)^2"
+  source="L2 p.21, L3 p.13 (the fit is delegated to sklearn's model.fit; companion cell 15 prints the result)"
+>
+
+<Chunk title="Write the two normal equations">
+
+<Step justification="$X$ has the columns $\mathbf{1}$ and $x$; each entry of $X^\top X$ and $X^\top y$ is one column times another">
+$$X^\top X = \begin{bmatrix} n & \sum_i x^{(i)} \\ \sum_i x^{(i)} & \sum_i (x^{(i)})^2 \end{bmatrix}, \qquad X^\top y = \begin{bmatrix} \sum_i y^{(i)} \\ \sum_i x^{(i)} y^{(i)} \end{bmatrix}$$
+</Step>
+
+<Step justification="first row of $X^\top X\theta = X^\top y$">
+$$n\,\theta_0 + \theta_1\sum_i x^{(i)} = \sum_i y^{(i)}$$
+</Step>
+
+<Step justification="divide by $n$ and solve for $\theta_0$, with $\bar x = \frac1n\sum_i x^{(i)}$ and $\bar y = \frac1n\sum_i y^{(i)}$" fadeable>
+$$\theta_0 = \bar y - \theta_1\bar x$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Eliminate the intercept">
+
+<Step justification="second row of $X^\top X\theta = X^\top y$">
+$$\theta_0\sum_i x^{(i)} + \theta_1\sum_i (x^{(i)})^2 = \sum_i x^{(i)} y^{(i)}$$
+</Step>
+
+<Step justification="substitute step 3, and $\sum_i x^{(i)} = n\bar x$">
+$$\big(\bar y - \theta_1\bar x\big)\,n\bar x + \theta_1\sum_i (x^{(i)})^2 = \sum_i x^{(i)} y^{(i)}$$
+</Step>
+
+<Step justification="multiply out and collect the $\theta_1$ terms on the left">
+$$\theta_1\Big(\sum_i (x^{(i)})^2 - n\bar x^2\Big) = \sum_i x^{(i)} y^{(i)} - n\bar x\bar y$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Recognize the sample moments">
+
+<Step justification="expand $(x^{(i)} - \bar x)(y^{(i)} - \bar y)$ and sum: the two cross terms give $-2n\bar x\bar y$ and the constant gives $+n\bar x\bar y$; the case $y = x$ gives the other identity" sticky="covariance">
+$$\sum_i (x^{(i)})^2 - n\bar x^2 = n\,s_{xx}, \qquad \sum_i x^{(i)} y^{(i)} - n\bar x\bar y = n\,s_{xy}$$
+</Step>
+
+<Step justification="substitute step 7 into step 6 and divide by $n\,s_{xx}$, which is positive unless every $x^{(i)}$ is the same" fadeable>
+$$\hat\theta_1 = \frac{s_{xy}}{s_{xx}}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+These are the formulas lesson 1.3 found by a different route, minimizing over the intercept first (der-1-3-4 steps 2 and 6). The exception in step 8 is the one-feature singular case: if every patient has the same $x$, the $x$ column is a multiple of the ones column, $s_{xx} = 0$, and every line through $(\bar x, \bar y)$ fits equally well. A dose-finding trial in which every patient got the same dose cannot estimate a slope, and the algebra says so.
+
+<Example title="Reproducing the companion's slope and intercept">
+
+The L2 companion selects the last 20 patients and rescales BMI as `bmi * 30 + 25` in cell 8, then calls `LinearRegression().fit` in cell 15, which prints slope `37.37884216052121` and intercept `-797.0817390343262` (<Notebook path="Code Companions/Lecture2code_companion.ipynb" cells="15" />). The normal equations reproduce both:
+
+```python
+import numpy as np
+from sklearn import datasets
+
+diabetes_X, diabetes_y = datasets.load_diabetes(return_X_y=True, as_frame=True)
+x = (diabetes_X['bmi'] * 30 + 25).iloc[-20:].to_numpy()   # companion cell 8
+y = diabetes_y.iloc[-20:].to_numpy()
+
+X = np.column_stack([np.ones(len(x)), x])     # column of ones: x_0 = 1
+XtX, Xty = X.T @ X, X.T @ y
+theta = np.linalg.solve(XtX, Xty)             # solve X^T X theta = X^T y
+print(XtX.round(4))
+print(Xty.round(4))
+print(theta)                                  # [intercept, slope]
+
+r = X @ theta - y                             # residuals
+print(np.allclose(X.T @ r, 0, atol=1e-6))     # orthogonal to both columns
+print(round((r ** 2).mean(), 4))              # training MSE
+```
+
+```text
+[[   20.       494.013 ]
+ [  494.013  12240.4508]]
+[ 2524.     63765.1183]
+[-797.08173903   37.37884216]
+True
+2176.0009
+```
+
+**By hand, with der-1-4-5.** From the printed sums, $\bar x = 494.0130/20 = 24.7007$ and $\bar y = 2524/20 = 126.2$. The sample moments are $s_{xx} = 12240.4508/20 - 24.7007^2 \approx 1.9004$ and $s_{xy} = 63765.1183/20 - 24.7007 \times 126.2 \approx 71.0337$, so
+
+$$\hat\theta_1 = \frac{71.0337}{1.9004} \approx 37.3788, \qquad \hat\theta_0 = 126.2 - 37.3788 \times 24.7007 \approx -797.08.$$
+
+Carrying full precision reproduces cell 15 to every printed digit. The residuals are orthogonal to both columns (der-1-4-3 step 2), so they sum to zero, and the training MSE, 2176.0009, is the value lesson 1.3's table reports for this line.
+
+**Enter BMI twice.** Add a third column equal to $2x$, as if BMI had also been recorded in another unit. The design matrix now has rank 2 with 3 columns, so the normal equations have infinitely many solutions (der-1-4-4).
+
+```python
+X2 = np.column_stack([np.ones(len(x)), x, 2 * x])    # BMI entered twice
+print(np.linalg.matrix_rank(X2))
+theta2 = np.linalg.lstsq(X2, y, rcond=None)[0]
+print(theta2)
+print(theta2[1] + 2 * theta2[2])
+print(round(((X2 @ theta2 - y) ** 2).mean(), 4))
+```
+
+```text
+2
+[-797.08173903    7.47576843   14.95153686]
+37.378842160521245
+2176.0009
+```
+
+`lstsq` splits the slope between the two copies, $7.4758 + 2 \times 14.9515 = 37.3788$, and any other split with the same total would fit equally well. The predictions and the MSE are unchanged (der-1-4-4 step 10); only the individual coefficients have lost their meaning.
+
+**Your turn (faded).** Using only $\bar x = 24.7007$, $\bar y = 126.2$, and the slope $37.3788$, compute the intercept. *Answer:* der-1-4-5 step 3 gives $\hat\theta_0 = 126.2 - 37.3788 \times 24.7007 \approx -797.08$; the fitted line passes through the point of means $(\bar x, \bar y)$.
+
+</Example>
+
+<Example title="VASCO: a line in log(1 + D), and the residual plot that shows the gap">
+
+Lesson 1.1 noted that a line in the engineered feature $\log(1 + D)$ can only approximate the trial's Emax dose–response, and promised a residual plot to show the gap. With 50 patients in each of the six arms, the normal equations depend on the outcomes only through the six arm means: the feature $u = \log(1 + D)$ is constant within an arm, so $\sum_i y^{(i)} = 50\sum_k \bar y_k$ and $\sum_i u^{(i)} y^{(i)} = 50\sum_k u_k\bar y_k$ (der-1-4-5 step 1). As the arms grow, each arm mean approaches its expectation, $-3 - 22D/(6 + D) + 0.75$ (the last term is the baseline effect $0.15(B - 150)$ averaged over $B \sim \mathcal{N}(155, 12^2)$). Fitting those six means is therefore the fit a large trial approaches.
+
+Solving the normal equations for the six expected arm means gives $\hat\theta \approx (-2.459, -5.329)$ for $f_\theta(D) = \theta_0 + \theta_1\log(1 + D)$. The residuals $f_\theta(D) - \text{mean}$, next to those of a straight line in raw dose fitted the same way, $\hat\theta \approx (-8.138, -0.399)$:
+
+| Dose (mg) | $\log(1 + D)$ | Expected change (mmHg) | Residual, line in $\log(1 + D)$ | Residual, line in $D$ |
+|---|---|---|---|---|
+| 0 | 0 | −2.250 | −0.209 | −5.888 |
+| 2.5 | 1.253 | −8.721 | −0.415 | −0.416 |
+| 5 | 1.792 | −12.250 | +0.242 | +2.116 |
+| 10 | 2.398 | −16.000 | +0.762 | +3.869 |
+| 20 | 3.045 | −19.173 | +0.489 | +3.049 |
+| 40 | 3.714 | −21.380 | −0.870 | −2.730 |
+
+Plot the residual against dose. For both lines the residuals sum to zero, as der-1-4-3 step 2 requires, but they are not scattered at random: negative at the ends, positive in the middle. That systematic arc is the signature of a misspecified model class, the Emax curvature that no line in the chosen feature can follow. For the raw-dose line it is large, about 6 mmHg at placebo. For $\log(1 + D)$ it is under 0.9 mmHg everywhere. A real trial adds noise: each arm mean has a standard error of about 1.2 mmHg, from the residual standard deviation of 8 mmHg and the baseline term over 50 patients. So in a single trial the $\log(1 + D)$ arc would be hard to see, while the raw-dose arc would be plain. The feature is a good approximation, not the truth.
+
+</Example>
+
+## From the closed form to gradient descent
+
+If a closed form exists, why does the course spend Unit 2 on gradient descent? Because <EqRef id="eq-1-4-2" /> is special. Forming $X^\top X$ costs on the order of $n d^2$ operations and solving the system on the order of $d^3$, which is prohibitive with hundreds of thousands of features. The data may arrive in a stream, so that $X$ is never all in memory. And most models have no closed form at all: logistic regression (Unit 3) has a gradient whose zero no formula isolates, and so do neural networks.
+
+Gradient descent needs only the gradient of der-1-4-1, $\frac2n X^\top(X\theta - y)$, evaluated at the current $\theta$. Because the objective is convex (der-1-4-2), L3 p.21's guarantee applies: with a suitable step size it reaches the global minimum <SlideRef lecture={3} pages="21" />. How fast it gets there depends on the shape of the bowl. For the 20 companion patients, the eigenvalues of $X^\top X$ are about 0.062 and 12,260, a ratio near 200,000: the bowl is a long, narrow valley, because the BMI column (around 25) and the ones column point in nearly the same direction. Centering BMI makes the two columns orthogonal and the eigenvalues 20 and 38.0. Lessons 2.4 and 2.5 explain why that ratio, the condition number, governs the speed of gradient descent.
+
+## Check your understanding
+
+<Check ids={["q-u1-l4-006", "q-u1-l4-007", "q-u1-l4-017", "q-u1-l4-018"]} />
+
+## Pitfalls
+
+<Pitfall title="Spot the error: L3 p.12 writes θᵀX" misconception="theta-transpose-x">
+
+L3 p.12 writes the least-squares problem as $\min_\theta \lVert \theta^\top X - y\rVert_2^2$, and L3 p.13 repeats $\theta^\top X$ three times. With $X$ defined on L3 p.11 as $n \times d$, one example per row, $\theta^\top X$ multiplies a $1 \times (d+1)$ row by a matrix with $n$ rows, which is undefined unless $n = d + 1$, and even then it is the wrong product. The predictions are $X\theta$, one inner product per row (der-1-2-1). In NumPy, `X @ theta` is correct and `theta @ X` raises a shape error or silently computes something else.
+
+</Pitfall>
+
+<Pitfall title="Least squares cannot get stuck in a local minimum" misconception="lsq-local-minima">
+
+The belief: a high least-squares loss may mean the optimizer stopped in a local minimum (an option of the L3 p.22 poll). The fix: the objective is convex (der-1-4-2 step 6), and every solution of the normal equations is a global minimizer (der-1-4-3 step 6). A closed-form solve finds it exactly; gradient descent with a suitable step size converges to it. A high loss comes from the model class or the features, not from the optimizer.
+
+</Pitfall>
+
+<Pitfall title="Linearly dependent features do not raise the loss" misconception="collinear-high-loss">
+
+The belief: collinear features make the fit worse. The fix: they make the minimizer non-unique, not the minimum higher. Every solution $\hat\theta + v$ with $Xv = 0$ makes the same predictions and reaches the same loss (der-1-4-4 step 10); in the worked example, BMI entered twice gives MSE 2176.0009, exactly as before. What is lost is the meaning of individual coefficients.
+
+</Pitfall>
+
+<Pitfall title="Coefficients of collinear features cannot be read one at a time" misconception="collinear-coefficients-meaningful">
+
+The belief: with BMI entered twice, the coefficient 7.4758 is "the effect of BMI". The fix: only the combination $\theta_1 + 2\theta_2 = 37.3788$ is determined by the data; the split is chosen by the software (here, the minimum-norm solution). Near-collinear features, which are common in clinical data, behave almost the same way: the split is determined, but by noise.
+
+</Pitfall>
+
+<Pitfall title="n ≥ d + 1 is necessary but not sufficient" misconception="n-ge-d-sufficient">
+
+The belief: with more patients than parameters, $X^\top X$ is invertible. The fix: invertibility needs full column rank (der-1-4-2 step 10 and der-1-4-4). Having $n \ge d + 1$ allows it but does not guarantee it: one collinear column, or one-hot columns plus an intercept, makes $X^\top X$ singular however many rows there are.
+
+</Pitfall>
+
+<Pitfall title="Do not invert XᵀX in code" misconception="compute-inverse">
+
+The belief: <EqRef id="eq-1-4-3" /> should be computed as `np.linalg.inv(X.T @ X) @ X.T @ y`. The fix: the formula is for proofs. Solve the linear system (`np.linalg.solve`), or better, call `np.linalg.lstsq` or `LinearRegression`, which avoid forming $X^\top X$. Its condition number is the square of that of $X$, about 200,000 for the uncentered companion data, so forming it loses accuracy before any solving begins.
+
+</Pitfall>
+
+<Pitfall title="Residuals sum to zero only when there is an intercept" misconception="residuals-sum-zero-always">
+
+The belief: least-squares residuals always average to zero. The fix: der-1-4-3 step 2 makes the residuals orthogonal to every column of $X$. They sum to zero because the column of ones is one of those columns. Fit without an intercept and the residuals need not sum to zero, and $R^2$ can be negative even on the training data.
+
+</Pitfall>
+
+<Connections>
+
+- Companion: <Notebook path="Code Companions/Lecture2code_companion.ipynb" cells="8-15" /> builds the 20 patients and fits them with `LinearRegression`; the worked example reproduces cell 15 from the normal equations.
+- Previous: 1.3 Loss functions defines the MSE minimized here and derived the one-feature formulas by another route (der-1-3-4); 1.2 supplies $\hat y = X\theta$ (equation 1.2.1); 1.1's dummy-variable trap is a singular case of der-1-4-4.
+- Next: Unit 2. Lesson 2.3 proves the first- and second-order conditions used in der-1-4-1 step 11 and der-1-4-2; lesson 2.4 derives the same gradient one example at a time and follows it downhill; lesson 2.5 explains why the eigenvalues of $X^\top X$ set the speed.
+- Later: ridge regression (Unit 5) adds $n\lambda I$ to $X^\top X$ and is invertible for every $\lambda \gt 0$; lesson 3.4 shows least squares is maximum likelihood under Gaussian noise.
+- Homework: HW1 Part II Q5 fits OLS with scikit-learn and with gradient descent, and Q6 asks why the two agree and when gradient descent is preferable.
+- Graph neighbors: [[design-matrix]], [[matrix-calculus-identities]], [[convex-function]], [[orthogonal-projection]], [[linear-independence]].
+
+</Connections>
+
+<HomeworkBridge hw="hw1" skills={["normal-equations", "least-squares-closed-form", "least-squares-convexity", "singular-normal-equations"]} />
+
+<Summary>
+
+- **Least-squares problem:** $\min_\theta \hat R(\theta) = \frac1n\lVert X\theta - y\rVert_2^2$, with a column of ones in $X$ for the intercept. The slides' $\theta^\top X$ means $X\theta$.
+- **Gradient:** $\nabla_\theta\hat R = \frac2n X^\top(X\theta - y)$. **Normal equations:** $X^\top X\hat\theta = X^\top y$, the residual orthogonal to every column.
+- **Closed form:** $\hat\theta = (X^\top X)^{-1}X^\top y$ when $X$ has full column rank; compute it with a solver, not an inverse.
+- **Convexity:** $\hat R(t\theta + (1-t)\theta') = t\hat R(\theta) + (1-t)\hat R(\theta') - \frac{t(1-t)}{n}\lVert X(\theta - \theta')\rVert_2^2$; Hessian $\frac2n X^\top X \succeq 0$; strictly convex exactly with full column rank.
+- **Projection:** $\lVert X\theta - y\rVert_2^2 = \lVert X\hat\theta - y\rVert_2^2 + \lVert X(\theta - \hat\theta)\rVert_2^2$, so every solution is a global minimizer and $X\hat\theta$ is the projection of $y$ onto $\operatorname{col}(X)$. With an intercept, the residuals sum to zero.
+- **Singular case:** solutions always exist; they are $\hat\theta + v$ with $Xv = 0$, all with the same predictions and loss. Causes: collinear columns, the dummy-variable trap, $d + 1 \gt n$.
+- **One feature:** $\hat\theta_1 = s_{xy}/s_{xx}$, $\hat\theta_0 = \bar y - \hat\theta_1\bar x$; on the companion's 20 patients, slope 37.3788 and intercept −797.08.
+
+</Summary>

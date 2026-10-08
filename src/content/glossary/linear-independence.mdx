@@ -1,0 +1,12 @@
+---
+id: linear-independence
+term: Linear independence and rank
+aliases: [rank, full column rank, collinearity, null space, column space, rank-nullity]
+field: linear-algebra
+firstUsedIn: u1-linear-regression
+related: [matrix-inverse, design-matrix, orthogonal-projection, positive-semidefinite]
+---
+
+**What it is.** Vectors are linearly independent when the only combination of them that equals zero has all coefficients zero. For a matrix $X$ with $p$ columns, the column space $\operatorname{col}(X)$ is the set of all products $Xv$, the null space $\operatorname{null}(X)$ is the set of $v$ with $Xv = 0$, and the rank is the dimension of $\operatorname{col}(X)$, the number of independent columns. $X$ has full column rank when its rank is $p$, equivalently $\operatorname{null}(X) = \{0\}$. Rank–nullity: $\operatorname{rank}(X) + \dim\operatorname{null}(X) = p$. Always $\operatorname{rank}(X^\top) = \operatorname{rank}(X) \le \min(n, p)$.
+
+**How ML uses it.** Least squares has a unique solution exactly when the design matrix has full column rank. Collinear features (one column a combination of others, as in the dummy-variable trap) and more parameters than examples both break it.

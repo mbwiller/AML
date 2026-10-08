@@ -1,0 +1,282 @@
+---
+/**
+ * /materials (VISION.md §7 "Materials"): every lecture PDF and notebook in
+ * `AML Course Material/`, by lecture, with "covered in" lesson links and a
+ * page-to-lesson index computed from lesson frontmatter (`lectures` page
+ * ranges, `companions`). Files are served from `/materials/files/…`, copied
+ * at build time by `src/lib/build/copy-static.ts` (the source folder is
+ * read-only). Anchors: `#L<n>` per lecture, `#notebook-<slug>` per notebook
+ * (what `<SlideRef>` falls back to and `<Notebook>` links to).
+ */
+import { getCollection } from 'astro:content';
+
+import Base from '@/layouts/Base.astro';
+import { hasDataset } from '@/lib/datasets';
+import { lessonHref, lessonNumber } from '@/lib/lessons';
+import { formatBytes, lessonsForNotebook, notebookAnchor, pageIndex } from '@/lib/materials';
+import { materialsManifest } from '@/lib/materials-scan';
+import { formatPages } from '@/lib/markdown/numbering';
+import { getCourseLessons } from '@/lib/site';
+
+const manifest = materialsManifest();
+const { lessons: entries } = await getCourseLessons();
+const lessons = entries.map((l) => ({
+  lectures: l.data.lectures,
+  companions: l.data.companions,
+  href: lessonHref(l.data.unit, l.data.slug),
+  number: lessonNumber(l.data.unit, l.data.order),
+  title: l.data.title,
+}));
+const index = pageIndex(lessons);
+const cases = (await getCollection('cases')).map((c) => c.data).filter((c) => hasDataset(c.id));
+
+const shortDate = (iso: string | undefined) =>
+  iso
+    ? new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      })
+    : '';
+const pagesLabel = (from: number, to: number) =>
+  formatPages(from === to ? String(from) : `${from}-${to}`);
+---
+
+<Base
+  title="Materials"
+  description="The lecture slides and code companions, with the lessons that cover each page."
+>
+  <main id="main" class="mx-auto max-w-3xl px-4 py-10">
+    <h1 class="font-sans text-h1 leading-tight font-bold tracking-tight">Materials</h1>
+    <p class="mt-2 max-w-measure text-muted">
+      The original slides and notebooks, with the lessons that cover them. Use the page index to
+      jump from a slide you are reading to the lesson section that derives it.
+    </p>
+    <nav aria-label="Lectures" class="mt-6 flex flex-wrap gap-1.5 font-sans text-ui-sm">
+      {manifest.lectures.map((l) => (
+        <a href={`#L${l.lecture}`} class="jump-chip">
+          L{l.lecture}
+        </a>
+      ))}
+      <a href="#notebooks" class="jump-chip">
+        Notebooks
+      </a>
+    </nav>
+
+    <section class="mt-10" aria-labelledby="lectures">
+      <h2 id="lectures" class="font-sans text-h2 font-semibold tracking-tight">
+        Lectures
+      </h2>
+      <ol class="m-0 mt-4 grid list-none gap-4 p-0" data-materials-lectures>
+        {manifest.lectures.map((l) => {
+          const ranges = index.get(l.lecture) ?? [];
+          const notebooks = manifest.notebooks.filter((n) => n.lectures.includes(l.lecture));
+          return (
+            <li class="m-0">
+              <article
+                id={`L${l.lecture}`}
+                class="material rounded-card border border-border bg-surface p-5"
+                data-lecture={l.lecture}
+              >
+                <header class="font-sans">
+                  <p class="m-0 text-ui-sm text-muted">
+                    Lecture {l.lecture}
+                    {l.date && <> · {shortDate(l.date)}</>}
+                  </p>
+                  <h3 class="m-0 mt-1 text-h3 font-semibold">{l.title}</h3>
+                </header>
+                <p class="m-0 mt-3 flex flex-wrap gap-x-4 gap-y-1 font-sans text-ui">
+                  <a href={l.url} data-material-pdf>
+                    Slides (PDF, {formatBytes(l.bytes)})
+                  </a>
+                  {notebooks.map((n) => (
+                    <a href={`#${notebookAnchor(n.name)}`}>{n.name.replace(/\.ipynb$/, '')}</a>
+                  ))}
+                </p>
+                {ranges.length > 0 ? (
+                  <table class="page-index mt-4" data-page-index>
+                    <caption class="sr-only">
+                      Lecture {l.lecture}: pages and the lessons that cover them
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Slides</th>
+                        <th scope="col">Covered in</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ranges.map((r) => (
+                        <tr>
+                          <td class="pages">
+                            <a href={`${l.url}#page=${r.from}`}>{pagesLabel(r.from, r.to)}</a>
+                          </td>
+                          <td>
+                            {r.lessons.map((lesson, i) => (
+                              <>
+                                {i > 0 && ' · '}
+                                <a href={lesson.href}>
+                                  <span class="num">{lesson.number}</span> {lesson.title}
+                                </a>
+                              </>
+                            ))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p class="m-0 mt-4 font-sans text-ui-sm text-muted">
+                    No lesson covers this lecture yet.
+                  </p>
+                )}
+              </article>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+
+    <section class="mt-12" aria-labelledby="notebooks">
+      <h2 id="notebooks" class="font-sans text-h2 font-semibold tracking-tight">
+        Notebooks
+      </h2>
+      <p class="mt-2 max-w-measure text-muted">
+        The code companions are named after the lecture they were released with, which is not always
+        the lecture they implement. Each row says which lecture it belongs to.
+      </p>
+      <ol class="m-0 mt-4 grid list-none gap-4 p-0" data-materials-notebooks>
+        {manifest.notebooks.map((n) => {
+          const covered = lessonsForNotebook(lessons, n.name);
+          return (
+            <li class="m-0">
+              <article
+                id={notebookAnchor(n.name)}
+                class="material rounded-card border border-border bg-surface p-5 font-sans"
+                data-notebook={n.source}
+              >
+                <h3 class="m-0 text-ui-lg font-semibold">{n.name}</h3>
+                <p class="m-0 mt-1 text-ui-sm text-muted">
+                  {n.lectures.length > 0 ? (
+                    <>
+                      Implements{' '}
+                      {n.lectures.map((x, i) => (
+                        <>
+                          {i > 0 && ', '}
+                          <a href={`#L${x}`}>L{x}</a>
+                        </>
+                      ))}
+                    </>
+                  ) : (
+                    'Lecture not identified'
+                  )}
+                  {' · '}
+                  <a href={n.url} download data-material-notebook>
+                    Download .ipynb ({formatBytes(n.bytes)})
+                  </a>
+                </p>
+                {n.note && <p class="m-0 mt-2 text-ui text-fg">{n.note}</p>}
+                {covered.length > 0 && (
+                  <p class="m-0 mt-2 text-ui">
+                    <span class="text-muted">Covered in </span>
+                    {covered.map(({ lesson, cells }, i) => (
+                      <>
+                        {i > 0 && ' · '}
+                        <a href={lesson.href}>
+                          <span class="num">{lesson.number}</span> {lesson.title}
+                        </a>
+                        <span class="text-muted"> (cells {cells.replace(/\s*-\s*/, '–')})</span>
+                      </>
+                    ))}
+                  </p>
+                )}
+              </article>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+
+    {(manifest.documents.length > 0 || cases.length > 0) && (
+      <section class="other-materials mt-12 font-sans" aria-labelledby="other-materials">
+        <h2 id="other-materials" class="text-h2 font-semibold tracking-tight">
+          Course documents and datasets
+        </h2>
+        <ul class="m-0 mt-4 grid list-none gap-2 p-0 text-ui">
+          {manifest.documents.map((d) => (
+            <li class="m-0">
+              <a href={d.url}>{d.title}</a>{' '}
+              <span class="text-muted">(PDF, {formatBytes(d.bytes)})</span>
+            </li>
+          ))}
+          {cases.map((c) => (
+            <li class="m-0">
+              <a href={`/cases/${c.id}`}>{c.title}</a>{' '}
+              <span class="text-muted">
+                ·{' '}
+                <a href={`/data/${c.id}.json`} download>
+                  {c.id}.json
+                </a>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+  </main>
+</Base>
+
+<style>
+  .jump-chip {
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    color: var(--muted);
+    text-decoration: none;
+    transition: color var(--duration-micro) var(--ease-standard);
+  }
+  .jump-chip:hover {
+    color: var(--fg);
+  }
+  .material {
+    scroll-margin-top: 1rem;
+    transition: background-color var(--duration-reveal) var(--ease-standard);
+  }
+  .material:target {
+    background: var(--surface-2);
+  }
+  .page-index {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+  .page-index th,
+  .page-index td {
+    padding: 0.4em 0.75em 0.4em 0;
+    border-block-end: 1px solid var(--border);
+    text-align: start;
+    vertical-align: top;
+  }
+  .page-index thead th {
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .page-index .pages {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .material a,
+  .other-materials a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .material a:hover,
+  .other-materials a:hover {
+    text-decoration: underline;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
+</style>

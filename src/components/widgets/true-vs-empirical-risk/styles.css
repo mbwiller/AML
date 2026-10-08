@@ -1,0 +1,159 @@
+/*
+ * true-vs-empirical-risk: layout only; colors come from tokens (and, inside
+ * the SVGs, from useVizTheme()). Imported by Widget.tsx.
+ */
+
+.tver {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-family: var(--font-sans);
+}
+
+.tver-top {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1rem;
+}
+
+@media (width >= 640px) {
+  .tver-top {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.tver-bottom {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1rem;
+}
+
+@media (width >= 640px) {
+  .tver-bottom {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.tver-panel {
+  min-width: 0;
+  margin: 0;
+}
+
+.tver-caption {
+  margin: 0 0 0.25rem;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.tver-caption span {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.tver-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.tver-readouts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.tver-formula {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  overflow-x: auto;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+
+.tver-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  font-size: var(--text-ui-sm);
+}
+
+.tver-stats dt {
+  color: var(--muted);
+}
+
+.tver-stats dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--fg);
+}
+
+.tver-scored {
+  margin: 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.tver-scored span {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.tver-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.tver-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tver-history-key {
+  margin: 0.25rem 0 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.tver-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tver-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tver-buttons .widget-btn {
+  min-height: 2.75rem;
+}
+
+.tver-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tver-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+}

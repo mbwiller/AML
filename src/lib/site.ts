@@ -3,6 +3,7 @@
  */
 import { getCollection } from 'astro:content';
 
+import { buildBridgeContext, type BridgeContext } from '@/lib/homework';
 import { isNavigable, lessonHref, lessonNumber, sortLessons } from '@/lib/lessons';
 import type { LessonNeighbor, PrereqChip } from '@/layouts/Lesson.astro';
 
@@ -64,4 +65,38 @@ export async function prereqChips(ids: string[]): Promise<PrereqChip[]> {
       field: node?.field,
     };
   });
+}
+
+let bridge: Promise<BridgeContext> | undefined;
+
+/**
+ * Everything `<HomeworkBridge>` and /homework need to resolve a skill id
+ * (src/lib/homework.ts): navigable lessons in course order with their
+ * bodies, graph nodes, glossary terms, and quiz items. Built once per build.
+ */
+export function bridgeContext(): Promise<BridgeContext> {
+  bridge ??= (async () => {
+    const [{ lessons }, nodes, glossary, quizzes] = await Promise.all([
+      getCourseLessons(),
+      getCollection('graphNodes'),
+      getCollection('glossary'),
+      getCollection('quizzes'),
+    ]);
+    return buildBridgeContext({
+      lessons: lessons.map((l) => ({
+        id: `${l.data.unit}/${l.data.slug}`,
+        slug: l.data.slug,
+        unit: l.data.unit,
+        title: l.data.title,
+        number: lessonNumber(l.data.unit, l.data.order),
+        href: lessonHref(l.data.unit, l.data.slug),
+        concepts: l.data.concepts,
+        body: l.body ?? '',
+      })),
+      nodes: nodes.map((n) => n.data),
+      glossary: glossary.map((g) => ({ id: g.data.id, term: g.data.term })),
+      quizzes: quizzes.map((q) => ({ id: q.data.id, concepts: q.data.concepts })),
+    });
+  })();
+  return bridge;
 }

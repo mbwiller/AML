@@ -1,10 +1,24 @@
 ---
+import { SITE_NAV } from '@/components/shell/nav';
+
 const year = new Date().getFullYear();
 ---
 
 <footer class="border-t border-border mt-16 font-sans text-ui-sm text-muted">
-  <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-6">
-    <p>AML Atlas · CS 5785 Applied Machine Learning, Cornell Tech, Fall {year}</p>
-    <p>Every equation derived; every prerequisite where it is used.</p>
+  <div class="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6">
+    <nav aria-label="Site" class="-mx-2 flex flex-wrap gap-x-1 gap-y-1">
+      {SITE_NAV.map((item) => (
+        <a
+          href={item.href}
+          class="rounded-control px-2 py-1 text-muted no-underline transition-colors duration-micro ease-standard hover:bg-surface-2 hover:text-fg"
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <p>AML Atlas · CS 5785 Applied Machine Learning, Cornell Tech, Fall {year}</p>
+      <p>Every equation derived; every prerequisite where it is used.</p>
+    </div>
   </div>
 </footer>

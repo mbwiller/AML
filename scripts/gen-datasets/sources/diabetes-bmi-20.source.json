@@ -1,0 +1,37 @@
+{
+  "$comment": [
+    "Source for src/data/diabetes-bmi-20.json (generator: src/lib/datasets/diabetes-bmi-20.ts; runner: scripts/gen-datasets/diabetes-bmi-20.ts).",
+    "The last 20 patients of sklearn.datasets.load_diabetes(), exactly as the course companions take them:",
+    "  AML Course Material/Code Companions/Lecture2code_companion.ipynb, cell 8 (In [20]): X = load_diabetes(return_X_y=True, as_frame=True)[0].loc[:, ['bmi']] * 30 + 25; X.iloc[-20:], y.iloc[-20:]. Cell 15 (In [23]) prints the LinearRegression fit.",
+    "  AML Course Material/Code Companions/lecture4-code companion.ipynb, cell 18 (In [9]): X.iloc[-20:].loc[:, ['bmi', 'one']], y.iloc[-20:] / 300. Cells 20-21 (gradient descent) and 23 (scikit-learn cross-check) print the fits.",
+    "The notebooks print only the first five of the 20 rows (L2 cell 8, six decimals), so the values below were read once from scikit-learn 1.9.1's bundled copy of the same data (sklearn/datasets/data/diabetes_data_raw.csv.gz and diabetes_target.csv.gz, the files load_diabetes reads), rows 422-441 (iloc[-20:]):",
+    "  bmiScaled = load_diabetes().data['bmi'] (mean-centered and divided by sd * sqrt(442), so the 442-row column has sum of squares 1), written with Python repr (17 significant digits, the exact float64);",
+    "  bmi = load_diabetes(scaled=False).data['bmi'] in kg/m^2; target = disease progression one year after baseline.",
+    "Checks in src/lib/datasets/diabetes-bmi-20.test.ts: 30 * bmiScaled + 25 matches the five rows L2 cell 8 prints; least squares on (30 * bmiScaled + 25, target) reproduces L2 cell 15; on (bmiScaled, target / 300) it reproduces L4 cell 23; gradient descent with the L4 cell 20 settings reproduces cell 21.",
+    "Never edit by hand; re-derive only if the course companions change."
+  ],
+  "source": "sklearn.datasets.load_diabetes (Efron, Hastie, Johnstone and Tibshirani 2004), rows 422-441",
+  "bmiScaling": { "mean": 26.37579185520362, "sdPopulation": 4.413120855492464, "nTotal": 442 },
+  "rows": [
+    { "index": 422, "bmi": 33.6, "bmiScaled": 0.07786338762689529, "target": 233 },
+    { "index": 423, "bmi": 22.7, "bmiScaled": -0.039618128426111884, "target": 91 },
+    { "index": 424, "bmi": 27.4, "bmiScaled": 0.011039039046285686, "target": 111 },
+    { "index": 425, "bmi": 22.6, "bmiScaled": -0.040695940499992665, "target": 152 },
+    { "index": 426, "bmi": 23.2, "bmiScaled": -0.03422906805670789, "target": 120 },
+    { "index": 427, "bmi": 26.9, "bmiScaled": 0.005649978676881689, "target": 67 },
+    { "index": 428, "bmi": 34.6, "bmiScaled": 0.08864150836570328, "target": 310 },
+    { "index": 429, "bmi": 23.3, "bmiScaled": -0.033151255982827074, "target": 94 },
+    { "index": 430, "bmi": 21.1, "bmiScaled": -0.05686312160820465, "target": 183 },
+    { "index": 431, "bmi": 23.5, "bmiScaled": -0.03099563183506548, "target": 66 },
+    { "index": 432, "bmi": 31.5, "bmiScaled": 0.055229334075398484, "target": 173 },
+    { "index": 433, "bmi": 20.8, "bmiScaled": -0.06009655782984706, "target": 72 },
+    { "index": 434, "bmi": 26.5, "bmiScaled": 0.0013387303813585058, "target": 49 },
+    { "index": 435, "bmi": 24.2, "bmiScaled": -0.023450947317899894, "target": 64 },
+    { "index": 436, "bmi": 19.5, "bmiScaled": -0.07410811479029747, "target": 48 },
+    { "index": 437, "bmi": 28.2, "bmiScaled": 0.01966153563733209, "target": 178 },
+    { "index": 438, "bmi": 24.9, "bmiScaled": -0.015906262800734303, "target": 104 },
+    { "index": 439, "bmi": 24.9, "bmiScaled": -0.015906262800734303, "target": 132 },
+    { "index": 440, "bmi": 30.0, "bmiScaled": 0.039062152967186486, "target": 220 },
+    { "index": 441, "bmi": 19.6, "bmiScaled": -0.07303030271641665, "target": 57 }
+  ]
+}

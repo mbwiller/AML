@@ -10,8 +10,23 @@ import type { WidgetModule } from './types';
 
 export const registry = {
   'bow-nb-scorer': () => import('./bow-nb-scorer/Widget'),
+  'bow-vectorizer': () => import('./bow-vectorizer/Widget'),
+  'dgp-sampler': () => import('./dgp-sampler/Widget'),
+  'encoding-explorer': () => import('./encoding-explorer/Widget'),
   'gaussian-2d-covariance': () => import('./gaussian-2d-covariance/Widget'),
+  'gd-1d-quadratic': () => import('./gd-1d-quadratic/Widget'),
+  'gd-2d-eigen': () => import('./gd-2d-eigen/Widget'),
   'gda-fitter': () => import('./gda-fitter/Widget'),
+  'generative-vs-discriminative-toggle': () =>
+    import('./generative-vs-discriminative-toggle/Widget'),
+  'hessian-classifier': () => import('./hessian-classifier/Widget'),
+  'inner-product-dial': () => import('./inner-product-dial/Widget'),
+  'learning-rate-schedules': () => import('./learning-rate-schedules/Widget'),
+  'line-fit-playground': () => import('./line-fit-playground/Widget'),
+  'linear-bias-probe': () => import('./linear-bias-probe/Widget'),
+  'mse-bowl-gd': () => import('./mse-bowl-gd/Widget'),
+  'sgd-noise': () => import('./sgd-noise/Widget'),
+  'true-vs-empirical-risk': () => import('./true-vs-empirical-risk/Widget'),
 } satisfies Record<string, () => Promise<WidgetModule>>;
 
 export type WidgetName = keyof typeof registry;

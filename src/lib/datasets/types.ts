@@ -7,10 +7,20 @@
  * generator code and the seed, so regenerating it must produce no diff.
  */
 
-export type CaseId = 'notes' | 'adverse' | 'tropo';
+export type CaseId = 'notes' | 'adverse' | 'tropo' | 'vasco';
 
 export type VariableType =
   'id' | 'binary' | 'integer' | 'continuous' | 'categorical' | 'tokens' | 'probability';
+
+/**
+ * Reference datasets: real data a course companion uses, reproduced exactly
+ * from a committed source file rather than sampled (no seed, no generative
+ * model). See docs/decisions/2026-10-07-dataset-generators.md.
+ */
+export type ReferenceId = 'diabetes-bmi-20';
+
+/** Every file in `src/data/`: the synthetic cases and the reference datasets. */
+export type DatasetId = CaseId | ReferenceId;
 
 export interface DatasetVariable {
   /** Row key (or, for derived values, the accessor that computes it). */
@@ -31,9 +41,12 @@ export interface GenerativeModel {
 }
 
 export interface Dataset<Row> {
-  id: CaseId;
+  id: DatasetId;
   title: string;
-  /** Part C entry in docs/reference/pedagogy-and-curriculum.md, e.g. "C6". */
+  /**
+   * Part C entry in docs/reference/pedagogy-and-curriculum.md, e.g. "C6"; for
+   * a reference dataset, the companion notebook it reproduces.
+   */
   spec: string;
   seed: number;
   generativeModel: GenerativeModel;

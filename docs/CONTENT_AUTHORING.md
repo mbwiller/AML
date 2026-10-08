@@ -161,7 +161,7 @@ Sticky-note popover for a glossary id: hover (300 ms) or tap opens the glossary 
 `slide` = "what the slide says, and how we normalize it"; `beyond` = "beyond the slides" (e.g., the MAP view of regularization).
 
 ### `<SlideRef lecture={7} pages="47" />`
-Inline citation chip; links to the PDF page in `/materials`.
+Inline citation chip; links to the lecture PDF at that page (`/materials/files/lectures/<file>.pdf#page=<first page>`), or to the lecture's row on `/materials` when the PDF is not in the course folder.
 
 ### `<Widget name="bow-nb-scorer" dataset="notes" smoothing={false} challenge="Turn smoothing off and type a word the training set never saw." />`
 Props beyond `name` and `challenge` are validated at build time against the widget's manifest (`src/components/widgets/<name>/manifest.ts`, a Zod schema in which every param has a default): an unknown prop or an out-of-range value fails the build with the offending prop named, so `<Widget name="…" />` alone is always valid. `challenge` overrides the manifest's default challenge line. The registered widgets, their params, ranges, and defaults are listed on `/dev/widgets`. If the widget does not exist yet, the build shows a placeholder with the name and params (content can be written before the widget ships). Reader state: the "copy state link" button in the frame puts the current params in the URL hash (`#w=<name>:<base64url>`), which the widget restores on load; a `<Step figureState>` reveal reaches the nearest preceding widget as its `figureState` prop.
@@ -170,7 +170,7 @@ Props beyond `name` and `challenge` are validated at build time against the widg
 Static figure (SVG/PNG under `src/assets/figures/`). Use only when interactivity adds nothing.
 
 ### `<Example case="notes" title="Scoring a report" />` … `</Example>`
-A worked example whose numbers come from the generated case dataset (`src/data/notes.json`); cite the record ids.
+A worked example whose numbers come from the generated case dataset (`src/data/notes.json`); cite the record ids. The case chip links to `/cases/<id>`. Optional `homeworkReviewed` (boolean, renders nothing): set after you have checked the numbers are not answers to a live homework; silences the R17 warning (`<Example case="notes" title="…" homeworkReviewed>`).
 
 ### `<Check ids={["q-u6-l3-001", "q-u6-l3-002"]} />`
 Inline check pulling items from the quiz bank (§7). Prefer 2–4 items per section.
@@ -182,7 +182,7 @@ A false belief, stated, then the fix. `misconception` ids tag quiz distractors s
 Markdown links to companion cells (`<Notebook path="Code Companions/Lecture 8 Code Companion.ipynb" cells="9-14" />`), homework problems, the next lesson, and graph neighbors.
 
 ### `<HomeworkBridge hw="hw3" skills={["bernoulli-nb-mle", "laplace-smoothing", "log-space-prediction"]} />`
-Renders the readiness-gate rows for this lesson's contribution to a homework. For a live homework, never include answers.
+Renders the readiness-gate rows for this lesson's contribution to a homework. Each skill id (a graph node or glossary id) is resolved at build time: "Learn it in" lists the lessons whose `concepts` include it (or the node's `lesson`) and the node's `derivation` at its anchor; "Practice" lists the quiz items whose `concepts` include it, each linked to the `<Check>` that carries it (else `/practice`). So tag quiz items with `concepts` and graph nodes with `derivation` and the gate fills itself. The homework page (`/homework/<hw>`) collects every lesson's bridge for that homework. For a live homework, never include answers.
 
 ### `<Summary>` … `</Summary>`
 Definitions and results on one screen (markdown + math). Source of the lesson's flashcards together with the boxed results.
@@ -284,7 +284,15 @@ How `<Check>` reads these fields today (graders in `src/lib/graders/`):
 
 ## 8. Flashcards
 
-Cards are generated at build time from every `<Definition>` (statement → formula) and every `<Derivation>` result (formula → when/why, plus one cloze on the term that carries the idea). Add hand-written cards only for things those miss:
+Cards are generated at build time from every `<Definition>` (statement → formula) and every `<Derivation>` result (formula → when/why, plus one cloze on the term that carries the idea). The exact rules are in `src/lib/practice/README.md`; what they mean for authors:
+
+- A definition card's back is the body's first display formula and its first paragraph (or list), in source order. Put the defining sentence and the defining formula first; "Also written as:" lines are left off the card.
+- A derivation's `title` is the back of its "when/why" card, so state the conditions in it ("With a shared covariance, the GDA log-odds are affine in x"), and `resultTex` is its front.
+- The cloze is taken from titles shaped "<subject> is/are <term>…", where the term is 1–4 plain words ("The MLE of μ_k is the class mean" → *class mean*). Other titles get no cloze; write a YAML `cloze` card if the idea needs one.
+- Card ids come from the block ids (`card:def-6-3-1`, `card:der-6-3-2:when`, `card:der-6-3-2:cloze`), so renaming a `def-`/`der-` id resets learners' review history for that card.
+- A derivation card's concepts are the graph nodes whose `derivation` is its id; a definition card's is the lesson concept whose id or label matches its title; otherwise the lesson's `concepts`. Set `derivation:` on graph nodes to make concept mastery precise.
+
+Add hand-written cards only for things those miss:
 
 ```yaml
 - id: fc-u6-l3-010

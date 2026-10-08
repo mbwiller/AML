@@ -1,0 +1,12 @@
+---
+id: transpose-rules
+term: Transpose rules
+aliases: [transpose, matrix transpose, symmetric matrix]
+field: linear-algebra
+firstUsedIn: u1-linear-regression
+related: [vector-norm, quadratic-form, matrix-inverse]
+---
+
+**What it is.** The transpose $A^\top$ swaps rows and columns: $(A^\top)_{jk} = A_{kj}$. Three rules cover almost every use: $(A + B)^\top = A^\top + B^\top$; $(AB)^\top = B^\top A^\top$, with the order reversed; and $(A^\top)^\top = A$. A $1 \times 1$ matrix, a scalar, is its own transpose, so $a^\top b = b^\top a$ for vectors of the same length. A matrix with $A^\top = A$ is symmetric, and $A^\top A$ always is, since $(A^\top A)^\top = A^\top (A^\top)^\top = A^\top A$.
+
+**How ML uses it.** Expanding the least-squares objective uses all three: $(X\theta - y)^\top = \theta^\top X^\top - y^\top$, and the cross terms $\theta^\top X^\top y$ and $y^\top X\theta$ are equal scalars, which is where the factor 2 in the normal equations comes from. The symmetry of $X^\top X$ is what lets the identity $\nabla_\theta\, \theta^\top A\theta = 2A\theta$ apply.

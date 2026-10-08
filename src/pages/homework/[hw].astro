@@ -1,0 +1,158 @@
+---
+/**
+ * /homework/<hw> (VISION.md §7 "Homework bridge", §9.9): due date, status,
+ * units, then the homework body rendered with the lesson components (its
+ * readiness tables get their check ids linked by `PracticeCell`). Below the
+ * body, the skills every lesson's `<HomeworkBridge hw>` lists for this
+ * homework, resolved in one table, and the lessons that feed it.
+ *
+ * Live homework (R17): the badge says "skills map and lesson links only";
+ * `pnpm validate:content` already fails the build if a live homework body has
+ * a walkthrough or solution heading, and this page adds no such heading.
+ */
+import { getCollection, render } from 'astro:content';
+
+import PracticeCell from '@/components/homework/PracticeCell.astro';
+import ScrollTable from '@/components/homework/ScrollTable.astro';
+import { mdxComponents } from '@/components/mdx';
+import HomeworkBridge from '@/components/mdx/HomeworkBridge.astro';
+import { findJsxTags, maskNonProse, parseStringList } from '@/lib/content/mdx-scan';
+import Base from '@/layouts/Base.astro';
+import { formatDueDate, homeworkState } from '@/lib/homework';
+import { lessonHref, lessonNumber, unitHref } from '@/lib/lessons';
+import { getCourseLessons } from '@/lib/site';
+
+export async function getStaticPaths() {
+  const homework = await getCollection('homework');
+  return homework.map((entry) => ({ params: { hw: entry.data.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const hw = entry.data;
+const { Content } = await render(entry);
+const { units, lessons } = await getCourseLessons();
+const state = homeworkState(hw, new Date());
+const unitTitle = new Map(units.map((u) => [u.id, u.title]));
+
+// Lessons that feed this homework: frontmatter `homework`, or a bridge for it in the body.
+const feeding = lessons
+  .map((l) => {
+    const skills: string[] = [];
+    for (const tag of findJsxTags(maskNonProse(l.body ?? ''))) {
+      if (tag.name !== 'HomeworkBridge' || tag.closing || tag.attrs['hw'] !== hw.id) continue;
+      for (const s of parseStringList(tag.attrs['skills'])) if (!skills.includes(s)) skills.push(s);
+    }
+    return { lesson: l, skills };
+  })
+  .filter(({ lesson, skills }) => lesson.data.homework.includes(hw.id) || skills.length > 0);
+const bridgeSkills = [...new Set(feeding.flatMap((f) => f.skills))];
+---
+
+<Base title={hw.title} description={`Readiness gate for ${hw.title}.`}>
+  <main id="main" class="mx-auto max-w-3xl px-4 py-10" data-homework-page={hw.id}>
+    <p class="m-0 font-sans text-ui-sm text-muted">
+      <a href="/homework" class="text-muted no-underline hover:text-fg">
+        Homework
+      </a>{' '}
+      · Due {formatDueDate(hw.due)}
+    </p>
+    <h1 class="mt-1 font-sans text-h1 leading-tight font-bold tracking-tight">{hw.title}</h1>
+
+    <div class="mt-4 flex flex-wrap items-center gap-2 font-sans text-ui-sm">
+      {state === 'live' ? (
+        <p class="hw-badge m-0" data-hw-state="live" data-live-badge>
+          <span class="hw-dot" aria-hidden="true" />
+          Live until {hw.due}: skills map and lesson links only
+        </p>
+      ) : state === 'past' ? (
+        <p class="hw-badge m-0" data-hw-state="past">
+          Past due ({hw.due})
+        </p>
+      ) : (
+        <p class="hw-badge m-0" data-hw-state="upcoming">
+          Due {hw.due}
+        </p>
+      )}
+      {hw.units.map((u) => (
+        <a href={unitHref(u)} class="unit-chip">
+          {unitTitle.get(u) ?? u}
+        </a>
+      ))}
+    </div>
+
+    <article class="prose hw-body mt-8">
+      <Content components={{ ...mdxComponents, table: ScrollTable, td: PracticeCell }} />
+    </article>
+
+    {bridgeSkills.length > 0 && (
+      <section class="prose mt-12" aria-labelledby="skills-from-the-lessons">
+        <h2 id="skills-from-the-lessons">Skills map from the lessons</h2>
+        <p>
+          Every skill the lessons tag for {hw.id.toUpperCase()}, with the lessons and derivations
+          that teach it and the checks that practice it.
+        </p>
+        <HomeworkBridge hw={hw.id} skills={bridgeSkills} footer={false} />
+      </section>
+    )}
+
+    {feeding.length > 0 && (
+      <section class="mt-12 font-sans" aria-labelledby="lessons-for-this-homework">
+        <h2 id="lessons-for-this-homework" class="text-h2 font-semibold tracking-tight">
+          Lessons for {hw.id.toUpperCase()}
+        </h2>
+        <ol class="m-0 mt-4 grid list-none gap-2 p-0" data-hw-lessons>
+          {feeding.map(({ lesson }) => (
+            <li class="m-0">
+              <a
+                href={lessonHref(lesson.data.unit, lesson.data.slug)}
+                class="flex items-baseline gap-3 rounded-card border border-border bg-surface px-4 py-3 text-fg no-underline transition-colors duration-micro ease-standard hover:bg-surface-2"
+              >
+                <span class="text-ui-sm text-muted tabular-nums">
+                  {lessonNumber(lesson.data.unit, lesson.data.order)}
+                </span>
+                <span class="text-ui-lg font-semibold">{lesson.data.title}</span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      </section>
+    )}
+  </main>
+</Base>
+
+<style>
+  .hw-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--fg);
+  }
+  .hw-badge[data-hw-state='past'] {
+    color: var(--muted);
+  }
+  .hw-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: var(--radius-full);
+    background: var(--viz-negative);
+  }
+  .unit-chip {
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    color: var(--muted);
+    text-decoration: none;
+    transition: color var(--duration-micro) var(--ease-standard);
+  }
+  .unit-chip:hover {
+    color: var(--fg);
+  }
+  .hw-body :global(td a[data-practice-item]),
+  .hw-body :global(td code) {
+    overflow-wrap: anywhere;
+  }
+</style>

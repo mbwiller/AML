@@ -1,0 +1,116 @@
+/* hessian-classifier: layout only, tokens only (STYLE_GUIDE.md §4). Imported by Widget.tsx. */
+
+.hc {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1rem;
+}
+
+@media (width >= 640px) {
+  .hc {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 1fr);
+    align-items: start;
+  }
+  .hc-controls {
+    grid-column: 1 / -1;
+  }
+}
+
+.hc-plot,
+.hc-panel {
+  min-width: 0;
+}
+
+.hc-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.375rem 0 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.hc-legend span {
+  white-space: nowrap;
+}
+
+.hc-verdict {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.hc-verdict p {
+  margin: 0;
+}
+
+.hc-verdict-title {
+  font-size: var(--text-ui-lg);
+  color: var(--fg);
+}
+
+.hc-verdict-body {
+  margin-top: 0.25rem;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.hc-verdict-body + .hc-verdict-body {
+  margin-top: 0.25rem;
+  color: var(--fg);
+}
+
+.hc-math {
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  overflow-x: auto;
+}
+
+.hc-math .katex-display {
+  margin: 0.25em 0;
+  font-size: 0.95em;
+}
+
+.hc-slices {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.hc-tick {
+  font: var(--text-ui-xs) var(--font-sans);
+}
+
+.hc-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.hc-sliders {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem 1.5rem;
+}
+
+@media (width >= 640px) {
+  .hc-sliders {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+.hc-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+}

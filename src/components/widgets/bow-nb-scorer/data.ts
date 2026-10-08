@@ -3,19 +3,14 @@
  * cached Bernoulli NB counts and models, and the seeded default report.
  * Shared by `fallback.ts` (build time, Node) and `Widget.tsx` (browser).
  *
- * `notes.json` is imported directly rather than through `loadDataset` so the
- * client chunk carries only this dataset, not the other two cases.
+ * The 6,000 reports are regenerated on first use with the case's own seeded
+ * generator (about 10 ms) instead of importing `src/data/notes.json`, which
+ * would put ~300 KB gzipped into the widget chunk (STYLE_GUIDE §7 budget is
+ * 150 KB). `check:datasets` guarantees the generator and the JSON agree.
  */
-import notesJson from '@/data/notes.json';
-import {
-  VOCABULARY,
-  WORD_INDEX,
-  noteText,
-  sampleRows,
-  type Dataset,
-  type NotesRow,
-} from '@/lib/datasets';
-import { VOCABULARY_SIZE } from '@/lib/datasets/notes-vocabulary';
+import { generate, noteText, spec, type NotesRow } from '@/lib/datasets/notes';
+import { VOCABULARY, VOCABULARY_SIZE, WORD_INDEX } from '@/lib/datasets/notes-vocabulary';
+import { sampleRows } from '@/lib/datasets/sample';
 
 import { countBernoulliNB, modelFromCounts, type BernoulliNB, type NBCounts } from './math';
 
@@ -24,20 +19,26 @@ export { VOCABULARY, VOCABULARY_SIZE, WORD_INDEX, noteText };
 /** Class names in index order: `CLASSES[y]`. */
 export const CLASSES = ['non-serious', 'serious'] as const;
 
-const dataset = notesJson as unknown as Dataset<NotesRow>;
+let generated: ReturnType<typeof generate> | undefined;
+
+/** The NOTES dataset, generated once on first use. */
+function notes(): ReturnType<typeof generate> {
+  generated ??= generate();
+  return generated;
+}
 
 /** Number of reports in NOTES (6,000). */
-export const NOTES_SIZE = dataset.rows.length;
+export const NOTES_SIZE: number = spec.n;
 
 /** The generative Bernoulli presence probabilities and priors, for the tests and README. */
 export function generativeParameters(): { phi: number[]; psi: number[][] } {
-  const p = dataset.generativeModel.parameters as { phi: number[]; psi: number[][] };
+  const p = notes().generativeModel.parameters as { phi: number[]; psi: number[][] };
   return { phi: p.phi, psi: p.psi };
 }
 
 /** All rows, for the full-data fit in the tests. */
 export function allRows(): readonly NotesRow[] {
-  return dataset.rows;
+  return notes().rows;
 }
 
 /** Small LRU so flicking a slider back and forth does not refit. */
@@ -69,7 +70,7 @@ const models = new Lru<BernoulliNB>(16);
 
 /** The full seeded permutation of NOTES for a seed (partial Fisher–Yates prefixes agree). */
 function seededOrder(seed: number): NotesRow[] {
-  return orders.get(String(seed), () => sampleRows(dataset, NOTES_SIZE, seed));
+  return orders.get(String(seed), () => sampleRows(notes(), NOTES_SIZE, seed));
 }
 
 /** The first `trainSize` rows of the seeded order: the training subsample. */

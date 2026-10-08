@@ -9,6 +9,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeSlug from 'rehype-slug';
 
+import { copyStatic } from './src/lib/build/copy-static.ts';
 import { katexOptions } from './src/lib/katex-macros.ts';
 import { remarkSticky } from './src/lib/markdown/remark-sticky.ts';
 
@@ -41,6 +42,8 @@ export default defineConfig({
     }),
     mdx(),
     react(),
+    // Lecture PDFs and notebooks → /materials/files/…, src/data/*.json → /data/… (read-only sources).
+    copyStatic(),
   ],
   vite: {
     plugins: [tailwindcss()],
