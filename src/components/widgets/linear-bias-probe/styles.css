@@ -1,0 +1,151 @@
+/*
+ * linear-bias-probe: layout only; colors come from tokens (and, inside the
+ * SVGs, from useVizTheme()). Imported by Widget.tsx so it ships with the
+ * widget's own chunk.
+ */
+
+.lbp {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-family: var(--font-sans);
+}
+
+.lbp-panels {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1rem;
+}
+
+@media (width >= 640px) {
+  .lbp-panels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.lbp-panel {
+  min-width: 0;
+  margin: 0;
+}
+
+.lbp-caption {
+  margin: 0 0 0.25rem;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.lbp-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  user-select: none;
+}
+
+.lbp-handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.lbp-handle:active {
+  cursor: grabbing;
+}
+
+.lbp-readouts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.lbp-equation {
+  padding: 0.5rem 0.75rem;
+  overflow-x: auto;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+
+.lbp-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  font-size: var(--text-ui-sm);
+}
+
+.lbp-stats dt {
+  color: var(--muted);
+}
+
+.lbp-stats dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--fg);
+}
+
+.lbp-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.lbp-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lbp-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem 1.5rem;
+}
+
+@media (width >= 640px) {
+  .lbp-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.lbp-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lbp-features legend {
+  width: 100%;
+}
+
+.lbp-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0 1rem;
+}
+
+.lbp-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  grid-column: 1 / -1;
+}
+
+@media (width >= 640px) {
+  .lbp-sliders {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 1.5rem;
+  }
+}
