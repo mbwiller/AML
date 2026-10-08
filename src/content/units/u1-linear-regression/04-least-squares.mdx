@@ -365,7 +365,7 @@ $$\hat y = X\hat\theta = \text{the orthogonal projection of } y \text{ onto } \o
 
 So the normal equations are not just necessary but sufficient: any $\hat\theta$ that solves them is a global minimizer, with no appeal to second derivatives. Step 7 adds that the minimizers are exactly the parameter vectors that produce the same fitted values; when $X$ has full column rank, $X\theta = X\hat\theta$ forces $\theta = \hat\theta$, so the minimizer is unique.
 
-Step 2 has a consequence worth remembering. With an intercept, the column of ones is one of the columns, so $\mathbf{1}^\top \hat r = \sum_i \hat r^{(i)} = 0$: the residuals of a least-squares fit with an intercept sum to zero, and the fitted values have the same mean as the targets. This is why lesson 1.3 could promise $R^2 \ge 0$ for such a fit (der-1-3-3 step 10).
+Step 2 has a consequence worth remembering. With an intercept, the column of ones is one of the columns, so $\mathbf{1}^\top \hat r = \sum_i \hat r^{(i)} = 0$: the residuals of a least-squares fit with an intercept sum to zero, and the fitted values have the same mean as the targets. It rests on the same column of ones that lets lesson 1.3 promise $R^2 \ge 0$ for such a fit (der-1-3-3 step 10).
 
 <Theorem id="thm-1-4-1" title="Least-squares solutions" source="L3 p.13 (existence of a closed form asserted; no conditions stated)">
 
@@ -376,6 +376,8 @@ For every design matrix $X$ and target vector $y$:
 3. Otherwise there are infinitely many solutions, $\hat\theta + v$ for every $v$ with $Xv = 0$, and all of them make the same predictions and reach the same minimum (der-1-4-4).
 
 </Theorem>
+
+The theorem's proof is der-1-4-1, der-1-4-3, der-1-4-4, and der-1-4-2 step 10; the folded proof below adds a property of the projection.
 
 <Proof collapsed title="The projection matrix H = X(XᵀX)⁻¹Xᵀ is symmetric and idempotent" keyIdea="substitute the closed form into ŷ = Xθ̂ and use (XᵀX)⁻¹XᵀX = I">
 
@@ -393,7 +395,7 @@ Assume $X$ has full column rank. By <EqRef id="eq-1-4-3" />, $\hat y = X\hat\the
 
 ## When XᵀX is singular
 
-L3 p.13 asserts that linear regression "admits a closed-form solution" and does not say when. The L3 p.22 poll comes closest: among the possible reasons a regression's loss is high it lists "the features in my dataset are not linearly independent of each other" <SlideRef lecture={3} pages="22" />. Lesson 1.1 met one such case already, the dummy-variable trap (der-1-1-1 step 12). Here is what linear dependence actually does.
+L3 p.12 asserts that linear regression "admits a closed-form solution" and does not say when. The L3 p.22 poll comes closest: among the possible reasons a regression's loss is high it lists "the features in my dataset are not linearly independent of each other" <SlideRef lecture={3} pages="22" />. Lesson 1.1 met one such case already, the dummy-variable trap (der-1-1-1 step 12). Here is what linear dependence actually does.
 
 <Definition id="def-1-4-4" title="Column space, null space, and full column rank" source="beyond the slides (needed for the L3 p.22 poll option on linearly dependent features)">
 
@@ -427,15 +429,15 @@ $$\operatorname{null}(X^\top X) = \operatorname{null}(X)$$
 
 <Chunk title="A solution always exists">
 
-<Step justification="rank–nullity for the two matrices, each with $d + 1$ columns, whose null spaces agree by step 3; a matrix and its transpose have the same rank" sticky="linear-independence">
-$$\operatorname{rank}(X^\top X) = \operatorname{rank}(X) = \operatorname{rank}(X^\top)$$
+<Step justification="rank–nullity for the two matrices, each with $d + 1$ columns, whose null spaces agree by step 3" sticky="linear-independence">
+$$\operatorname{rank}(X^\top X) = \operatorname{rank}(X)$$
 </Step>
 
 <Step justification="$X^\top X v = X^\top (Xv)$ is $X^\top$ times a vector, so every column of $X^\top X$ lies in the column space of $X^\top$">
 $$\operatorname{col}(X^\top X) \subseteq \operatorname{col}(X^\top)$$
 </Step>
 
-<Step justification="a subspace contained in another subspace of the same dimension equals it; the dimensions agree by step 4">
+<Step justification="a subspace contained in another subspace of the same dimension equals it; the dimensions agree by step 4, because a matrix and its transpose have the same rank, so $\operatorname{rank}(X^\top X) = \operatorname{rank}(X) = \operatorname{rank}(X^\top)$">
 $$\operatorname{col}(X^\top X) = \operatorname{col}(X^\top)$$
 </Step>
 
@@ -581,6 +583,7 @@ print(theta)                                  # [intercept, slope]
 r = X @ theta - y                             # residuals
 print(np.allclose(X.T @ r, 0, atol=1e-6))     # orthogonal to both columns
 print(round((r ** 2).mean(), 4))              # training MSE
+print(round(x.mean(), 6), round(((x - x.mean())**2).mean(), 6), round(((x - x.mean()) * (y - y.mean())).mean(), 6))
 ```
 
 ```text
@@ -590,11 +593,14 @@ print(round((r ** 2).mean(), 4))              # training MSE
 [-797.08173903   37.37884216]
 True
 2176.0009
+24.700651 1.900373 71.033744
 ```
 
-**By hand, with der-1-4-5.** From the printed sums, $\bar x = 494.0130/20 = 24.7007$ and $\bar y = 2524/20 = 126.2$. The sample moments are $s_{xx} = 12240.4508/20 - 24.7007^2 \approx 1.9004$ and $s_{xy} = 63765.1183/20 - 24.7007 \times 126.2 \approx 71.0337$, so
+**By hand, with der-1-4-5.** The code prints $\bar x \approx 24.700651$, $\bar y = 2524/20 = 126.2$, $s_{xx} \approx 1.900373$, and $s_{xy} \approx 71.033744$, so
 
-$$\hat\theta_1 = \frac{71.0337}{1.9004} \approx 37.3788, \qquad \hat\theta_0 = 126.2 - 37.3788 \times 24.7007 \approx -797.08.$$
+$$\hat\theta_1 = \frac{71.033744}{1.900373} \approx 37.37884, \qquad \hat\theta_0 = 126.2 - 37.37884 \times 24.700651 \approx -797.0817.$$
+
+Computing $s_{xx}$ as $\overline{x^2} - \bar x^2$ subtracts two numbers near 612, so rounding $\bar x$ to four decimals first gives 1.898 instead of 1.9004 and a slope of 37.42.
 
 Carrying full precision reproduces cell 15 to every printed digit. The residuals are orthogonal to both columns (der-1-4-3 step 2), so they sum to zero, and the training MSE, 2176.0009, is the value lesson 1.3's table reports for this line.
 

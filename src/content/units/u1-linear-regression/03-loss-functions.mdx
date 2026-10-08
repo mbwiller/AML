@@ -200,7 +200,7 @@ $$c^\star_{\mathrm{MAE}} \in \Big\{ m : \#\{i : y^{(i)} \le m\} \ge \tfrac n2 \ 
 
 </Derivation>
 
-Step 4 and step 8 explain the hook. The mean is a balance point: every target pulls on it in proportion to its distance. The median is a vote: every target pulls with the same strength, one unit up or down, however far away it is. Make one target 1,000 larger and the mean moves by $1000/n$, since $\bar y$ is linear in each $y^{(i)}$. The median does not move at all if that target was already above it, because the counts in step 7 do not change.
+Step 4 and step 8 explain the hook. The mean is a balance point: every target pulls on it in proportion to its distance. The median is a vote: every target pulls with the same strength, one unit up or down, however far away it is. Make one target 1,000 larger and the mean moves by $1000/n$, since $\bar y$ is linear in each $y^{(i)}$. The median does not move at all if that target was already above every median (for the 20 patients, above 111), because the counts in step 7 do not change for any $c$ below it.
 
 With an even number of targets, step 8 gives a whole interval. For the 20 patients, the sorted scores have 104 in 10th place and 111 in 11th, so every $c$ in $[104, 111]$ minimizes MAE; by convention the median is reported as $107.5$. The mean is $\bar y = 126.2$, pulled up by the long right tail of high scores.
 
@@ -211,7 +211,7 @@ L3 asks, as a poll, which objective is most common for linear regression <SlideR
 <Derivation
   id="der-1-3-2"
   title="How hard one residual pulls on θ: in proportion under squared loss, with bounded force under absolute loss"
-  goalTex="\frac{\partial}{\partial \theta_j}\,\ell\big(f_\theta(x^{(i)}), y^{(i)}\big) \ \text{ for } \ \ell = (\hat y - y)^2 \ \text{ and } \ \ell = \lvert \hat y - y \rvert"
+  goalTex="\frac{\partial}{\partial \theta_j}\,\ell\big(f_\theta(x^{(i)}), y^{(i)}\big) \ \text{ for } \ \ell = (\hat y - y)^2 \ \text{ and } \ \ell = \lvert \hat y - y \rvert \ \text{ for } f_\theta(x) = \theta^\top x"
   resultTex="\frac{\partial}{\partial\theta_j}\big(r^{(i)}\big)^2 = 2\,r^{(i)} x^{(i)}_j, \qquad \frac{\partial}{\partial\theta_j}\big\lvert r^{(i)}\big\rvert = \operatorname{sgn}\big(r^{(i)}\big)\, x^{(i)}_j \ \ (r^{(i)} \ne 0), \qquad r^{(i)} = f_\theta(x^{(i)}) - y^{(i)}"
   source="L2 pp.29-31 (losses stated); course map L2 derivation gap 3 (differentiability and outliers are not on the slides)"
 >
@@ -230,7 +230,7 @@ $$\frac{\partial}{\partial \hat y}\,\lvert \hat y - y \rvert = \operatorname{sgn
 
 <Chunk title="Pass the derivative to the parameters">
 
-<Step justification="$f_\theta(x) = \sum_k \theta_k x_k$, and only the term $\theta_j x_j$ contains $\theta_j$">
+<Step justification="$f_\theta(x) = \sum_{l=0}^{d} \theta_l x_l$, and only the term $\theta_j x_j$ contains $\theta_j$">
 $$\frac{\partial f_\theta(x^{(i)})}{\partial \theta_j} = x^{(i)}_j$$
 </Step>
 
@@ -242,15 +242,15 @@ $$\frac{\partial}{\partial \theta_j}\big(r^{(i)}\big)^2 = 2\,r^{(i)}\,x^{(i)}_j$
 $$\frac{\partial}{\partial \theta_j}\big\lvert r^{(i)} \big\rvert = \operatorname{sgn}\big(r^{(i)}\big)\, x^{(i)}_j$$
 </Step>
 
-<Step justification="compare sizes: under squared loss the pull grows without bound with the residual; under absolute loss it never exceeds $\lvert x^{(i)}_j \rvert$, whatever the residual">
-$$\big\lvert 2\,r^{(i)} x^{(i)}_j \big\rvert \to \infty \ \text{ as } \ \lvert r^{(i)} \rvert \to \infty, \qquad \big\lvert \operatorname{sgn}(r^{(i)})\, x^{(i)}_j \big\rvert = \lvert x^{(i)}_j \rvert$$
+<Step justification="compare sizes for a feature value $x^{(i)}_j \ne 0$ (the intercept has $x_0 = 1$): under squared loss the pull grows without bound with the residual; under absolute loss it never exceeds $\lvert x^{(i)}_j \rvert$, whatever the residual">
+$$\big\lvert 2\,r^{(i)} x^{(i)}_j \big\rvert \to \infty \ \text{ as } \ \lvert r^{(i)} \rvert \to \infty \ \ (x^{(i)}_j \ne 0), \qquad \big\lvert \operatorname{sgn}(r^{(i)})\, x^{(i)}_j \big\rvert = \lvert x^{(i)}_j \rvert$$
 </Step>
 
 </Chunk>
 
 </Derivation>
 
-Step 4 is the reason squared error is convenient: the loss is differentiable for every $\theta$, and its gradient is a residual times an input, a formula that lesson 1.4 sets to zero and lesson 2.4 follows downhill. Step 2 is the price of absolute error: its derivative jumps at every point the line passes through exactly, which is why it has no "set the derivative to zero" closed form. Step 6 is the price of squared error: a patient with residual 100 pulls on $\theta$ a hundred times as hard as a patient with residual 1. One badly wrong target can drag the whole line, which is what the hook's typo does.
+Step 4 is the reason squared error is convenient: the loss is differentiable for every $\theta$, and its gradient is a residual times an input, a formula that lesson 1.4 sets to zero and lesson 2.4 follows downhill. Step 2 is the price of absolute error: its derivative jumps at every point the line passes through exactly, which is why it has no "set the derivative to zero" closed form. Step 6 is the price of squared error: a patient with residual 100 pulls on $\theta$ a hundred times as hard as a patient with the same input and residual 1. One badly wrong target can drag the whole line, which is what the hook's typo does.
 
 <Callout type="beyond">
 
@@ -286,7 +286,7 @@ Also written as: $SS_{\text{res}}$ and $SS_{\text{tot}}$ (L3 p.9); "R squared"; 
 
 <Definition id="def-1-3-6" title="Loss versus evaluation metric" source="L3 p.8">
 
-A **loss** (objective) is the function of $\theta$ that the optimizer minimizes during training. An **evaluation metric** is a number reported to judge a trained model, on the training data or, better, on data it has not seen. MAE, MSE, and RMSE can serve as both. $R^2$ is "an evaluation metric, not a loss function". <SlideRef lecture={3} pages="8" />
+A **loss** (objective) is the function of $\theta$ that the optimizer minimizes during training. An **evaluation metric** is a number reported to judge a trained model, on the training data or, better, on data it has not seen. MAE, MSE, and RMSE can serve as both. $R^2$ is an evaluation metric, "not a loss function". <SlideRef lecture={3} pages="8" />
 
 </Definition>
 

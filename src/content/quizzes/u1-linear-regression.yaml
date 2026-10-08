@@ -529,7 +529,7 @@
   difficulty: 1
   source: "L3 p.19 poll"
   prompt: |
-    What is the most common objective (loss) function for linear regression?
+    What is the most common objective (loss) function for linear regression? (In class, "least squares" and "mean squared error" were both accepted; choose the option that names the loss function itself rather than the fitting method.)
   options:
     - { text: 'Least squares', explanation: 'Close: least squares is the name of the method, and its objective, the sum of squared errors, is $n$ times the MSE. The poll keys the objective by its name, mean squared error.' }
     - { text: 'Gradient descent', misconception: optimizer-as-loss }
@@ -669,7 +669,7 @@
   seeded: { delta: [100, 500, 1000, 1647], n: [10, 20, 50] }
   formula: "delta / n"
   explanation: |
-    $\bar y$ is linear in each score, so it moves by $\Delta/n = 1000/20 = 50$, without bound as $\Delta$ grows. The median does not move at all if the mis-entered score was already above it (der-1-3-1, and the discussion after it). In the lesson's worked example, $\Delta = 1830 - 183 = 1647$ moves the mean from 126.2 to 208.55.
+    $\bar y$ is linear in each score, so it moves by $\Delta/n = 1000/20 = 50$, without bound as $\Delta$ grows. The median does not move at all if the mis-entered score was already above every median (der-1-3-1, and the discussion after it). In the lesson's worked example, $\Delta = 1830 - 183 = 1647$ moves the mean from 126.2 to 208.55.
 
 - id: q-u1-l3-011
   lesson: loss-functions
