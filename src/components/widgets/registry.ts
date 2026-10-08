@@ -10,6 +10,7 @@ import type { WidgetModule } from './types';
 
 export const registry = {
   'bow-nb-scorer': () => import('./bow-nb-scorer/Widget'),
+  'dgp-sampler': () => import('./dgp-sampler/Widget'),
   'gaussian-2d-covariance': () => import('./gaussian-2d-covariance/Widget'),
   'gda-fitter': () => import('./gda-fitter/Widget'),
 } satisfies Record<string, () => Promise<WidgetModule>>;
