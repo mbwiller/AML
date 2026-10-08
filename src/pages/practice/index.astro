@@ -1,0 +1,30 @@
+---
+/**
+ * /practice — flashcard reviews (FSRS), the quiz builder, and progress
+ * (VISION.md §7 "Practice"). The React island is the page's content, so it
+ * hydrates on load; this is not a lesson page, and lesson pages ship none of
+ * it. The deck and quiz bank are static JSON the island fetches.
+ */
+import { Practice } from '@/components/practice/Practice';
+import Base from '@/layouts/Base.astro';
+---
+
+<Base
+  title="Practice"
+  description="Spaced-repetition reviews of every definition and result, interleaved quizzes, and your progress."
+>
+  <main id="main" class="mx-auto max-w-3xl px-4 py-8">
+    <h1 class="font-sans text-h1 leading-tight font-bold tracking-tight">Practice</h1>
+    <p class="mt-2 mb-6 max-w-measure text-muted">
+      Review the cards that are due, then quiz yourself across units. Everything is saved in this
+      browser; nothing needs an account.
+    </p>
+    <Practice client:load />
+    <noscript>
+      <p class="font-sans text-ui text-muted">
+        Practice needs JavaScript: the review schedule and your progress live in this browser. Every
+        card comes from a lesson; browse them from <a href="/units">the units</a>.
+      </p>
+    </noscript>
+  </main>
+</Base>

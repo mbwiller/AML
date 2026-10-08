@@ -284,7 +284,15 @@ How `<Check>` reads these fields today (graders in `src/lib/graders/`):
 
 ## 8. Flashcards
 
-Cards are generated at build time from every `<Definition>` (statement → formula) and every `<Derivation>` result (formula → when/why, plus one cloze on the term that carries the idea). Add hand-written cards only for things those miss:
+Cards are generated at build time from every `<Definition>` (statement → formula) and every `<Derivation>` result (formula → when/why, plus one cloze on the term that carries the idea). The exact rules are in `src/lib/practice/README.md`; what they mean for authors:
+
+- A definition card's back is the body's first display formula and its first paragraph (or list), in source order. Put the defining sentence and the defining formula first; "Also written as:" lines are left off the card.
+- A derivation's `title` is the back of its "when/why" card, so state the conditions in it ("With a shared covariance, the GDA log-odds are affine in x"), and `resultTex` is its front.
+- The cloze is taken from titles shaped "<subject> is/are <term>…", where the term is 1–4 plain words ("The MLE of μ_k is the class mean" → *class mean*). Other titles get no cloze; write a YAML `cloze` card if the idea needs one.
+- Card ids come from the block ids (`card:def-6-3-1`, `card:der-6-3-2:when`, `card:der-6-3-2:cloze`), so renaming a `def-`/`der-` id resets learners' review history for that card.
+- A derivation card's concepts are the graph nodes whose `derivation` is its id; a definition card's is the lesson concept whose id or label matches its title; otherwise the lesson's `concepts`. Set `derivation:` on graph nodes to make concept mastery precise.
+
+Add hand-written cards only for things those miss:
 
 ```yaml
 - id: fc-u6-l3-010
