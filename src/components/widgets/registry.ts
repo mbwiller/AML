@@ -13,6 +13,7 @@ export const registry = {
   'dgp-sampler': () => import('./dgp-sampler/Widget'),
   'gaussian-2d-covariance': () => import('./gaussian-2d-covariance/Widget'),
   'gda-fitter': () => import('./gda-fitter/Widget'),
+  'inner-product-dial': () => import('./inner-product-dial/Widget'),
 } satisfies Record<string, () => Promise<WidgetModule>>;
 
 export type WidgetName = keyof typeof registry;
