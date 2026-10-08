@@ -38,6 +38,9 @@ jobs:
       - name: Color tokens only (STYLE_GUIDE §4)
         run: pnpm exec tsx scripts/check-colors.ts
 
+      - name: Datasets regenerate without diff (STYLE_GUIDE §8)
+        run: pnpm check:datasets
+
       - name: Unit tests
         run: pnpm test
 
