@@ -1,0 +1,163 @@
+<Frame data="labeled pairs $(x^{(i)}, y^{(i)})$" model="a joint $p_\theta(x, y) = p_\theta(x \mid y)\,p_\theta(y)$" objective="maximize $\sum_i \log p_\theta(x^{(i)}, y^{(i)})$" optimizer="closed form (this unit)" />
+
+<Objectives>
+
+- Explain the difference between modeling $p(y \mid x)$ and $p(x \mid y)$.
+- Derive the Bayes classifier and show why $p(x)$ drops out.
+- Show that the MLE of a generative model splits into a prior problem and a class-conditional problem.
+
+</Objectives>
+
+<Hook>
+
+A new hyperkalemia report arrives for a patient on 20 mg of the VASCO drug. One classifier draws a line through patient space; another asks, "how would a typical event look, and how would a typical non-event look?" Which one needs fewer patients to get good?
+
+</Hook>
+
+<Definition id="def-6-1-1" title="Discriminative model" source="L8 p.30">
+
+A model of the conditional distribution $p_\theta(y \mid \mathbf{x}) : \mathcal{X} \to (\mathcal{Y} \to [0,1])$. It learns the decision boundary and says nothing about $p(\mathbf{x})$.
+
+</Definition>
+
+<Derivation id="der-6-1-1" title="The Bayes classifier" goalTex="\hat y = \argmax_y p(\mathbf{x} \mid y)\, p(y)" resultTex="\hat y = \argmax_y p(\mathbf{x} \mid y)\, p(y)" source="L8 p.39 (two lines)">
+
+<Chunk title="Start from the posterior">
+
+<Step justification="prediction is the most probable label">
+$$\hat y = \argmax_y p(y \mid \mathbf{x})$$
+</Step>
+
+<Step justification="Bayes' rule" sticky="bayes-rule">
+$$= \argmax_y \frac{p(\mathbf{x} \mid y)\, p(y)}{p(\mathbf{x})}$$
+</Step>
+
+<Step justification="the denominator does not depend on $y$, so it does not change the argmax" fadeable>
+$$= \argmax_y p(\mathbf{x} \mid y)\, p(y)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+<Widget name="generative-vs-discriminative-toggle" dataset="adverse" challenge="Slide the prior $p(y=1)$ from 0.06 to 0.5. Which way does the boundary move, and why?" />
+
+{/* A real, registered widget: validated against its manifest and hydrated with client:visible. The one above stays as the unknown-name placeholder path. */}
+
+<Widget name="gaussian-2d-covariance" />
+
+<Widget name="gda-fitter" sharedCovariance={true} showLogisticRegression={true} />
+
+<Widget name="bow-nb-scorer" />
+
+<Check ids={["q-u6-l1-001", "q-u6-l1-002", "q-u6-l3-011", "q-u6-l1-013", "q-u6-l1-016", "q-u9-l9-999"]} />
+
+<Pitfall title="A larger class-conditional likelihood does not decide the label" misconception="ignore-prior">
+
+$p_\theta(\mathbf{x} \mid y=0) = 0.6$ and $p_\theta(\mathbf{x} \mid y=1) = 0.4$ does not mean "predict 0". With $p(y=1) = 0.9$ the posterior favors class 1. (This is the L8 p.37 poll trap.)
+
+</Pitfall>
+
+<Connections>
+
+- Companion: <Notebook path="Code Companions/Lecture 8 Code Companion.ipynb" cells="0-8" />
+- Next: 6.2 Text as features
+
+</Connections>
+
+<HomeworkBridge hw="hw3" skills={["bayes-classifier", "generative-vs-discriminative"]} />
+
+<Summary>
+
+- Discriminative: $p_\theta(y\mid x)$, learns the boundary. Generative: $p_\theta(x \mid y)\,p_\theta(y)$, learns the data.
+- Bayes classifier: $\hat y = \argmax_y p(\mathbf{x}\mid y)\,p(y)$; the prior matters.
+- Generative MLE splits: $\sum_i \log p(x^{(i)} \mid y^{(i)}) + \sum_i \log p(y^{(i)})$.
+
+</Summary>
+
+{/* ---- Everything below is not in the §11 skeleton; the kitchen sink shows one of each remaining component. ---- */}
+
+<Intuition>
+
+In one dimension the two class-conditional densities are two bumps; the Bayes classifier picks whichever bump is taller at $x$, after each is scaled by its prior. The boundary is where the scaled bumps cross: $\htmlClass{sym-pos}{p(x \mid 1)\,p(1)} = \htmlClass{sym-neg}{p(x \mid 0)\,p(0)}$.
+
+</Intuition>
+
+<Theorem id="thm-6-1-1" title="The Bayes classifier minimizes the expected 0–1 loss" source="L8 p.40">
+
+For any classifier $f$, $\Prob(f(X) \neq Y) \geq \Prob(f^\star(X) \neq Y)$ where $f^\star(x) = \argmax_y p(y \mid x)$.
+
+</Theorem>
+
+<Proposition id="prop-6-1-1" title="The denominator does not change the argmax">
+
+For fixed $x$, $p(x) > 0$ scales every $p(x \mid y)\,p(y)$ by the same constant.
+
+</Proposition>
+
+<Lemma id="lem-6-1-1" title="Logs preserve the argmax">
+
+$\log$ is strictly increasing, so $\argmax_y g(y) = \argmax_y \log g(y)$ when $g > 0$.
+
+</Lemma>
+
+<Proof collapsed title="The Bayes classifier is optimal" keyIdea="condition on $X = x$ and minimize pointwise">
+
+Write $\Prob(f(X) \neq Y) = \E_X\bigl[\Prob(f(X) \neq Y \mid X)\bigr] = \E_X\bigl[1 - p(f(X) \mid X)\bigr]$.
+
+For each $x$ the integrand $1 - p(f(x) \mid x)$ is smallest when $f(x)$ is the mode of $p(\cdot \mid x)$, which is $f^\star(x)$. Integrating a pointwise minimum gives the global minimum.
+
+</Proof>
+
+A tagged equation and a reference to it:
+
+$$
+p(y \mid x) = \frac{p(x \mid y)\,p(y)}{p(x)}
+\tag{6.1.1} \htmlId{eq-6-1-1}{}
+$$
+
+By <EqRef id="eq-6-1-1" /> the posterior is proportional to the joint.
+
+<Callout type="note" title="A note">
+
+The prior $p(y)$ is a [[categorical-distribution|categorical distribution]] over $K$ classes (an id with no glossary file: the sticky opens a "no entry yet" card). Two real terms: [[bayes-rule]], used again as [[bayes-rule|the rule]] with a lighter underline, and [[covariance-matrix|the covariance matrix]], whose card has display math.
+
+</Callout>
+
+<Callout type="warning">
+
+With $p(y = 1) = 0.9$, a class-conditional likelihood ratio of $0.6 / 0.4$ in favor of class 0 is not enough to predict 0.
+
+</Callout>
+
+<Callout type="slide">
+
+L8 p.39 writes the Bayes classifier in two lines and drops $p(x)$ without comment. We derive the drop in Derivation 6.1.1.
+
+</Callout>
+
+<Callout type="beyond">
+
+In the MAP view, the prior over labels is one more term in the objective; regularization in Unit 5 is the same idea applied to $\theta$.
+
+</Callout>
+
+A slide citation inline: <SlideRef lecture={8} pages="37" /> and a range <SlideRef lecture={9} pages="20-40" />.
+
+<Figure src="/figures/placeholder.svg" alt="A placeholder figure: two Gaussian bumps and their crossing point" caption="Two class-conditional densities and the Bayes boundary where their scaled versions cross." source="L8 p.41" />
+
+<Example case="adverse" title="Scoring one patient">
+
+Patient `ADV-0117` has $x = (1, 0, 1)$. With $\hat\phi_1 = 0.06$ and the fitted class conditionals, the posterior for an adverse event is $p(y = 1 \mid x) \approx 0.31$, so the classifier predicts 0 at threshold $0.5$.
+
+</Example>
+
+Code with Expressive Code:
+
+```python title="bayes_classifier.py"
+import numpy as np
+
+def predict(log_px_given_y: np.ndarray, log_prior: np.ndarray) -> np.ndarray:
+    # rows: examples, cols: classes
+    return np.argmax(log_px_given_y + log_prior, axis=1)
+```

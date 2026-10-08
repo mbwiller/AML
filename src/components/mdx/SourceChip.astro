@@ -1,0 +1,43 @@
+---
+/**
+ * Internal: renders a `source` prop. "L9 p.24 (stated)" becomes a
+ * `<SlideRef>` chip followed by the note in muted text; anything else is
+ * shown as a plain chip. Not in the MDX registry.
+ */
+import { parseSlideSource } from '@/lib/markdown/numbering';
+
+import Chip from './Chip.astro';
+import SlideRef from './SlideRef.astro';
+
+interface Props {
+  source?: string | undefined;
+}
+const { source } = Astro.props;
+const parsed = source ? parseSlideSource(source) : null;
+---
+
+{source && (
+  <span class="source">
+    {parsed ? (
+      <>
+        <SlideRef lecture={parsed.lecture} pages={parsed.pages} />
+        {parsed.note && <span class="source-note">{parsed.note}</span>}
+      </>
+    ) : (
+      <Chip>{source}</Chip>
+    )}
+  </span>
+)}
+
+<style>
+  .source {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+</style>

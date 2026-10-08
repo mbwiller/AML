@@ -1,0 +1,83 @@
+---
+/**
+ * Internal: the numbered box shared by Definition, Theorem, Proposition, and
+ * Lemma. The label is derived from `id` (`def-6-3-1` → "Definition 6.3.1"),
+ * never from position. The `h3` carries label and title so the outline rail
+ * can be generated from h2/h3. `data-flashcard-source` marks it for the
+ * flashcard extractor (M1). Not in the MDX registry.
+ */
+import { renderInlineTex } from '@/lib/markdown/render-tex';
+import { labelFromId, type KindLabel } from '@/lib/markdown/numbering';
+
+import SourceChip from './SourceChip.astro';
+
+interface Props {
+  kind: KindLabel;
+  id: string;
+  title: string;
+  source?: string | undefined;
+}
+const { kind, id, title, source } = Astro.props;
+const label = labelFromId(id, kind);
+---
+
+<section
+  id={id}
+  class="result-box"
+  data-kind={kind.toLowerCase()}
+  data-flashcard-source
+  aria-labelledby={`${id}-title`}
+>
+  <header class="result-head">
+    <h3 id={`${id}-title`} class="result-title">
+      <span class="result-label">{label}</span>
+      <span class="result-name" set:html={renderInlineTex(title)} />
+    </h3>
+    {source && <SourceChip source={source} />}
+  </header>
+  <div class="result-body">
+    <slot />
+  </div>
+</section>
+
+<style>
+  .result-box {
+    margin-block: 1.5em;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+  }
+  .result-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin-block-end: 0.5rem;
+  }
+  .result-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .result-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .result-body > :global(:first-child) {
+    margin-block-start: 0;
+  }
+  .result-body > :global(:last-child) {
+    margin-block-end: 0;
+  }
+</style>

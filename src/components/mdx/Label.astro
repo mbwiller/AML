@@ -1,0 +1,28 @@
+---
+/**
+ * Internal: the small Inter label that names a box ("Definition 6.3.1",
+ * "Goal", "Pitfall"). Not in the MDX registry.
+ */
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+---
+
+<span class:list={['mdx-label', className]}>
+  <slot />
+</span>
+
+<style>
+  .mdx-label {
+    display: inline-block;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+</style>

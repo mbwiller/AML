@@ -1,0 +1,76 @@
+---
+/**
+ * `<Example case="notes" title="Scoring a report">` … `</Example>` — a
+ * worked example whose numbers come from the generated case dataset
+ * (docs/CONTENT_AUTHORING.md §4). The `h3` keeps it in the outline; `id`
+ * defaults to `example-<slug of title>`. M1 adds the faded variant.
+ */
+import { slugify } from '@/lib/markdown/numbering';
+import { renderInlineTex } from '@/lib/markdown/render-tex';
+
+import Chip from './Chip.astro';
+
+interface Props {
+  case?: string | undefined;
+  title?: string | undefined;
+  id?: string | undefined;
+}
+const { case: caseId, title, id } = Astro.props;
+const sectionId = id ?? (title ? `example-${slugify(title)}` : 'example');
+---
+
+<section id={sectionId} class="example" data-case={caseId} aria-labelledby={`${sectionId}-title`}>
+  <header class="example-head">
+    <h3 id={`${sectionId}-title`} class="example-title">
+      <span class="example-label">Worked example</span>
+      {title && <span class="example-name" set:html={renderInlineTex(title)} />}
+    </h3>
+    {caseId && (
+      <Chip href={`/cases/${caseId}`} title={`Case: ${caseId}`}>
+        case: {caseId}
+      </Chip>
+    )}
+  </header>
+  <div class="example-body">
+    <slot />
+  </div>
+</section>
+
+<style>
+  .example {
+    margin-block: 2em;
+    padding-inline-start: 1.25rem;
+    border-inline-start: 2px solid var(--border);
+  }
+  .example-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin-block-end: 0.5rem;
+  }
+  .example-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .example-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .example-body > :global(:first-child) {
+    margin-block-start: 0;
+  }
+  .example-body > :global(:last-child) {
+    margin-block-end: 0;
+  }
+</style>

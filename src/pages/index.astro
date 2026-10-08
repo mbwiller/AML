@@ -1,0 +1,108 @@
+---
+import Base from '@/layouts/Base.astro';
+import { getCourseLessons } from '@/lib/site';
+import { lessonHref, lessonNumber } from '@/lib/lessons';
+
+const { lessons } = await getCourseLessons();
+const first = lessons[0];
+
+// Course facts (CLAUDE.md). Dates are ISO; rendered relative to the build date.
+const milestones = [
+  { date: '2026-10-19', label: 'HW3 due (Naive Bayes + GDA)' },
+  { date: '2026-11-02', label: 'Midterm Kaggle' },
+  { date: '2026-11-18', label: 'HW4 due' },
+  { date: '2026-12-07', label: 'HW5 due' },
+  { date: '2026-12-17', label: 'Final project' },
+];
+const today = new Date().toISOString().slice(0, 10);
+const nextMilestone = milestones.find((m) => m.date >= today);
+---
+
+<Base title="Home" description="Interactive, fully derived CS 5785 Applied Machine Learning.">
+  <main id="main" class="mx-auto max-w-5xl px-4 py-10">
+    <h1 class="font-sans text-h1 leading-tight font-bold tracking-tight">AML Atlas</h1>
+    <p class="mt-2 max-w-measure text-muted">
+      Every result the lectures state, derived step by step. Every prerequisite, where it is used.
+    </p>
+
+    <div class="mt-8 grid gap-4 font-sans sm:grid-cols-3">
+      <section class="rounded-card border border-border bg-surface p-5" data-continue>
+        <h2 class="m-0 text-ui-xs font-semibold tracking-caps text-muted uppercase">Continue</h2>
+        {first ? (
+          <a
+            href={lessonHref(first.data.unit, first.data.slug)}
+            class="mt-2 block text-ui-lg font-semibold text-fg no-underline hover:underline"
+          >
+            {lessonNumber(first.data.unit, first.data.order)} · {first.data.title}
+          </a>
+        ) : (
+          <p class="mt-2 text-ui text-muted">No lessons published yet.</p>
+        )}
+        <p class="mt-1 text-ui-sm text-muted" data-continue-note>
+          Open any lesson and your place is remembered on this device.
+        </p>
+      </section>
+      <section class="rounded-card border border-border bg-surface p-5">
+        <h2 class="m-0 text-ui-xs font-semibold tracking-caps text-muted uppercase">Due today</h2>
+        <p class="mt-2 text-ui-lg font-semibold">0 reviews</p>
+        <p class="mt-1 text-ui-sm text-muted">Flashcards arrive with the practice engine.</p>
+      </section>
+      <section class="rounded-card border border-border bg-surface p-5">
+        <h2 class="m-0 text-ui-xs font-semibold tracking-caps text-muted uppercase">
+          Next deadline
+        </h2>
+        {nextMilestone && (
+          <>
+            <p class="mt-2 text-ui-lg font-semibold">{nextMilestone.label}</p>
+            <p class="mt-1 text-ui-sm text-muted">{nextMilestone.date}</p>
+          </>
+        )}
+      </section>
+    </div>
+
+    <section class="mt-10">
+      <h2 class="font-sans text-h3 font-semibold">Course calendar</h2>
+      <ol class="mt-3 m-0 grid list-none gap-2 p-0 font-sans text-ui">
+        {milestones.map((m) => (
+          <li
+            class:list={[
+              'm-0 flex gap-4 rounded-control px-2 py-1',
+              { 'text-muted': m.date < today },
+            ]}
+          >
+            <span class="w-24 tabular-nums">{m.date}</span>
+            <span>{m.label}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <p class="mt-10 font-sans text-ui">
+      <a href="/units">Browse the units</a>
+    </p>
+  </main>
+</Base>
+
+<script>
+  import { LAST_LESSON_KEY, parseLastLesson, relativeTime } from '@/lib/progress';
+
+  const card = document.querySelector<HTMLElement>('[data-continue]');
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(LAST_LESSON_KEY);
+  } catch {
+    /* storage unavailable: nothing to continue */
+  }
+  const last = parseLastLesson(raw);
+  if (card && last) {
+    const link = card.querySelector('a');
+    const note = card.querySelector<HTMLElement>('[data-continue-note]');
+    if (link) {
+      link.href = last.href;
+      link.textContent = `${last.number} · ${last.title}`;
+    }
+    if (note) {
+      note.textContent = `${Math.round(last.progress * 100)}% read, ${relativeTime(last.at, Date.now())}.`;
+    }
+  }
+</script>

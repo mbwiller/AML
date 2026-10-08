@@ -1,0 +1,26 @@
+---
+import type { OutlineItem } from '@/lib/lessons';
+
+interface Props {
+  items: OutlineItem[];
+  label?: string;
+}
+const { items, label = 'On this page' } = Astro.props;
+---
+
+<nav aria-label={label} class="outline-rail font-sans text-ui">
+  <p class="mb-2 text-ui-xs font-semibold tracking-caps text-muted uppercase">{label}</p>
+  <ol class="m-0 list-none p-0">
+    {items.map((h) => (
+      <li class:list={['m-0', { 'pl-3': h.depth === 3 }]}>
+        <a
+          href={`#${h.slug}`}
+          class="block rounded-control px-2 py-1 leading-snug text-muted no-underline hover:bg-surface-2 hover:text-fg"
+          data-outline-link={h.slug}
+        >
+          {h.text}
+        </a>
+      </li>
+    ))}
+  </ol>
+</nav>

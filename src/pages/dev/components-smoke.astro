@@ -1,0 +1,16 @@
+---
+/**
+ * Scratch page for the plain MDX components: renders the §11 skeleton
+ * lesson plus one of each remaining component. The real kitchen-sink page
+ * lives at /dev/kitchen-sink.
+ */
+import Base from '@/layouts/Base.astro';
+import { mdxComponents } from '@/components/mdx';
+import Smoke from './_components-smoke.mdx';
+---
+
+<Base title="MDX components smoke">
+  <main class="prose mx-auto max-w-3xl p-8">
+    <Smoke components={mdxComponents} />
+  </main>
+</Base>

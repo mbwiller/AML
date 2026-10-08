@@ -1,0 +1,25 @@
+---
+/**
+ * `<SlideRef lecture={7} pages="47" />` — inline citation chip linking to the
+ * PDF page in /materials (docs/CONTENT_AUTHORING.md §4). "47" → "L7 p.47";
+ * "12-14" → "L7 pp.12–14". M1 adds a hover preview of the slide.
+ */
+import { slideRefHref, slideRefLabel } from '@/lib/markdown/numbering';
+
+import Chip from './Chip.astro';
+
+interface Props {
+  lecture: number;
+  pages: string;
+}
+const { lecture, pages } = Astro.props;
+const label = slideRefLabel(lecture, String(pages));
+---
+
+<Chip
+  class="slideref"
+  href={slideRefHref(lecture, String(pages))}
+  title={`Lecture ${lecture}, slide ${pages}`}
+>
+  {label}
+</Chip>

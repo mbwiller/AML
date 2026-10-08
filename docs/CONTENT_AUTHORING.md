@@ -49,7 +49,7 @@ prerequisites:                            # node ids it REQUIRES (concepts or gl
   - log-likelihood
   - lagrange-multipliers
 homework: [hw3]                           # ids from src/content/homework/
-cases: [notes]                            # ids from src/content/cases/
+cases: [notes]                            # ids from src/content/cases/ (a lesson may cite a case before its page exists; the validator warns until it does)
 companions:                               # notebook cells this lesson uses
   - { notebook: "Code Companions/Lecture 8 Code Companion.ipynb", cells: "9-14" }
   - { notebook: "Lectures/NaiveBayes_Spam_exercise_sol.ipynb", cells: "all" }
@@ -59,7 +59,7 @@ authors: [jide]
 ---
 ```
 
-Rules: `status: draft` lessons build but are hidden from navigation and the Atlas. `review` means ready for `math-reviewer` and `content-reviewer`. `published` requires both reports attached to the PR with zero unresolved findings.
+Rules: `status: draft` lessons build but are hidden from navigation and the Atlas in production builds (they are visible under `pnpm dev`). `review` means ready for `math-reviewer` and `content-reviewer`. `published` requires both reports attached to the PR with zero unresolved findings.
 
 ## 3. Lesson anatomy checklist
 
@@ -82,7 +82,7 @@ Skipping a part requires an MDX comment: `{/* no-hook: this is a notation-only l
 
 ## 4. Component reference
 
-Lesson files contain **no imports**; every component below is provided globally. Markdown inside a component must be separated from the tags by blank lines (an MDX rule). Math works everywhere, including inside props that end in `Tex`.
+Lesson files contain **no imports**; every component below is provided globally. Markdown inside a component must be separated from the tags by blank lines (an MDX rule). Math works everywhere: props that end in `Tex` take raw TeX; the `title`, `justification`, `keyIdea`, `challenge`, `caption`, and `<Frame>` props take prose with `$…$` spans. A literal dollar is `\$`.
 
 ### `<Frame data="…" model="…" objective="…" optimizer="…" />`
 The four-component strip for this lesson. One line each, may contain math.
@@ -144,7 +144,9 @@ $$\frac{d^2\ell}{d\psi_{jk}^2} = -\frac{s}{\psi_{jk}^2} - \frac{n_k - s}{(1-\psi
 </Derivation>
 ```
 
-Props: `goalTex` and `resultTex` are TeX without `$`. `justification` is plain text (may include `$…$`). `sticky` is a glossary id shown beside that step. `fadeable` marks steps eligible for the generated faded-example and "which step is wrong" variants. `figureState` is a JSON string handed to the nearest preceding `<Widget>` when the step is revealed. ≤15 steps per derivation; one algebraic move per step.
+Props: `goalTex` and `resultTex` are TeX without `$`. `justification` is plain text (may include `$…$`). The display math inside a `<Step>` may sit directly under the tag (as above) or be separated by blank lines; either renders in display mode. `source` is parsed as `L<n> p.<k>` or `L<n> pp.<a>-<b>` followed by an optional note in parentheses; anything else is shown verbatim. `sticky` is a glossary id shown beside that step. `fadeable` marks steps eligible for the generated faded-example and "which step is wrong" variants. `figureState` is a JSON string handed to the nearest preceding `<Widget>` when the step is revealed. ≤15 steps per derivation; one algebraic move per step.
+
+What the platform does with this (so hints and quizzes can rely on it): steps are numbered 1…n across chunks and each gets the stable id `<derivation id>-step-<n>` (`der-6-3-2-step-7`), so `#der-6-3-2-step-7` deep-links to step 7 of Derivation 6.3.2 and the page opens with exactly steps 1–7 shown and step 7 highlighted. Steps reveal one at a time (`→`/Space, `←`, `a`, `r`, or the control bar); the count is remembered per derivation in the reader's browser. A revealed step's `figureState` must be a JSON *object*; it is parsed and dispatched as the DOM event `aml:figure-state` (`detail: { derivation, step, state }`) on the derivation and on the preceding `<Widget>`'s `figure[data-widget]`, which the widget host listens to (`src/lib/figure-state.ts`). A following `<Widget>` is not driven; put the explorable before the derivation that steps it.
 
 ### `<Proof collapsed title="Convergence of GD on L-smooth convex functions" keyIdea="telescoping the descent lemma">` … `</Proof>`
 Full proof, folded; the key idea stays visible.
@@ -153,7 +155,7 @@ Full proof, folded; the key idea stays visible.
 Links to a display equation tagged with `\tag{6.3.1}` and `\htmlId{eq-6-3-1}{…}`.
 
 ### `[[term]]` and `[[term|display text]]`
-Sticky-note popover for a glossary id. The first use in a lesson is emphasized; later uses get a dotted underline. Unknown ids fail validation.
+Sticky-note popover for a glossary id: hover (300 ms) or tap opens the glossary card beside the term, Escape closes it, and the card links to `/glossary#term`. The underline is dotted in the term's field color; the first use in a lesson is emphasized (2px), later uses are lighter (1px). The card is built once per page per term from the glossary file, so repeat uses are free. Unknown ids fail validation (the page still builds, showing a "no entry yet" card, so a term can be written a little ahead of its glossary file). Prerequisite chips in the lesson header open the same card.
 
 ### `<Callout type="note | warning | slide | beyond">` … `</Callout>`
 `slide` = "what the slide says, and how we normalize it"; `beyond` = "beyond the slides" (e.g., the MAP view of regularization).
@@ -162,7 +164,7 @@ Sticky-note popover for a glossary id. The first use in a lesson is emphasized; 
 Inline citation chip; links to the PDF page in `/materials`.
 
 ### `<Widget name="bow-nb-scorer" dataset="notes" smoothing={false} challenge="Turn smoothing off and type a word the training set never saw." />`
-Props beyond `name` are validated against the widget's manifest. If the widget does not exist yet, the build shows a placeholder with the name and params (content can be written before the widget ships).
+Props beyond `name` and `challenge` are validated at build time against the widget's manifest (`src/components/widgets/<name>/manifest.ts`, a Zod schema in which every param has a default): an unknown prop or an out-of-range value fails the build with the offending prop named, so `<Widget name="…" />` alone is always valid. `challenge` overrides the manifest's default challenge line. The registered widgets, their params, ranges, and defaults are listed on `/dev/widgets`. If the widget does not exist yet, the build shows a placeholder with the name and params (content can be written before the widget ships). Reader state: the "copy state link" button in the frame puts the current params in the URL hash (`#w=<name>:<base64url>`), which the widget restores on load; a `<Step figureState>` reveal reaches the nearest preceding widget as its `figureState` prop.
 
 ### `<Figure src="…" alt="…" caption="…" source="L10 p.14" />`
 Static figure (SVG/PNG under `src/assets/figures/`). Use only when interactivity adds nothing.
@@ -245,7 +247,7 @@ Edge types: `requires` (default for derived edges), `generalizes`, `contrasts`, 
     Naive Bayes assumes that, given the label, the features are
   options:
     - { text: "independent", correct: true }
-    - { text: "identically distributed", misconception: nb-iid-confusion }
+    - { text: "identically distributed", misconception: nb-iid-confusion }   # misconception ids are optional (true/false items have none) but tag distractors wherever a Pitfall exists
     - { text: "uncorrelated across documents", misconception: nb-marginal-vs-conditional }
     - { text: "Gaussian", misconception: nb-requires-gaussian }
   explanation: |
@@ -272,6 +274,14 @@ Edge types: `requires` (default for derived edges), `generalizes`, `contrasts`, 
 
 Every Poll Everywhere question in the course map becomes an item with `source: "L<n> p.<k> poll"` and the professor's intended key. Aim for ≥10 items per lesson, at least three types.
 
+How `<Check>` reads these fields today (graders in `src/lib/graders/`):
+
+- `tolerance` is **absolute**: an answer counts when $|\text{given} - \text{answer}| \le$ `tolerance`. Learners may type a decimal, a fraction (`6/40`), or scientific notation; the prompt should say how many decimals when the tolerance is tight.
+- `formula` is evaluated by a small safe evaluator, not JavaScript: `+ - * / ^` (or `**`), parentheses, unary minus, `log`/`ln`, `exp`, `sqrt`, `abs`, `floor`, `ceil`, `round`, and the constants `pi`, `e`. Only the names in `seeded` are variables; anything else fails `pnpm validate:content`.
+- The prompt's literal numbers are the default instance and `answer` is its key. When `seeded` is present, "New numbers" resamples one value per parameter and shows them beneath the prompt as `n_k = 20, s = 3`, so use parameter names a reader can match to the prompt's symbols.
+- `which-step` reads the step TeX from the lesson that defines `derivation`; a wrong answer links to `#<derivation>-step-<n>` when the page has it.
+- `explanation` text that cites `der-6-3-6 step 7` makes "Go to the derivation" link to that step when it is on the page.
+
 ## 8. Flashcards
 
 Cards are generated at build time from every `<Definition>` (statement → formula) and every `<Derivation>` result (formula → when/why, plus one cloze on the term that carries the idea). Add hand-written cards only for things those miss:
@@ -290,7 +300,7 @@ Cards are generated at build time from every `<Definition>` (statement → formu
 
 `src/content/cases/notes.mdx`: frontmatter `id, title, tagline, variables (list), generativeModel (TeX + parameters), seed, usedIn (lesson ids)`; body tells the story in ≤300 words and shows a sample of the data. Specifications for all eight cases are in `docs/reference/pedagogy-and-curriculum.md` Part C.
 
-`src/content/homework/hw3.mdx`: frontmatter `id, title, due (ISO date), live (bool), units (ids)`; body is the readiness gate (one row per skill: skill → lesson section → check id) and, once `live: false`, the problem-by-problem walkthrough. HW1 and HW2 maps are already written in `docs/course-map/05-homeworks.md`.
+`src/content/homework/hw3.mdx`: frontmatter `id, title, due (ISO date, quoted or bare), live (bool), units (ids)`; body is the readiness gate (one row per skill: skill → lesson section → check id) and, once `live: false`, the problem-by-problem walkthrough. HW1 and HW2 maps are already written in `docs/course-map/05-homeworks.md`.
 
 ## 10. Definition of done for a lesson
 

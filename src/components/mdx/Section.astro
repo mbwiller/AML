@@ -1,0 +1,18 @@
+---
+/**
+ * Internal: one of the twelve anatomy sections (VISION.md §8) that renders
+ * as `<section id><h2>` so the outline rail can link to it. Not in the MDX
+ * registry; used by Objectives, Intuition, Connections, and Summary.
+ */
+interface Props {
+  id: string;
+  heading: string;
+  class?: string;
+}
+const { id, heading, class: className } = Astro.props;
+---
+
+<section id={id} class:list={['anatomy', className]} aria-labelledby={`${id}-heading`}>
+  <h2 id={`${id}-heading`}>{heading}</h2>
+  <slot />
+</section>

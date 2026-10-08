@@ -1,0 +1,28 @@
+---
+/**
+ * `<Notebook path="Code Companions/Lecture 8 Code Companion.ipynb" cells="9-14" />`
+ * — inline chip linking to the companion cells in /materials
+ * (docs/CONTENT_AUTHORING.md §4). M1 renders the cells with their outputs.
+ */
+import { slugify } from '@/lib/markdown/numbering';
+
+import Chip from './Chip.astro';
+
+interface Props {
+  path: string;
+  cells: string;
+}
+const { path, cells } = Astro.props;
+const basename = path.split('/').pop() ?? path;
+const cellsText = String(cells).replace(/\s*-\s*/, '–');
+const label = cells === undefined ? basename : `${basename} · cells ${cellsText}`;
+---
+
+<Chip
+  class="notebook"
+  href={`/materials#notebook-${slugify(basename)}`}
+  title={`Notebook: ${path}`}
+  data-notebook={path}
+>
+  {label}
+</Chip>

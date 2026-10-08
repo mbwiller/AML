@@ -1,0 +1,44 @@
+---
+import Base from '@/layouts/Base.astro';
+import { unitHref } from '@/lib/lessons';
+import { getCourseLessons } from '@/lib/site';
+
+const { units, lessons } = await getCourseLessons();
+const count = (id: string) => lessons.filter((l) => l.data.unit === id).length;
+---
+
+<Base
+  title="Units"
+  description="The course, unit by unit, from orientation to unsupervised learning."
+>
+  <main id="main" class="mx-auto max-w-5xl px-4 py-10">
+    <h1 class="font-sans text-h1 leading-tight font-bold tracking-tight">Units</h1>
+    <p class="mt-2 max-w-measure text-muted">
+      Units follow the ideas, not the lecture files. Each one ends at the homework it prepares you
+      for.
+    </p>
+    <ol class="mt-8 m-0 grid list-none gap-4 p-0 sm:grid-cols-2">
+      {units.map((u) => {
+        const n = count(u.id);
+        return (
+          <li class="m-0">
+            <a
+              href={unitHref(u.id)}
+              class="flex h-full flex-col gap-2 rounded-card border border-border bg-surface p-5 text-fg no-underline transition-colors duration-micro ease-standard hover:bg-surface-2"
+            >
+              <span class="flex items-center justify-between font-sans text-ui-xs tracking-caps text-muted uppercase">
+                <span>Unit {u.order}</span>
+                <span class="normal-case tracking-normal">{u.lectures}</span>
+              </span>
+              <span class="font-sans text-body leading-snug font-semibold">{u.title}</span>
+              <span class="text-ui-lg text-muted">{u.summary}</span>
+              <span class="mt-auto pt-2 font-sans text-ui-sm text-muted">
+                {n === 0 ? 'Coming soon' : `${n} lesson${n === 1 ? '' : 's'}`}
+              </span>
+            </a>
+          </li>
+        );
+      })}
+    </ol>
+  </main>
+</Base>

@@ -1,0 +1,11 @@
+---
+import Base from '@/layouts/Base.astro';
+import { mdxComponents } from '@/components/mdx';
+import MathSpike from './_math.mdx';
+---
+
+<Base title="Math pipeline spike">
+  <main class="prose mx-auto max-w-3xl p-8">
+    <MathSpike components={mdxComponents} />
+  </main>
+</Base>

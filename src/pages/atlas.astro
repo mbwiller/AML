@@ -1,0 +1,64 @@
+---
+/**
+ * /atlas — the full-screen concept graph (VISION.md §7, §9.4). The header
+ * stays; the graph fills the rest of the viewport (min 480 px). The island is
+ * the only JavaScript on the page; the <noscript> block lists every node by
+ * unit so the graph is browsable (and indexable) without it.
+ */
+import { Atlas } from '@/components/atlas/Atlas';
+import Base from '@/layouts/Base.astro';
+import { getAtlasData } from '@/lib/graph/data';
+import { encodeAtlas } from '@/lib/graph/wire';
+
+const data = await getAtlasData();
+const wire = encodeAtlas(data);
+const byUnit = new Map<string, typeof data.nodes>();
+for (const n of data.nodes) {
+  const key = n.unit ?? '';
+  const list = byUnit.get(key) ?? [];
+  list.push(n);
+  byUnit.set(key, list);
+}
+const unitTitle = (id: string) =>
+  id === '' ? 'Not yet placed in a unit' : (data.units.find((u) => u.id === id)?.title ?? id);
+const groups = [...data.units.map((u) => u.id), ''].filter((id) => byUnit.has(id));
+---
+
+<Base
+  title="Atlas"
+  description="Every concept in the course, its prerequisites, and the lessons that teach it, as one navigable graph."
+>
+  <main id="main" class="atlas-page" aria-label="Atlas">
+    <h1 class="sr-only">Atlas: the concept graph</h1>
+    <Atlas client:visible wire={wire} />
+    <noscript>
+      <div class="atlas-noscript mx-auto max-w-5xl px-4 py-10 font-sans">
+        <p class="text-muted">
+          The interactive graph needs JavaScript. Here is every concept, grouped by unit.
+        </p>
+        {groups.map((id) => (
+          <section class="mt-8">
+            <h2 class="text-h3 font-semibold">{unitTitle(id)}</h2>
+            <ul class="mt-2 grid gap-1 sm:grid-cols-2">
+              {(byUnit.get(id) ?? [])
+                .sort((a, b) => a.label.localeCompare(b.label))
+                .map((n) => (
+                  <li>
+                    {n.href ? <a href={n.href}>{n.label}</a> : n.label}
+                    <span class="text-ui-sm text-muted"> · {n.type}</span>
+                  </li>
+                ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </noscript>
+  </main>
+</Base>
+
+<style>
+  /* Full-bleed is reserved for the Atlas (STYLE_GUIDE §5): the header is 3.5rem. */
+  .atlas-page {
+    height: max(480px, calc(100dvh - 3.5rem));
+  }
+</style>

@@ -1,0 +1,110 @@
+---
+/**
+ * Light/dark toggle. Vanilla <script>, no React runtime.
+ * The inline head script in src/layouts/Base.astro sets data-theme before
+ * paint; this button flips it, persists to localStorage ('aml-theme'), and
+ * keeps its accessible name in sync. Icons are swapped by the `dark:`
+ * variant, so they are correct even before the script runs.
+ */
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+---
+
+<button
+  type="button"
+  data-theme-toggle
+  aria-label="Switch to dark theme"
+  title="Switch to dark theme"
+  class:list={[
+    'inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-control border border-border bg-surface text-fg transition-colors duration-micro ease-standard hover:bg-surface-2',
+    className,
+  ]}
+>
+  <!-- lucide "moon": shown in light theme (the theme you would switch to) -->
+  <svg
+    class="size-5 dark:hidden"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+  </svg>
+  <!-- lucide "sun": shown in dark theme -->
+  <svg
+    class="hidden size-5 dark:block"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="12" cy="12" r="4"></circle>
+    <path d="M12 2v2"></path>
+    <path d="M12 20v2"></path>
+    <path d="m4.93 4.93 1.41 1.41"></path>
+    <path d="m17.66 17.66 1.41 1.41"></path>
+    <path d="M2 12h2"></path>
+    <path d="M20 12h2"></path>
+    <path d="m6.34 17.66-1.41 1.41"></path>
+    <path d="m19.07 4.93-1.41 1.41"></path>
+  </svg>
+</button>
+
+<script>
+  const STORAGE_KEY = 'aml-theme';
+  const root = document.documentElement;
+
+  type Theme = 'light' | 'dark';
+
+  const current = (): Theme => (root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+
+  const labelFor = (theme: Theme): string =>
+    theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+
+  const buttons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('button[data-theme-toggle]'),
+  );
+
+  const sync = (): void => {
+    const label = labelFor(current());
+    for (const button of buttons) {
+      button.setAttribute('aria-label', label);
+      button.setAttribute('title', label);
+    }
+  };
+
+  const apply = (theme: Theme): void => {
+    root.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem(STORAGE_KEY, theme);
+    } catch {
+      /* private mode or storage disabled: the choice lasts for this page only */
+    }
+    sync();
+  };
+
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      apply(current() === 'dark' ? 'light' : 'dark');
+    });
+  }
+
+  // Keep every toggle (and the label) in sync if another tab changes the theme.
+  window.addEventListener('storage', (event) => {
+    if (event.key !== STORAGE_KEY) return;
+    if (event.newValue === 'light' || event.newValue === 'dark') {
+      root.setAttribute('data-theme', event.newValue);
+      sync();
+    }
+  });
+
+  sync();
+</script>

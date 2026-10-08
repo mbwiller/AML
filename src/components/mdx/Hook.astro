@@ -1,0 +1,27 @@
+---
+/**
+ * `<Hook>` … `</Hook>` — ≤120 words plus one figure or explorable
+ * (docs/CONTENT_AUTHORING.md §4). No heading: it reads as a lede block with
+ * a left hairline; `id="hook"` keeps it in the outline rail.
+ */
+---
+
+<section id="hook" class="hook" aria-label="Hook">
+  <slot />
+</section>
+
+<style>
+  .hook {
+    margin-block: 1.5em 2em;
+    padding-inline-start: 1.25rem;
+    border-inline-start: 2px solid var(--border);
+    font-size: 1.0625em;
+    line-height: 1.55;
+  }
+  .hook > :global(:first-child) {
+    margin-block-start: 0;
+  }
+  .hook > :global(:last-child) {
+    margin-block-end: 0;
+  }
+</style>

@@ -1,0 +1,74 @@
+/*
+ * KaTeX overrides and semantic math classes (STYLE_GUIDE.md §2.3, §4.2).
+ * Loaded after katex/dist/katex.min.css in global.css.
+ */
+
+/* Size: inline 1.0em, display 1.05em (KaTeX's default is 1.21em) */
+.katex {
+  font-size: 1em;
+}
+
+.katex-display {
+  margin: 1.25em 0;
+  padding-block: 0.125em; /* keeps tall delimiters clear of the overflow clip */
+  overflow-x: auto;
+  overflow-y: hidden;
+  font-size: 1.05em;
+}
+
+/* Semantic symbol colors. KaTeX renders \htmlClass{sym-theta}{…} as
+   <span class="enclosing sym-theta">…</span>; children inherit via currentColor. */
+.sym-theta,
+.sym-theta * {
+  color: var(--field-ml);
+}
+.sym-x,
+.sym-x * {
+  color: var(--field-statistics);
+}
+.sym-y,
+.sym-y * {
+  color: var(--field-evaluation);
+}
+.sym-yhat,
+.sym-yhat * {
+  color: var(--field-ml);
+}
+.sym-eta,
+.sym-eta * {
+  color: var(--field-calculus);
+}
+.sym-lambda,
+.sym-lambda * {
+  color: var(--field-calculus);
+}
+.sym-mu,
+.sym-mu * {
+  color: var(--field-probability);
+}
+.sym-sigma,
+.sym-sigma * {
+  color: var(--field-linear-algebra);
+}
+.sym-pos,
+.sym-pos * {
+  color: var(--viz-positive);
+}
+.sym-neg,
+.sym-neg * {
+  color: var(--viz-negative);
+}
+.sym-boundary,
+.sym-boundary * {
+  color: var(--viz-boundary);
+}
+
+/* Hovered or linked symbol: --accent at 18% alpha behind the glyphs */
+.math-hl {
+  border-radius: var(--radius-control);
+  transition: background-color var(--duration-micro) var(--ease-standard);
+}
+.math-hl:hover,
+.math-hl[data-active='true'] {
+  background-color: var(--math-hl);
+}

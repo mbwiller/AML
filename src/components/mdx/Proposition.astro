@@ -1,0 +1,19 @@
+---
+/**
+ * `<Proposition id="…" title="…" source="L9 p.24">` … `</Proposition>` — a numbered,
+ * boxed proposition (docs/CONTENT_AUTHORING.md §4). Number from `id`;
+ * registers a flashcard via `data-flashcard-source`. Rendered by ResultBox.
+ */
+import ResultBox from './ResultBox.astro';
+
+interface Props {
+  id: string;
+  title: string;
+  source?: string | undefined;
+}
+const { id, title, source } = Astro.props;
+---
+
+<ResultBox kind="Proposition" id={id} title={title} source={source}>
+  <slot />
+</ResultBox>

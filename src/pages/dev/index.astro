@@ -1,0 +1,25 @@
+---
+import Base from '@/layouts/Base.astro';
+const pages = [
+  { href: '/dev/kitchen-sink', label: 'Kitchen sink: every component and every token' },
+  { href: '/dev/math', label: 'Math pipeline spike' },
+  { href: '/dev/components-smoke', label: 'MDX components smoke page' },
+  { href: '/dev/widgets', label: 'Widgets: every registered explorable with its manifest' },
+];
+---
+
+<Base title="Dev">
+  <main id="main" class="mx-auto max-w-3xl px-4 py-10 font-sans">
+    <h1 class="text-h1 font-bold tracking-tight">Dev pages</h1>
+    <p class="mt-2 text-muted">
+      Excluded from navigation. Playwright screenshots the kitchen sink in both themes.
+    </p>
+    <ul class="mt-6 grid gap-2">
+      {pages.map((p) => (
+        <li>
+          <a href={p.href}>{p.label}</a>
+        </li>
+      ))}
+    </ul>
+  </main>
+</Base>

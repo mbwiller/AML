@@ -1,0 +1,160 @@
+---
+/**
+ * `<Step justification sticky fadeable figureState>` — one algebraic move
+ * inside a `<Chunk>` (STYLE_GUIDE.md §2.3). The slot holds display math;
+ * the justification sits beside it (≥1024px) or under it, and `sticky`
+ * adds a "see: term" chip. Data attributes are stable hooks (reveal,
+ * fading, figureState dispatch, sticky popover).
+ *
+ * The enclosing `<Derivation>` numbers each step server-side
+ * (`id="<derivation>-step-<n>"`, `data-n`) and injects the "copy link"
+ * affordance; its engine toggles `hidden` / `data-revealed`, adds
+ * `.is-entering` for the 250 ms slide-and-fade on reveal, and `.is-target`
+ * for the brief `--math-hl` highlight after a deep link.
+ */
+import { promoteInlineMath, renderInlineTex } from '@/lib/markdown/render-tex';
+
+import Chip from './Chip.astro';
+
+interface Props {
+  justification?: string | undefined;
+  sticky?: string | undefined;
+  fadeable?: boolean | undefined;
+  figureState?: string | undefined;
+}
+const { justification, sticky, fadeable = false, figureState } = Astro.props;
+// The skeleton puts `$$…$$` right under `<Step>` with no blank line, which MDX
+// parses as inline math in a paragraph; promote that to display math.
+const math = promoteInlineMath(await Astro.slots.render('default'));
+---
+
+<li
+  class="step"
+  data-step
+  data-fadeable={fadeable ? '' : undefined}
+  data-figure-state={figureState}
+  data-sticky={sticky}
+>
+  <div class="step-math" set:html={math} />
+  {(justification || sticky) && (
+    <div class="step-why">
+      {justification && (
+        <span class="step-justification" set:html={renderInlineTex(justification)} />
+      )}
+      {sticky && (
+        <Chip class="step-sticky" title={`Glossary: ${sticky}`}>
+          see: {sticky}
+        </Chip>
+      )}
+    </div>
+  )}
+</li>
+
+<style>
+  .step {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem 1.25rem;
+    margin: 0;
+    padding: 0.5rem 0 0.5rem 2.25rem;
+    border-block-start: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    scroll-margin-top: 5rem;
+    transition: background-color var(--duration-layout) var(--ease-standard);
+  }
+  .step:first-child {
+    border-block-start: 0;
+  }
+  .step[hidden] {
+    display: none;
+  }
+  .step:focus {
+    outline: none;
+  }
+  .step:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .step::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.5rem;
+    text-align: center;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Reveal: slide in from the margin by 8px and fade (STYLE_GUIDE §4.4) */
+  @keyframes step-enter {
+    from {
+      opacity: 0;
+      transform: translateX(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .step.is-entering {
+    animation: step-enter var(--duration-reveal) var(--ease-standard) both;
+  }
+  /* Deep-link highlight (--math-hl), cleared by the engine after a moment */
+  .step.is-target {
+    background-color: var(--math-hl);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .step.is-entering {
+      animation: none;
+    }
+    .step {
+      transition: none;
+    }
+  }
+
+  .step-math {
+    min-width: 0;
+  }
+  .step-math :global(p) {
+    margin: 0;
+  }
+  .step-math :global(.katex-display) {
+    margin: 0.25em 0;
+    text-align: start;
+  }
+  .step-math :global(.katex-display > .katex) {
+    text-align: start;
+  }
+  .step-why {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+  .step-why :global(.katex) {
+    font-size: 1em;
+  }
+  @media (width >= 1024px) {
+    .step {
+      grid-template-columns: minmax(0, 1fr) 14rem;
+      align-items: start;
+    }
+    .step-why {
+      padding-block-start: 0.4rem;
+    }
+  }
+</style>

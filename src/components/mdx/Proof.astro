@@ -1,0 +1,104 @@
+---
+/**
+ * `<Proof collapsed title keyIdea>` … `</Proof>` — a full proof, folded
+ * when `collapsed`, with the key idea always visible (VISION.md §8:
+ * "collapsed proof"). A native `<details>`; M1 only restyles the marker.
+ */
+import { renderInlineTex } from '@/lib/markdown/render-tex';
+
+interface Props {
+  collapsed?: boolean | undefined;
+  title?: string | undefined;
+  keyIdea?: string | undefined;
+}
+const { collapsed = false, title, keyIdea } = Astro.props;
+---
+
+<details class="proof" open={!collapsed} data-proof>
+  <summary class="proof-summary">
+    <span class="proof-title">
+      <span class="proof-label">Proof</span>
+      {title && <span class="proof-name" set:html={renderInlineTex(title)} />}
+    </span>
+    {keyIdea && (
+      <span class="proof-key-idea">
+        <span class="proof-key-label">Key idea</span>
+        <span set:html={renderInlineTex(keyIdea)} />
+      </span>
+    )}
+  </summary>
+  <div class="proof-body">
+    <slot />
+  </div>
+</details>
+
+<style>
+  .proof {
+    margin-block: 1.5em;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+  }
+  .proof-summary {
+    display: block;
+    padding: 0.75rem 1.25rem;
+    cursor: pointer;
+    list-style: none;
+  }
+  .proof-summary::-webkit-details-marker {
+    display: none;
+  }
+  .proof-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    font-family: var(--font-sans);
+    font-weight: 600;
+  }
+  .proof-title::before {
+    content: '▸';
+    display: inline-block;
+    width: 1em;
+    color: var(--muted);
+    transition: transform var(--duration-micro) var(--ease-standard);
+  }
+  .proof[open] .proof-title::before {
+    transform: rotate(90deg);
+  }
+  .proof-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .proof-name {
+    font-size: 1rem;
+  }
+  .proof-key-idea {
+    display: block;
+    margin-block-start: 0.35rem;
+    padding-inline-start: 1em;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+  .proof-key-label {
+    margin-inline-end: 0.5em;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .proof-body {
+    padding: 0 1.25rem 1rem;
+    border-block-start: 1px solid var(--border);
+  }
+  .proof-body > :global(:first-child) {
+    margin-block-start: 1em;
+  }
+  .proof-body > :global(:last-child) {
+    margin-block-end: 0;
+  }
+</style>

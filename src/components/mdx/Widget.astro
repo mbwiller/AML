@@ -1,0 +1,90 @@
+---
+/**
+ * `<Widget name="…" challenge="…" …params />` — an explorable
+ * (docs/CONTENT_AUTHORING.md §4; VISION.md §9.3; STYLE_GUIDE.md §7).
+ *
+ * Known name (in `src/components/widgets/manifests.ts`): the props beyond
+ * `name` and `challenge` are validated against the manifest's Zod schema at
+ * build time (unknown or out-of-range props fail the build with the issues
+ * listed), the header (title, challenge) is server-rendered so it is visible
+ * before hydration and without JavaScript, the manifest's static fallback is
+ * rendered for no-JS/print/pre-hydration, and `WidgetHost` mounts the React
+ * island with `client:visible`.
+ *
+ * Unknown name: the M0 placeholder (name, challenge, params JSON), so content
+ * can be written before the widget ships.
+ *
+ * Stable hooks: `figure.widget[data-widget][data-widget-params]`;
+ * `data-hydrated` is set by the host once the widget renders.
+ */
+import { renderInlineTex } from '@/lib/markdown/render-tex';
+import { getManifest, validateWidgetParams } from '@/components/widgets/manifests';
+import WidgetHost from '@/components/widgets/WidgetHost';
+
+interface Props {
+  name: string;
+  challenge?: string | undefined;
+  [param: string]: unknown;
+}
+const { name, challenge, ...rest } = Astro.props;
+const manifest = getManifest(name);
+
+let params: Record<string, unknown> = rest;
+let fallbackSvg: string | undefined;
+if (manifest) {
+  const result = validateWidgetParams(manifest, rest);
+  if (!result.ok) {
+    throw new Error(
+      `<Widget name="${name}">: invalid props.\n  ${result.errors.join('\n  ')}\n` +
+        `Allowed params: ${Object.keys(result.defaults).join(', ')} (see src/components/widgets/${name}/manifest.ts).`,
+    );
+  }
+  params = result.params;
+  fallbackSvg = manifest.fallback?.(params);
+}
+const challengeText = challenge ?? manifest?.challenge;
+const paramsJson = JSON.stringify(params);
+const hasParams = Object.keys(rest).length > 0;
+---
+
+{manifest ? (
+  <figure
+    class="widget"
+    data-widget={name}
+    data-widget-params={paramsJson}
+    style={`--widget-height: ${manifest.height}px`}
+  >
+    <figcaption class="widget-head">
+      <span class="widget-title">{manifest.title}</span>
+      <span class="widget-name">{name}</span>
+    </figcaption>
+    {challengeText && (
+      <p class="widget-challenge">
+        <span class="widget-label">Try</span> <span set:html={renderInlineTex(challengeText)} />
+      </p>
+    )}
+    <div class="widget-body">
+      <WidgetHost client:visible name={name} params={params} height={manifest.height} />
+      <div class="widget-fallback" aria-hidden="true">
+        {fallbackSvg ? (
+          <div class="widget-fallback-art" set:html={fallbackSvg} />
+        ) : (
+          <p class="widget-note">Interactive explorable.</p>
+        )}
+        <p class="widget-fallback-note">Static preview; the explorable needs JavaScript.</p>
+      </div>
+    </div>
+  </figure>
+) : (
+  <figure class="widget widget-placeholder" data-widget={name} data-widget-params={paramsJson}>
+    <figcaption class="widget-head">
+      <span class="widget-label">Widget</span>
+      <span class="widget-name">{name}</span>
+    </figcaption>
+    {challenge && <p class="widget-challenge" set:html={renderInlineTex(challenge)} />}
+    {hasParams && <pre class="widget-params">
+          <code>{JSON.stringify(rest, null, 2)}</code>
+        </pre>}
+    <p class="widget-note">Interactive explorable coming soon.</p>
+  </figure>
+)}
