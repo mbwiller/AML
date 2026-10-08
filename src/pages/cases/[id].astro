@@ -1,0 +1,309 @@
+---
+/**
+ * /cases/<id> (VISION.md §7 "Cases", §9.8): the story (the case MDX body),
+ * the variables, the generative model with its parameters, a seeded sample
+ * of 10 rows and summary statistics from `src/data/<id>.json`, a download
+ * link to that JSON (copied to `/data/<id>.json` at build time), and the
+ * lessons that use the case. A case whose dataset has not been generated yet
+ * renders without the data sections (`tryLoadDataset` returns undefined).
+ */
+import { existsSync, statSync } from 'node:fs';
+
+import { getCollection, render } from 'astro:content';
+
+import { mdxComponents } from '@/components/mdx';
+import Base from '@/layouts/Base.astro';
+import { PLANNED_CASES, caseStats, formatCell, formatParameter, formatPercent } from '@/lib/cases';
+import { noteText, sampleRows, tryLoadDataset, type NotesRow } from '@/lib/datasets';
+import { lessonHref, lessonNumber } from '@/lib/lessons';
+import { formatBytes } from '@/lib/materials';
+import { renderDisplayTex, renderInlineMath } from '@/lib/markdown/render-tex';
+import { getCourseLessons } from '@/lib/site';
+
+export async function getStaticPaths() {
+  const cases = await getCollection('cases');
+  return cases.map((entry) => ({ params: { id: entry.data.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const c = entry.data;
+const { Content } = await render(entry);
+const planned = PLANNED_CASES.find((p) => p.id === c.id);
+
+const dataset = tryLoadDataset(c.id);
+const stats = dataset ? caseStats(dataset) : undefined;
+const sample = dataset ? sampleRows(dataset, 10, c.seed) : [];
+const isNotes = c.id === 'notes';
+const columns = dataset ? dataset.variables.filter((v) => v.type !== 'tokens') : [];
+const dataFile = `src/data/${c.id}.json`;
+const downloadBytes = dataset && existsSync(dataFile) ? statSync(dataFile).size : 0;
+
+// "Used in": lessons whose frontmatter `cases` lists this case, plus the case's own `usedIn`.
+const { lessons } = await getCourseLessons();
+const usedIn = lessons.filter(
+  (l) =>
+    l.data.cases.includes(c.id) ||
+    c.usedIn.includes(l.data.slug) ||
+    c.usedIn.includes(`${l.data.unit}/${l.data.slug}`),
+);
+
+const variables = c.variables.map((v) =>
+  typeof v === 'string' ? { name: v, symbol: undefined, description: undefined } : v,
+);
+const parameters = Object.entries(c.generativeModel.parameters);
+const fmt = (x: number) => String(Number(x.toPrecision(4)));
+---
+
+<Base title={c.title} description={c.tagline}>
+  <main id="main" class="mx-auto max-w-3xl px-4 py-10" data-case-page={c.id}>
+    <p class="m-0 font-sans text-ui-sm text-muted">
+      <a href="/cases" class="text-muted no-underline hover:text-fg">
+        Cases
+      </a>
+      {planned && <> · {planned.spec}</>}
+    </p>
+    <h1 class="mt-1 font-sans text-h1 leading-tight font-bold tracking-tight">{c.title}</h1>
+    <p class="mt-2 max-w-measure text-muted">{c.tagline}</p>
+
+    <article class="prose case-body mt-8">
+      <Content components={mdxComponents} />
+
+      <h2 id="variables">Variables</h2>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Variable</th>
+            <th scope="col">Symbol</th>
+            <th scope="col">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {variables.map((v) => (
+            <tr>
+              <td>{v.name}</td>
+              <td>{v.symbol ? <Fragment set:html={renderInlineMath(v.symbol)} /> : '—'}</td>
+              <td>{v.description ?? ''}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h2 id="generative-model">Generative model</h2>
+      <div class="case-model" set:html={renderDisplayTex(c.generativeModel.tex)} />
+      {parameters.length > 0 && (
+        <dl class="case-params">
+          {parameters.map(([k, v]) => (
+            <div class="case-param">
+              <dt>{k.replace(/_/g, ' ')}</dt>
+              <dd>{formatParameter(v)}</dd>
+            </div>
+          ))}
+          <div class="case-param">
+            <dt>seed</dt>
+            <dd>{c.seed}</dd>
+          </div>
+        </dl>
+      )}
+
+      {dataset && stats ? (
+        <>
+          <h2 id="data-sample">Data sample</h2>
+          <p>
+            Ten of the {stats.n.toLocaleString('en-US')} records, drawn with the case seed ({c.seed}
+            ) so the sample is the same on every build. The full dataset is{' '}
+            <a href={`/data/${c.id}.json`} download data-case-download>
+              {c.id}.json
+            </a>{' '}
+            ({formatBytes(downloadBytes)}), with the generative parameters and every row.
+          </p>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Data sample">
+            <table data-case-sample>
+              <thead>
+                <tr>
+                  {isNotes ? (
+                    <>
+                      <th scope="col">id</th>
+                      <th scope="col">report</th>
+                      <th scope="col">serious</th>
+                    </>
+                  ) : (
+                    columns.map((v) => (
+                      <th scope="col">
+                        {v.name}
+                        {v.unit && <span class="unit">{v.unit}</span>}
+                      </th>
+                    ))
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {sample.map((row) =>
+                  isNotes ? (
+                    <tr data-case-row>
+                      <td class="nowrap">{String(row['id'])}</td>
+                      <td class="note">{noteText(row as unknown as NotesRow)}</td>
+                      <td>{String(row['y'])}</td>
+                    </tr>
+                  ) : (
+                    <tr data-case-row>
+                      {columns.map((v) => (
+                        <td class={v.type === 'id' ? 'nowrap' : 'num'}>
+                          {formatCell(row[v.name])}
+                        </td>
+                      ))}
+                    </tr>
+                  ),
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <h2 id="summary-statistics">Summary statistics</h2>
+          <dl class="case-params" data-case-stats>
+            <div class="case-param">
+              <dt>records</dt>
+              <dd>{stats.n.toLocaleString('en-US')}</dd>
+            </div>
+            {stats.label && (
+              <div class="case-param">
+                <dt>prevalence of {stats.label.variable.name} = 1</dt>
+                <dd>
+                  {formatPercent(stats.label.prevalence)} (
+                  {stats.label.positives.toLocaleString('en-US')} of{' '}
+                  {stats.n.toLocaleString('en-US')})
+                </dd>
+              </div>
+            )}
+          </dl>
+          {stats.numeric.length > 0 && (
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Numeric variables">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Variable</th>
+                    <th scope="col">Mean</th>
+                    <th scope="col">SD</th>
+                    <th scope="col">Min</th>
+                    <th scope="col">Max</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.numeric.map((s) => (
+                    <tr>
+                      <td>
+                        {s.variable.name}
+                        {s.variable.unit && <span class="unit">{s.variable.unit}</span>}
+                      </td>
+                      <td class="num">{fmt(s.mean)}</td>
+                      <td class="num">{fmt(s.sd)}</td>
+                      <td class="num">{fmt(s.min)}</td>
+                      <td class="num">{fmt(s.max)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {stats.categorical.length > 0 && (
+            <dl class="case-params">
+              {stats.categorical.map((s) => (
+                <div class="case-param">
+                  <dt>{s.variable.name}</dt>
+                  <dd>
+                    {s.counts
+                      .map((k) => `${k.value}: ${k.count.toLocaleString('en-US')}`)
+                      .join(' · ')}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </>
+      ) : (
+        <>
+          <h2 id="data-sample">Data sample</h2>
+          <p class="case-pending">
+            The dataset for this case has not been generated yet; the sample and summary statistics
+            appear here once <code>src/data/{c.id}.json</code> exists.
+          </p>
+        </>
+      )}
+
+      <h2 id="used-in">Used in</h2>
+      {usedIn.length === 0 ? (
+        <p>No published lesson uses this case yet.</p>
+      ) : (
+        <ul data-case-used-in>
+          {usedIn.map((l) => (
+            <li>
+              <a href={lessonHref(l.data.unit, l.data.slug)}>
+                {lessonNumber(l.data.unit, l.data.order)} {l.data.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </article>
+  </main>
+</Base>
+
+<style>
+  .case-model {
+    margin-block: 1.25em;
+  }
+  .case-params {
+    display: grid;
+    gap: 0.25rem;
+    margin-block: 1em;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+  }
+  .case-param {
+    display: grid;
+    grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+    gap: 0.75rem;
+    padding-block: 0.25rem;
+    border-block-end: 1px solid var(--border);
+  }
+  .case-param dt {
+    color: var(--muted);
+  }
+  .case-param dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    margin-block: 1em;
+  }
+  .table-scroll table {
+    margin: 0;
+  }
+  .table-scroll:focus-visible {
+    outline-offset: 2px;
+  }
+  .unit {
+    display: block;
+    font-weight: 400;
+    color: var(--muted);
+  }
+  .num {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .nowrap {
+    font-family: var(--font-sans);
+    white-space: nowrap;
+  }
+  .case-pending {
+    color: var(--muted);
+  }
+  @media (width < 640px) {
+    .case-param {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0;
+    }
+  }
+</style>

@@ -1,0 +1,61 @@
+---
+/**
+ * /cases: the eight clinical running examples of VISION §9.8, in Part C
+ * order. Cases with a page in `src/content/cases/` link to it; the rest are
+ * listed as "coming" with their one-line purpose.
+ */
+import { getCollection } from 'astro:content';
+
+import Base from '@/layouts/Base.astro';
+import { caseIndex } from '@/lib/cases';
+
+const pages = (await getCollection('cases')).map((c) => c.data);
+const rows = caseIndex(pages);
+---
+
+<Base
+  title="Cases"
+  description="The synthetic clinical datasets that run through the course, with their generative models."
+>
+  <main id="main" class="mx-auto max-w-3xl px-4 py-10">
+    <h1 class="font-sans text-h1 leading-tight font-bold tracking-tight">Cases</h1>
+    <p class="mt-2 max-w-measure text-muted">
+      Eight synthetic clinical datasets carry the worked examples. Each is generated from a stated
+      model with a fixed seed, so the truth is known and every number in a lesson can be
+      regenerated. A case page tells the story, lists the variables, states the model, and shows a
+      sample of the data.
+    </p>
+
+    <ol class="m-0 mt-8 grid list-none gap-3 p-0" data-cases-index>
+      {rows.map((r) => (
+        <li class="m-0" data-case-row={r.id} data-case-state={r.page ? 'page' : 'coming'}>
+          {r.page ? (
+            <a
+              href={`/cases/${r.id}`}
+              class="block rounded-card border border-border bg-surface p-4 text-fg no-underline transition-colors duration-micro ease-standard hover:bg-surface-2"
+            >
+              <span class="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-sans">
+                {r.planned && (
+                  <span class="text-ui-sm text-muted tabular-nums">{r.planned.spec}</span>
+                )}
+                <span class="text-ui-lg font-semibold">{r.page.title}</span>
+              </span>
+              <span class="mt-1 block text-body-sm text-muted">{r.page.tagline}</span>
+            </a>
+          ) : (
+            <div class="rounded-card border border-dashed border-border p-4 text-muted">
+              <span class="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-sans">
+                <span class="text-ui-sm tabular-nums">{r.planned?.spec}</span>
+                <span class="text-ui-lg font-semibold">{r.planned?.name}</span>
+                <span class="ml-auto rounded-full border border-border px-2 py-0.5 text-ui-xs tracking-caps uppercase">
+                  coming
+                </span>
+              </span>
+              <span class="mt-1 block text-body-sm">{r.planned?.tagline}</span>
+            </div>
+          )}
+        </li>
+      ))}
+    </ol>
+  </main>
+</Base>
