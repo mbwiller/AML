@@ -14,6 +14,9 @@ export const registry = {
   'gda-fitter': () => import('./gda-fitter/Widget'),
   'linear-bias-probe': () => import('./linear-bias-probe/Widget'),
   'true-vs-empirical-risk': () => import('./true-vs-empirical-risk/Widget'),
+
+  'line-fit-playground': () => import('./line-fit-playground/Widget'),
+  'mse-bowl-gd': () => import('./mse-bowl-gd/Widget'),
 } satisfies Record<string, () => Promise<WidgetModule>>;
 
 export type WidgetName = keyof typeof registry;

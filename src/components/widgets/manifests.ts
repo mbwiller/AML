@@ -10,6 +10,9 @@ import { manifest as gaussian2dCovariance } from './gaussian-2d-covariance/manif
 import { manifest as gdaFitter } from './gda-fitter/manifest';
 import { manifest as linearBiasProbe } from './linear-bias-probe/manifest';
 import { manifest as trueVsEmpiricalRisk } from './true-vs-empirical-risk/manifest';
+
+import { manifest as lineFitPlayground } from './line-fit-playground/manifest';
+import { manifest as mseBowlGd } from './mse-bowl-gd/manifest';
 import type { ParamsSchema, WidgetManifest } from './types';
 
 export const manifests: Readonly<Record<string, WidgetManifest>> = {
@@ -18,6 +21,9 @@ export const manifests: Readonly<Record<string, WidgetManifest>> = {
   [gdaFitter.name]: gdaFitter as WidgetManifest<ParamsSchema>,
   [linearBiasProbe.name]: linearBiasProbe as WidgetManifest<ParamsSchema>,
   [trueVsEmpiricalRisk.name]: trueVsEmpiricalRisk as WidgetManifest<ParamsSchema>,
+
+  [lineFitPlayground.name]: lineFitPlayground as WidgetManifest<ParamsSchema>,
+  [mseBowlGd.name]: mseBowlGd as WidgetManifest<ParamsSchema>,
 };
 
 export function getManifest(name: string): WidgetManifest | undefined {

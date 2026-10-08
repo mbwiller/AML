@@ -1,0 +1,72 @@
+{
+  "generativeModel": {
+    "parameters": {
+      "bmiScaling": {"mean": 26.37579185520362, "nTotal": 442, "sdPopulation": 4.413120855492464},
+      "companion": {
+        "lecture2": {
+          "cells": {"data": 8, "fit": 15},
+          "intercept": "-797.0817390343262",
+          "notebook": "Code Companions/Lecture2code_companion.ipynb",
+          "slope": "37.37884216052121",
+          "x": "bmiRecentered",
+          "y": "target"
+        },
+        "lecture4": {
+          "cells": {"data": 18, "gd": 20, "gdTheta": 21, "sklearn": 23},
+          "gd": {
+            "eta": 0.1,
+            "init": [2,1],
+            "lastPrinted": {"iteration": 10100, "mse": "0.024179"},
+            "stopping": "parameter-change",
+            "theta": ["3.71421938", "0.45772775"],
+            "tolerance": 0.00001
+          },
+          "notebook": "Code Companions/lecture4-code companion.ipynb",
+          "sklearn": {"coef": ["3.73788422", "0."], "intercept": "0.4579643832623464", "mse": "0.024177787873230695"},
+          "x": "bmiScaled",
+          "y": "target / 300"
+        }
+      },
+      "realData": true,
+      "recenter": {"scale": 30, "shift": 25},
+      "source": "sklearn.datasets.load_diabetes (Efron, Hastie, Johnstone and Tibshirani 2004), rows 422-441",
+      "targetScale": 300
+    },
+    "tex": "x_{\\text{L2}} = 30\\,\\mathrm{bmi} + 25,\\qquad \\mathrm{bmi} = \\frac{\\mathrm{BMI} - \\overline{\\mathrm{BMI}}}{\\sqrt{442}\\; s_{\\mathrm{BMI}}},\\qquad y_{\\text{L4}} = y / 300"
+  },
+  "id": "diabetes-bmi-20",
+  "n": 20,
+  "rows": [
+    {"bmi": 33.6, "bmiRecentered": 27.33590162880686, "bmiScaled": 0.07786338762689529, "id": "DIAB-422", "sklearnRow": 422, "target": 233},
+    {"bmi": 22.7, "bmiRecentered": 23.811456147216642, "bmiScaled": -0.039618128426111884, "id": "DIAB-423", "sklearnRow": 423, "target": 91},
+    {"bmi": 27.4, "bmiRecentered": 25.331171171388572, "bmiScaled": 0.011039039046285686, "id": "DIAB-424", "sklearnRow": 424, "target": 111},
+    {"bmi": 22.6, "bmiRecentered": 23.77912178500022, "bmiScaled": -0.040695940499992665, "id": "DIAB-425", "sklearnRow": 425, "target": 152},
+    {"bmi": 23.2, "bmiRecentered": 23.973127958298765, "bmiScaled": -0.03422906805670789, "id": "DIAB-426", "sklearnRow": 426, "target": 120},
+    {"bmi": 26.9, "bmiRecentered": 25.16949936030645, "bmiScaled": 0.005649978676881689, "id": "DIAB-427", "sklearnRow": 427, "target": 67},
+    {"bmi": 34.6, "bmiRecentered": 27.659245250971097, "bmiScaled": 0.08864150836570328, "id": "DIAB-428", "sklearnRow": 428, "target": 310},
+    {"bmi": 23.3, "bmiRecentered": 24.00546232051519, "bmiScaled": -0.033151255982827074, "id": "DIAB-429", "sklearnRow": 429, "target": 94},
+    {"bmi": 21.1, "bmiRecentered": 23.29410635175386, "bmiScaled": -0.05686312160820465, "id": "DIAB-430", "sklearnRow": 430, "target": 183},
+    {"bmi": 23.5, "bmiRecentered": 24.070131044948035, "bmiScaled": -0.03099563183506548, "id": "DIAB-431", "sklearnRow": 431, "target": 66},
+    {"bmi": 31.5, "bmiRecentered": 26.656880022261955, "bmiScaled": 0.055229334075398484, "id": "DIAB-432", "sklearnRow": 432, "target": 173},
+    {"bmi": 20.8, "bmiRecentered": 23.197103265104587, "bmiScaled": -0.06009655782984706, "id": "DIAB-433", "sklearnRow": 433, "target": 72},
+    {"bmi": 26.5, "bmiRecentered": 25.040161911440755, "bmiScaled": 0.0013387303813585058, "id": "DIAB-434", "sklearnRow": 434, "target": 49},
+    {"bmi": 24.2, "bmiRecentered": 24.296471580463002, "bmiScaled": -0.023450947317899894, "id": "DIAB-435", "sklearnRow": 435, "target": 64},
+    {"bmi": 19.5, "bmiRecentered": 22.776756556291076, "bmiScaled": -0.07410811479029747, "id": "DIAB-436", "sklearnRow": 436, "target": 48},
+    {"bmi": 28.2, "bmiRecentered": 25.589846069119965, "bmiScaled": 0.01966153563733209, "id": "DIAB-437", "sklearnRow": 437, "target": 178},
+    {"bmi": 24.9, "bmiRecentered": 24.52281211597797, "bmiScaled": -0.015906262800734303, "id": "DIAB-438", "sklearnRow": 438, "target": 104},
+    {"bmi": 24.9, "bmiRecentered": 24.52281211597797, "bmiScaled": -0.015906262800734303, "id": "DIAB-439", "sklearnRow": 439, "target": 132},
+    {"bmi": 30, "bmiRecentered": 26.171864589015595, "bmiScaled": 0.039062152967186486, "id": "DIAB-440", "sklearnRow": 440, "target": 220},
+    {"bmi": 19.6, "bmiRecentered": 22.8090909185075, "bmiScaled": -0.07303030271641665, "id": "DIAB-441", "sklearnRow": 441, "target": 57}
+  ],
+  "seed": 0,
+  "spec": "Lecture 2 companion cell 8; Lecture 4 companion cell 18",
+  "title": "DIABETES-BMI-20: body-mass index and diabetes progression, 20 patients",
+  "variables": [
+    {"description": "DIAB-422 to DIAB-441: the row of load_diabetes(), last 20 rows (iloc[-20:]).", "name": "id", "type": "id"},
+    {"description": "Row index in load_diabetes(), 422 to 441.", "name": "sklearnRow", "type": "integer"},
+    {"description": "Body-mass index as measured (load_diabetes(scaled=False)).", "name": "bmi", "type": "continuous", "unit": "kg/m²"},
+    {"description": "scikit-learn's bmi feature: centered over the 442 patients and divided by sd·√442. The Lecture 4 companion's feature.", "name": "bmiScaled", "symbol": "x", "type": "continuous"},
+    {"description": "30 · bmiScaled + 25, the Lecture 2 companion's x axis 'for ease of presentation'; not the measured BMI.", "name": "bmiRecentered", "symbol": "x", "type": "continuous"},
+    {"description": "Disease progression one year after baseline (the slides’ \"diabetes risk\"). The Lecture 4 companion uses target / 300.", "name": "target", "symbol": "y", "type": "integer"}
+  ]
+}
