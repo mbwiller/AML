@@ -34,7 +34,7 @@ cases: [adverse]
 companions:
   - { notebook: "Lectures/NaiveBayes_Spam_exercise_sol.ipynb", cells: "35" }
 estimatedMinutes: 45
-status: review
+status: published
 authors: [jide]
 ---
 
@@ -400,7 +400,7 @@ The "fewer samples, more bias" trade-off has a classical analysis: Ng and Jordan
   challenge="Start the prior $p(y=1)$ at the cohort's event rate and drag it up to 0.5. Which way does the generative boundary move? Does the logistic-regression boundary move at all?"
 />
 
-<Example title="The prior can outvote a likelier class-conditional">
+<Example homeworkReviewed title="The prior can outvote a likelier class-conditional">
 
 The class priors below are the ones the spam exercise solution estimates from its training split (3,837 emails; `NaiveBayes_Spam_exercise_sol.ipynb`, cell 35, `phis`): $\hat\phi_0 = 0.77195726$ for non-spam and $\hat\phi_1 = 0.22804274$ for spam. The class-conditional values are toy numbers in the style of the L8 p.37 poll, not outputs of the notebook: suppose an email $x$ has
 

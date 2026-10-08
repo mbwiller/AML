@@ -54,7 +54,7 @@ prerequisites:
 companions:
   - { notebook: "Code Companions/lecture4-code companion.ipynb", cells: "12-23" }
 estimatedMinutes: 75
-status: review
+status: published
 authors: [jide]
 ---
 
@@ -991,7 +991,7 @@ The belief: with a small constant step, SGD converges to $\theta^\star$ just as 
 
 - Previous: 2.4 Gradient descent (`gradient-descent`) built the update $\theta^{(t+1)} = \theta^{(t)} - \eta\nabla\hat R(\theta^{(t)})$, the MSE gradient, convergence criteria, and the autograd loop that this lesson tunes.
 - Before that: 2.3 Gradients and optimality supplies the gradient, the Hessian, and the first- and second-order conditions used in der-2-5-1, der-2-5-4, and der-2-5-6; 2.2 True and empirical risk explains why the minibatch gradient of $\hat R$ is also an estimate of the gradient of $R$ when examples are fresh draws.
-- Least squares: der-2-4-3 in lesson 2.4 derives the Hessian $\frac2n X^\top X$ used in the worked examples; 1.4 Least squares and the normal equations solves the same problem in closed form.
+- Least squares: der-2-4-3 in lesson 2.4 derives the Hessian $\frac2n X^\top X$ used in the worked examples; 1.4 Least squares solves the same problem in closed form.
 - Next: Unit 3 trains logistic regression, which has no closed form, with exactly these tools: L5 p.16's take-away is that for a fixed dataset the loss is a function of $\theta$ alone, and gradient descent finds the best $\theta$ <SlideRef lecture={5} pages="16" />.
 - Notebook: <Notebook path="Code Companions/lecture4-code companion.ipynb" cells="12-23" /> runs the diabetes gradient-descent loop analyzed in the second worked example.
 - Graph neighbors: [[condition-number]], [[l-smooth]], [[taylor-expansion]], [[convex-function]], [[stochastic-gradient-descent]], [[minibatch]], [[eigenvectors]], [[hessian]].

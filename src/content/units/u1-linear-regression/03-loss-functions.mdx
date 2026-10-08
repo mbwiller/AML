@@ -6,6 +6,7 @@ slug: loss-functions
 summary: "Turn the residual vector into one number: MAE, MSE, RMSE, and R² with the 1/n kept. Why squares (the mean, differentiability, outliers), the bounds of R², and where R² goes as n grows."
 lectures:
   - { lecture: 2, pages: "27-31" }
+  - { lecture: 3, pages: "4" }
   - { lecture: 3, pages: "5-9" }
   - { lecture: 3, pages: "19-20" }
   - { lecture: 3, pages: "40" }
@@ -38,7 +39,7 @@ homework: [hw1]
 companions:
   - { notebook: "Code Companions/Lecture2code_companion.ipynb", cells: "8-15" }
 estimatedMinutes: 50
-status: review
+status: published
 authors: [matt]
 ---
 
@@ -68,7 +69,7 @@ Among the 20 diabetes patients of the L2 companion, one with a BMI of 23.3 has a
 
 Refit the line by minimizing the average squared error, and the slope flips from $+37.4$ to $-23.6$: higher BMI now predicts slower progression. Refit by minimizing the average absolute error, and the line does not move at all. The same data, the same model class, two different answers. Which "best line" you get is decided by the loss, before any optimizer runs. What does each loss reward, and which should you trust?
 
-{/* hook-figure: the line-fit-playground widget in the Explore section is the hook's explorable; dragging one patient upward reproduces the scenario */}
+{/* hook-figure: the line-fit-playground widget in the Explore section is the hook's explorable; it puts the least-squares and least-absolute-deviations lines side by side; the typo refit itself is computed in the worked example */}
 
 </Hook>
 
@@ -200,7 +201,7 @@ $$c^\star_{\mathrm{MAE}} \in \Big\{ m : \#\{i : y^{(i)} \le m\} \ge \tfrac n2 \ 
 
 </Derivation>
 
-Step 4 and step 8 explain the hook. The mean is a balance point: every target pulls on it in proportion to its distance. The median is a vote: every target pulls with the same strength, one unit up or down, however far away it is. Make one target 1,000 larger and the mean moves by $1000/n$, since $\bar y$ is linear in each $y^{(i)}$. The median does not move at all if that target was already above it, because the counts in step 7 do not change.
+Step 4 and step 8 explain the hook. The mean is a balance point: every target pulls on it in proportion to its distance. The [[median]] is a vote: every target pulls with the same strength, one unit up or down, however far away it is. Make one target 1,000 larger and the mean moves by $1000/n$, since $\bar y$ is linear in each $y^{(i)}$. The median does not move at all if that target was already above every median (for the 20 patients, above 111), because the counts in step 7 do not change for any $c$ below it.
 
 With an even number of targets, step 8 gives a whole interval. For the 20 patients, the sorted scores have 104 in 10th place and 111 in 11th, so every $c$ in $[104, 111]$ minimizes MAE; by convention the median is reported as $107.5$. The mean is $\bar y = 126.2$, pulled up by the long right tail of high scores.
 
@@ -211,9 +212,9 @@ L3 asks, as a poll, which objective is most common for linear regression <SlideR
 <Derivation
   id="der-1-3-2"
   title="How hard one residual pulls on θ: in proportion under squared loss, with bounded force under absolute loss"
-  goalTex="\frac{\partial}{\partial \theta_j}\,\ell\big(f_\theta(x^{(i)}), y^{(i)}\big) \ \text{ for } \ \ell = (\hat y - y)^2 \ \text{ and } \ \ell = \lvert \hat y - y \rvert"
-  resultTex="\frac{\partial}{\partial\theta_j}\big(r^{(i)}\big)^2 = 2\,r^{(i)} x^{(i)}_j, \qquad \frac{\partial}{\partial\theta_j}\big\lvert r^{(i)}\big\rvert = \operatorname{sgn}\big(r^{(i)}\big)\, x^{(i)}_j \ \ (r^{(i)} \ne 0), \qquad r^{(i)} = f_\theta(x^{(i)}) - y^{(i)}"
-  source="L2 pp.29-31 (losses stated); course map L2 derivation gap 3 (differentiability and outliers are not on the slides)"
+  goalTex="\frac{\partial}{\partial \theta_j}\,\ell\big(f_\theta(x^{(i)}), y^{(i)}\big) \ \text{ for } \ \ell = (\hat y - y)^2 \ \text{ and } \ \ell = \lvert \hat y - y \rvert \ \text{ for } f_\theta(x) = \theta^\top x"
+  resultTex="\frac{\partial}{\partial\theta_j}\big(r^{(i)}\big)^2 = 2\,r^{(i)} x^{(i)}_j, \qquad \frac{\partial}{\partial\theta_j}\big\lvert r^{(i)}\big\rvert = \sgn\big(r^{(i)}\big)\, x^{(i)}_j \ \ (r^{(i)} \ne 0), \qquad r^{(i)} = f_\theta(x^{(i)}) - y^{(i)}"
+  source="L2 pp.29-31 (losses stated; differentiability and outlier sensitivity are not on the slides)"
 >
 
 <Chunk title="Differentiate each loss with respect to the prediction">
@@ -223,14 +224,14 @@ $$\frac{\partial}{\partial \hat y}\,(\hat y - y)^2 = 2(\hat y - y)$$
 </Step>
 
 <Step justification="away from $\hat y = y$, $\lvert \hat y - y \rvert$ has slope $\pm 1$ (der-1-3-1 step 6); at $\hat y = y$ the left slope $-1$ and the right slope $+1$ differ, so no derivative exists there">
-$$\frac{\partial}{\partial \hat y}\,\lvert \hat y - y \rvert = \operatorname{sgn}(\hat y - y) \quad (\hat y \ne y)$$
+$$\frac{\partial}{\partial \hat y}\,\lvert \hat y - y \rvert = \sgn(\hat y - y) \quad (\hat y \ne y)$$
 </Step>
 
 </Chunk>
 
 <Chunk title="Pass the derivative to the parameters">
 
-<Step justification="$f_\theta(x) = \sum_k \theta_k x_k$, and only the term $\theta_j x_j$ contains $\theta_j$">
+<Step justification="$f_\theta(x) = \sum_{l=0}^{d} \theta_l x_l$, and only the term $\theta_j x_j$ contains $\theta_j$">
 $$\frac{\partial f_\theta(x^{(i)})}{\partial \theta_j} = x^{(i)}_j$$
 </Step>
 
@@ -239,18 +240,18 @@ $$\frac{\partial}{\partial \theta_j}\big(r^{(i)}\big)^2 = 2\,r^{(i)}\,x^{(i)}_j$
 </Step>
 
 <Step justification="chain rule again: step 2 times step 3, wherever $r^{(i)} \ne 0$" fadeable>
-$$\frac{\partial}{\partial \theta_j}\big\lvert r^{(i)} \big\rvert = \operatorname{sgn}\big(r^{(i)}\big)\, x^{(i)}_j$$
+$$\frac{\partial}{\partial \theta_j}\big\lvert r^{(i)} \big\rvert = \sgn\big(r^{(i)}\big)\, x^{(i)}_j$$
 </Step>
 
-<Step justification="compare sizes: under squared loss the pull grows without bound with the residual; under absolute loss it never exceeds $\lvert x^{(i)}_j \rvert$, whatever the residual">
-$$\big\lvert 2\,r^{(i)} x^{(i)}_j \big\rvert \to \infty \ \text{ as } \ \lvert r^{(i)} \rvert \to \infty, \qquad \big\lvert \operatorname{sgn}(r^{(i)})\, x^{(i)}_j \big\rvert = \lvert x^{(i)}_j \rvert$$
+<Step justification="compare sizes for a feature value $x^{(i)}_j \ne 0$ (the intercept has $x_0 = 1$): under squared loss the pull grows without bound with the residual; under absolute loss it never exceeds $\lvert x^{(i)}_j \rvert$, whatever the residual">
+$$\big\lvert 2\,r^{(i)} x^{(i)}_j \big\rvert \to \infty \ \text{ as } \ \lvert r^{(i)} \rvert \to \infty \ \ (x^{(i)}_j \ne 0), \qquad \big\lvert \sgn(r^{(i)})\, x^{(i)}_j \big\rvert = \lvert x^{(i)}_j \rvert$$
 </Step>
 
 </Chunk>
 
 </Derivation>
 
-Step 4 is the reason squared error is convenient: the loss is differentiable for every $\theta$, and its gradient is a residual times an input, a formula that lesson 1.4 sets to zero and lesson 2.4 follows downhill. Step 2 is the price of absolute error: its derivative jumps at every point the line passes through exactly, which is why it has no "set the derivative to zero" closed form. Step 6 is the price of squared error: a patient with residual 100 pulls on $\theta$ a hundred times as hard as a patient with residual 1. One badly wrong target can drag the whole line, which is what the hook's typo does.
+Step 4 is the reason squared error is convenient: the loss is differentiable for every $\theta$, and its gradient is a residual times an input, a formula that lesson 1.4 sets to zero and lesson 2.4 follows downhill. Step 2 is the price of absolute error: its derivative jumps at every point the line passes through exactly, which is why it has no "set the derivative to zero" closed form. Step 6 is the price of squared error: a patient with residual 100 pulls on $\theta$ a hundred times as hard as a patient with the same input and residual 1. One badly wrong target can drag the whole line, which is what the hook's typo does.
 
 <Callout type="beyond">
 
@@ -286,7 +287,7 @@ Also written as: $SS_{\text{res}}$ and $SS_{\text{tot}}$ (L3 p.9); "R squared"; 
 
 <Definition id="def-1-3-6" title="Loss versus evaluation metric" source="L3 p.8">
 
-A **loss** (objective) is the function of $\theta$ that the optimizer minimizes during training. An **evaluation metric** is a number reported to judge a trained model, on the training data or, better, on data it has not seen. MAE, MSE, and RMSE can serve as both. $R^2$ is "an evaluation metric, not a loss function". <SlideRef lecture={3} pages="8" />
+A **loss** (objective) is the function of $\theta$ that the optimizer minimizes during training. An **evaluation metric** is a number reported to judge a trained model, on the training data or, better, on data it has not seen. MAE, MSE, and RMSE can serve as both. $R^2$ is an evaluation metric, "not a loss function". <SlideRef lecture={3} pages="8" />
 
 </Definition>
 
@@ -354,7 +355,7 @@ $$
 R^2(\theta) = 1 - \frac{\mathrm{MSE}(\theta)}{\mathrm{MSE}(\bar y)} = 1 - \frac{\mathrm{MSE}(\theta)}{s_y^2} \tag{1.3.2} \htmlId{eq-1-3-2}{}
 $$
 
-<EqRef id="eq-1-3-2" /> says that $R^2$ is the MSE measured in units of the variance of the targets, which is exactly L3 p.8's "what is good RMSE? Depending on the variance of the data". It also says that, for a fixed dataset, $R^2$ is a decreasing function of MSE, so ranking models on one dataset by $R^2$ or by MSE gives the same order. The normalization pays off across datasets, which L3 p.9 calls "goodness-of-fit comparison across different datasets".
+<EqRef id="eq-1-3-2" /> says that $R^2$ is the MSE measured in units of the [[variance]] of the targets, which is exactly L3 p.8's "what is good RMSE? Depending on the variance of the data". It also says that, for a fixed dataset, $R^2$ is a decreasing function of MSE, so ranking models on one dataset by $R^2$ or by MSE gives the same order. The normalization pays off across datasets, which L3 p.9 calls "goodness-of-fit comparison across different datasets".
 
 Step 9 is the slide's "$R^2$ can be negative if your model is really bad" <SlideRef lecture={3} pages="40" />, with the condition made exact: negative means worse than predicting the mean. Step 10 says when it cannot happen: a least-squares fit, with an intercept, scored on the data it was fit to. Everything else can go negative: a line chosen by hand, a model with no intercept, and above all any model scored on new data, where nothing guarantees it beats the new data's mean.
 
@@ -455,7 +456,8 @@ The convergence in step 9 is convergence in probability, the sense of the [[law-
 <Widget
   name="line-fit-playground"
   dataset="diabetes-bmi-20"
-  challenge="Drag the slope and intercept until MAE and MSE are both as small as you can make them. Are they smallest at the same line? Then drag the patient with BMI 23.3 far upward: which loss moves the line, and which barely notices?"
+  showSquares={true}
+  challenge="Make the MSE as small as you can with the sliders, then switch the loss to MAE and press Snap to OLS and Snap to least absolute deviations in turn. Are the two best lines the same? Which patient's square dominates the least-squares fit?"
 />
 
 The playground draws the 20 patients, a line you control, the vertical residual segments that MAE averages, and the squares that MSE averages. Move the line to the constant $\bar y$ and $R^2$ reads 0 (der-1-3-3 step 8); tilt it the wrong way and $R^2$ goes negative (step 9).
@@ -478,7 +480,7 @@ def report(theta0, theta1):
     r = theta0 + theta1 * x - y                 # residuals f(x) - y
     mse = (r ** 2).mean()
     r2 = 1 - (r ** 2).sum() / ((y - y.mean()) ** 2).sum()
-    return [round(v, 4) for v in (np.abs(r).mean(), mse, np.sqrt(mse), r2)]
+    return [float(round(v, 4)) for v in (np.abs(r).mean(), mse, np.sqrt(mse), r2)]
 
 print(report(45, 4))                                  # L3 p.4
 print(report(y.mean(), 0))                            # the constant y-bar
@@ -503,7 +505,7 @@ Adding the other two lines of L3 p.4:
 
 **Reading the table.** The hand-drawn lines of L3 p.4 are schematic: on this BMI axis their predictions stay between about 111 and 156, close to the mean 126.2 for every patient, so they do barely better than the constant $\bar y$ and their $R^2$ is under 0.09. The least-squares line has the smallest MSE of any line, as it must. Its RMSE, 46.65, is about two thirds of the standard deviation $s_y = 69.51$, and $1 - (46.65/69.51)^2 \approx 0.55$ is the $R^2$ (<EqRef id="eq-1-3-2" />).
 
-**One patient, two losses.** The largest residual belongs to the patient with BMI 23.29 and score 183, under-predicted by 109.375. That one patient is 27.5% of the least-squares line's sum of squared residuals but only 15.8% of its sum of absolute residuals: squaring magnifies the far point, as der-1-3-2 step 6 predicts.
+**One patient, two losses.** The largest residual belongs to patient DIAB-430 (BMI 23.29, score 183), under-predicted by 109.375. That one patient is 27.5% of the least-squares line's sum of squared residuals but only 15.8% of its sum of absolute residuals: squaring magnifies the far point, as der-1-3-2 step 6 predicts.
 
 Now record that patient's score as 1830, the hook's typo, and refit. The mean of the 20 scores jumps from 126.2 to 208.55; the median stays at 107.5 (der-1-3-1). The least-squares line becomes $790.79 - 23.57x$, with a negative slope. A line that minimizes MAE, computed by linear programming, is $-868.36 + 40.29x$ both before and after the typo. Scored on the correct data, the line fit to the typo has $R^2 = -2.32$: a model that is far worse than predicting the mean, which is exactly what der-1-3-3 step 9 allows.
 
@@ -550,6 +552,18 @@ The belief: the least-squares line reflects the bulk of the data. The fix: each 
 <Pitfall title="The mean does not minimize absolute error" misconception="mean-minimizes-mae">
 
 The belief: the best single prediction is the average, whatever the loss. The fix: the average minimizes squared error; absolute error is minimized by a median (der-1-3-1 steps 4 and 8). For the 20 patients these are 126.2 and 107.5. Lesson 2.1 states the population version: the best predictor is the conditional mean under squared error and the conditional median under absolute error.
+
+</Pitfall>
+
+<Pitfall title="An optimizer is not a loss" misconception="optimizer-as-loss">
+
+The belief: gradient descent is an objective for linear regression (an option of the L3 p.19 poll). The fix: the loss defines what "best" means; the optimizer is how we find the best $\theta$ (lesson 1.4, def-1-4-1). Least squares can be solved in closed form or by gradient descent, and the minimizer is the same.
+
+</Pitfall>
+
+<Pitfall title="Accuracy does not score a regression" misconception="accuracy-for-regression">
+
+The belief: accuracy can evaluate linear regression (an option of the L3 p.20 poll). The fix: accuracy counts exactly correct predictions; for a continuous score a prediction almost never equals the label, so accuracy is near 0 for every model. Report MAE, MSE, RMSE, or $R^2$.
 
 </Pitfall>
 
