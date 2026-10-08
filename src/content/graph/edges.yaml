@@ -165,3 +165,170 @@
 - { from: five-ml-components, to: model-class, type: requires }
 - { from: five-ml-components, to: supervised-dataset, type: requires }
 - { from: interaction-feature, to: linear-additive-effects, type: contrasts }
+
+# ---------- Unit 2: Risk and gradient descent ----------
+
+# Lesson 2.1: data-generating-distributions
+# Course map L3 seed edges (docs/course-map/01-lectures-L1-L3.md, "Concept-graph edges"):
+# sample space -> RV -> axioms -> distribution -> DGP; iid -> algorithmic guarantees;
+# iid -> MLE factorization; DGP -> Y = f(X) + ε -> linear DGP example.
+# Edges between concepts taught in this lesson (frontmatter derivation cannot produce these).
+- { from: probability-axioms, to: rv-induced-distribution, type: requires }
+- { from: rv-induced-distribution, to: dgp-sampling-model, type: requires }
+- { from: dgp-sampling-model, to: iid-joint-factorization, type: requires }
+- { from: dgp-sampling-model, to: signal-plus-noise, type: requires }
+- { from: signal-plus-noise, to: conditional-mean-optimality, type: requires }
+- { from: conditional-mean-optimality, to: irreducible-error, type: requires }
+- { from: conditional-mean-optimality, to: linear-dgp-well-specified, type: requires }
+- { from: signal-plus-noise, to: linear-dgp-well-specified, type: requires }
+# Toward other lessons (course map: iid -> MLE factorization (L5); linear DGP uses the linear model class).
+- { from: iid-joint-factorization, to: generative-mle-factorization, type: uses }
+- { from: linear-model, to: linear-dgp-well-specified, type: uses }
+- { from: conditional-mean-optimality, to: bayes-classifier-optimality, type: contrasts }
+# Toward lesson 2.2 (course map: data-generating process -> true risk). true-risk and risk-noise-floor
+# are lesson 2.2's nodes (scratchpad u2-l2-nodes.yaml); merge that fragment with this one.
+- { from: dgp-sampling-model, to: true-risk, type: requires }
+- { from: conditional-mean-optimality, to: risk-noise-floor, type: uses }
+
+# Lesson 2.2: true-and-empirical-risk
+- { from: data-generating-distribution, to: true-risk, type: requires }
+- { from: expectation, to: true-risk, type: requires }
+- { from: true-risk, to: empirical-risk, type: requires }
+- { from: law-of-large-numbers, to: empirical-risk-consistency, type: requires }
+- { from: empirical-risk, to: empirical-risk-minimization, type: requires }
+- { from: supervised-dataset, to: empirical-risk, type: requires }
+- { from: model-class, to: empirical-risk-minimization, type: requires }
+- { from: true-risk, to: risk-noise-floor, type: requires }
+- { from: law-of-total-expectation, to: risk-noise-floor, type: requires }
+- { from: empirical-risk, to: empirical-risk-unbiased, type: requires }
+- { from: iid, to: empirical-risk-unbiased, type: requires }
+- { from: empirical-risk-unbiased, to: empirical-risk-variance, type: requires }
+- { from: empirical-risk-variance, to: empirical-risk-consistency, type: requires }
+- { from: empirical-risk-unbiased, to: training-risk-optimism, type: requires }
+- { from: empirical-risk-minimization, to: training-risk-optimism, type: requires }
+- { from: training-risk-optimism, to: selection-bias, type: requires }
+- { from: training-risk-optimism, to: mean-predictor-optimism, type: requires }
+- { from: unbiased-estimator, to: mean-predictor-optimism, type: requires }
+
+# Toward glossary nodes and later units
+- { from: empirical-risk-unbiased, to: empirical-risk-consistency, type: requires }
+- { from: selection-bias, to: train-test-split, type: uses }
+- { from: empirical-risk-unbiased, to: train-test-split, type: uses }
+- { from: empirical-risk-unbiased, to: stochastic-gradient-descent, type: uses }
+
+# Lesson 2.3: gradients-and-optimality
+# Course map L4 seed edges ("Concept-graph edges", docs/course-map/02-lectures-L4-L5.md):
+#   Derivative (1-D) -> Partial derivative -> Gradient
+#   Inner product / Cauchy–Schwarz -> Gradient is steepest ascent; Gradient -> Gradient is steepest ascent
+#   Gradient is steepest ascent -> Gradient descent update rule   (target is a lesson 2.4 node; add when 2.4 merges)
+#   Derivative -> Critical points; Second derivative -> 1-D second-order conditions
+#   Gradient -> Hessian; Hessian -> multivariate second-order conditions
+#   Eigenvalues / positive definiteness -> multivariate second-order conditions  (derived from prerequisites)
+#   Critical points -> Closed-form minimization (solve ∇f = 0)   (lesson 2.4 / 1.4 node; add when they merge)
+# Edges between concepts of the same lesson cannot be derived from frontmatter.
+
+# Within lesson 2.3
+- { from: derivative, to: gradient, type: requires }
+- { from: gradient, to: local-linear-approximation, type: requires }
+- { from: local-linear-approximation, to: directional-derivative, type: requires }
+- { from: gradient, to: gradient-steepest-ascent, type: requires }
+- { from: directional-derivative, to: gradient-steepest-ascent, type: requires }
+- { from: cauchy-schwarz-inequality, to: gradient-steepest-ascent, type: requires }
+- { from: gradient-steepest-ascent, to: steepest-descent-direction, type: requires }
+- { from: gradient, to: gradient-orthogonal-level-sets, type: requires }
+- { from: level-set, to: gradient-orthogonal-level-sets, type: requires }
+- { from: gradient, to: hessian, type: requires }
+- { from: derivative, to: critical-point, type: requires }
+- { from: gradient, to: critical-point, type: requires }
+- { from: critical-point, to: interior-extremum-zero-gradient, type: requires }
+- { from: critical-point, to: hessian-test-local-extrema, type: requires }
+- { from: hessian, to: hessian-test-local-extrema, type: requires }
+- { from: interior-extremum-zero-gradient, to: hessian-test-local-extrema, type: requires }
+- { from: hessian-test-local-extrema, to: saddle-point, type: requires }
+- { from: critical-point, to: saddle-point, type: requires }
+
+# Lesson 2.4: gradient-descent
+# Course map L4 seed edges ("Concept-graph edges", docs/course-map/02-lectures-L4-L5.md):
+#   Gradient is steepest ascent -> Gradient descent update rule
+#   Critical points -> Closed-form minimization; Closed-form minimization fails -> Iterative solutions
+#   Iterative solutions -> Gradient descent algorithm
+#   Fixed point -> Convergence definition; Norm -> Convergence criteria
+#   Gradient descent algorithm -> GD for supervised learning
+#   GD for supervised learning -> GD for linear regression (PyTorch); Autograd -> GD for linear regression (PyTorch)
+#   Convexity -> Convergence guarantee of GD
+#   GD for supervised learning (L4) -> Take-away (L5 p.16; folded into gd-on-empirical-risk)
+# Remaining edges are derived from the lesson's derivations (marked "derived").
+
+- { from: steepest-descent-direction, to: gradient-descent, type: requires }
+- { from: first-order-condition, to: iterative-optimization, type: requires }
+- { from: critical-point, to: iterative-optimization, type: requires }
+- { from: iterative-optimization, to: gradient-descent, type: requires }
+- { from: learning-rate, to: gradient-descent, type: requires }
+- { from: gradient-descent, to: gd-fixed-points, type: requires }
+- { from: first-order-condition, to: gd-fixed-points, type: requires }
+- { from: gradient-descent, to: convergence-criterion, type: requires }
+- { from: convergence-criterion, to: gd-stopping-rules, type: requires }
+- { from: gradient-descent, to: gd-on-empirical-risk, type: requires }
+- { from: empirical-risk, to: gd-on-empirical-risk, type: requires }
+- { from: convex-function, to: gd-convergence-behavior, type: requires }
+- { from: gd-fixed-points, to: gd-convergence-behavior, type: requires }
+# derived
+- { from: matrix-calculus-identities, to: mse-gradient, type: requires }
+- { from: design-matrix, to: mse-gradient, type: requires }
+- { from: gradient, to: mse-gradient, type: requires }
+- { from: chain-rule-calculus, to: lms-update, type: requires }
+- { from: mse-gradient, to: lms-update, type: uses }
+- { from: mse-gradient, to: lsq-gradient-hessian-form, type: requires }
+- { from: hessian, to: lsq-gradient-hessian-form, type: requires }
+- { from: chain-rule-calculus, to: autograd, type: requires }
+- { from: gd-on-empirical-risk, to: autograd-gd-loop, type: requires }
+- { from: autograd, to: autograd-gd-loop, type: requires }
+- { from: mse-gradient, to: autograd-gd-loop, type: requires }
+
+# Lesson 2.5: step-size-and-conditioning
+# Seed edges from the "Concept-graph edges" sections of docs/course-map/02-lectures-L4-L5.md (L4 and L5):
+#   Quadratic function / second derivative -> Optimal step size; Optimal step size -> Step-size regimes
+#   Step-size regimes -> Per-coordinate optimal rates (uncoupled descents)
+#   Per-coordinate optimal rates -> Problem with a single learning rate / global stability condition
+#   Hessian eigenvalues -> Condition number & convergence speed; Eigenvalues -> Optimal step size ∝ 1/eigenvalue
+#   Taylor expansion (2nd order), Hessian -> Quadratic approximation of convex functions
+#   Non-convexity -> Large learning rate escapes local optima -> Decaying schedules -> SGD / minibatch SGD
+#   Unbiased estimator -> SGD; SGD -> torch.optim optimizers; Convexity -> Convergence guarantee of GD
+# Prerequisite -> concept edges (e.g. eigenvectors, hessian, unbiased-estimator, z-score) are derived from the
+# lesson frontmatter. Edges into lesson 2.4's nodes (gradient-descent -> gd-quadratic-contraction,
+# gd-convergence-behavior -> step-size-regimes) should be added when 2.4's node fragment merges.
+
+- { from: gd-quadratic-contraction, to: optimal-step-size, type: requires }
+- { from: second-order-condition, to: optimal-step-size, type: requires }
+- { from: gd-quadratic-contraction, to: step-size-regimes, type: requires }
+- { from: optimal-step-size, to: step-size-regimes, type: requires }
+- { from: step-size-regimes, to: uncoupled-descents, type: requires }
+- { from: uncoupled-descents, to: single-rate-stability-bound, type: requires }
+- { from: single-rate-stability-bound, to: eigenbasis-gd-modes, type: generalizes }
+- { from: uncoupled-descents, to: eigenbasis-gd-modes, type: requires }
+- { from: eigenvectors, to: eigenbasis-gd-modes, type: requires }
+- { from: eigenbasis-gd-modes, to: condition-number, type: requires }
+- { from: hessian, to: condition-number, type: requires }
+- { from: condition-number, to: best-fixed-step-size, type: requires }
+- { from: taylor-expansion, to: local-quadratic-model, type: requires }
+- { from: hessian, to: local-quadratic-model, type: requires }
+- { from: eigenbasis-gd-modes, to: local-quadratic-model, type: requires }
+- { from: local-quadratic-model, to: large-step-basin-escape, type: requires }
+- { from: large-step-basin-escape, to: learning-rate-decay-schedules, type: requires }
+- { from: learning-rate-decay-schedules, to: robbins-monro-conditions, type: requires }
+- { from: l-smooth, to: descent-lemma, type: requires }
+- { from: cauchy-schwarz-inequality, to: descent-lemma, type: uses }
+- { from: descent-lemma, to: gd-convex-smooth-rate, type: requires }
+- { from: convex-function, to: gd-convex-smooth-rate, type: requires }
+- { from: single-rate-stability-bound, to: descent-lemma, type: generalizes }
+- { from: unbiased-estimator, to: minibatch-gradient-unbiased, type: requires }
+- { from: minibatch, to: minibatch-gradient-unbiased, type: requires }
+- { from: minibatch-gradient-unbiased, to: stochastic-gradient-descent, type: requires }
+- { from: learning-rate-decay-schedules, to: stochastic-gradient-descent, type: requires }
+- { from: minibatch-gradient-unbiased, to: minibatch-gradient-variance, type: requires }
+- { from: minibatch-gradient-variance, to: sgd-noise-floor, type: requires }
+- { from: stochastic-gradient-descent, to: sgd-noise-floor, type: requires }
+- { from: robbins-monro-conditions, to: sgd-noise-floor, type: uses }
+- { from: stochastic-gradient-descent, to: pytorch-optimizer-loop, type: requires }
+- { from: condition-number, to: feature-scaling-conditioning, type: requires }
+- { from: z-score, to: feature-scaling-conditioning, type: requires }

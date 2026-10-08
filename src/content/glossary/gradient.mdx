@@ -1,0 +1,12 @@
+---
+id: gradient
+term: Gradient
+aliases: [nabla, grad, gradient vector]
+field: calculus
+firstUsedIn: u2-risk-and-gradient-descent
+related: [derivative, directional-derivative, hessian, level-set, cauchy-schwarz-inequality, learning-rate]
+---
+
+**What it is.** For $f : \mathbb{R}^d \to \mathbb{R}$, the gradient is the column vector of partial derivatives, $\nabla f(\theta) = \big(\tfrac{\partial f}{\partial \theta_1}, \dots, \tfrac{\partial f}{\partial \theta_d}\big)^\top$, the same shape as $\theta$. A small step $\Delta\theta$ changes $f$ by about $\nabla f(\theta)^\top \Delta\theta$. For $\nabla f \neq 0$, the unit direction $\nabla f / \lVert \nabla f \rVert$ increases $f$ fastest among all unit directions, at rate $\lVert \nabla f \rVert$ (Cauchy–Schwarz), and $\nabla f$ is perpendicular to the level set through $\theta$.
+
+**How ML uses it.** Gradient descent steps against it, $\theta^{(t+1)} = \theta^{(t)} - \eta\, \nabla \hat R(\theta^{(t)})$. For least squares, $\nabla_\theta \tfrac1n \lVert X\theta - y \rVert_2^2 = \tfrac2n X^\top (X\theta - y)$. Autograd libraries compute it for any differentiable loss.

@@ -1,0 +1,12 @@
+---
+id: convex-function
+term: Convex function
+aliases: [convexity, convex, bowl-shaped, strictly convex]
+field: calculus
+firstUsedIn: u2-risk-and-gradient-descent
+related: [positive-semidefinite, hessian, second-order-condition, l-smooth]
+---
+
+**What it is.** A function $f$ is convex when the chord between any two points of its graph lies on or above the graph: $f(t x + (1-t) y) \le t f(x) + (1-t) f(y)$ for all $x, y$ and $t \in [0, 1]$. For differentiable $f$ this is equivalent to $f(y) \ge f(x) + \nabla f(x)^\top (y - x)$, every tangent plane lies below the graph; for twice differentiable $f$, to a positive semi-definite Hessian everywhere.
+
+**How ML uses it.** The tangent-plane inequality at a point with $\nabla f = 0$ gives $f(y) \ge f(x)$ for all $y$: every stationary point of a convex function is a global minimum. The MSE of linear regression is convex in $\theta$ (its Hessian is $\frac2n X^\top X$), and so is the logistic-regression loss; neural-network losses are not.

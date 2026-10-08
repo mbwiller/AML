@@ -1,0 +1,12 @@
+---
+id: condition-number
+term: Condition number
+aliases: [kappa, ill-conditioned, well-conditioned, conditioning]
+field: linear-algebra
+firstUsedIn: u2-risk-and-gradient-descent
+related: [eigenvectors, positive-semidefinite, hessian, learning-rate]
+---
+
+**What it is.** For a symmetric positive definite matrix $A$, the condition number is $\kappa(A) = \lambda_{\max}/\lambda_{\min}$, the ratio of its largest to its smallest eigenvalue. It is at least 1, and equals 1 only when $A$ is a multiple of the identity. Large $\kappa$ means the matrix stretches some directions far more than others: the matrix is ill-conditioned.
+
+**How ML uses it.** For a loss whose Hessian is $A$, the level sets are ellipses whose axis lengths scale as $1/\sqrt{\lambda_i}$, so $\kappa$ measures how elongated the bowl is. Gradient descent must keep $\eta < 2/\lambda_{\max}$ to stay stable, and then the flattest direction keeps at least about a fraction $1 - 2/\kappa$ of its error per step, so the iterations needed grow in proportion to $\kappa$. Rescaling features changes $\kappa$.

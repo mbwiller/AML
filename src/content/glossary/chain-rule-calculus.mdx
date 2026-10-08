@@ -1,0 +1,12 @@
+---
+id: chain-rule-calculus
+term: Chain rule (calculus)
+aliases: [chain rule, chain rule of differentiation]
+field: calculus
+firstUsedIn: u2-risk-and-gradient-descent
+related: [derivative, gradient, autograd, matrix-calculus-identities]
+---
+
+**What it is.** The derivative of a composition is the product of the derivatives of its pieces. If $\ell = g(u)$ and $u = h(\theta)$, then $\frac{d\ell}{d\theta} = g'(u)\,h'(\theta)$. With many parameters, each partial derivative follows the same rule: $\frac{\partial \ell}{\partial \theta_j} = \frac{d\ell}{du}\,\frac{\partial u}{\partial \theta_j}$. When $\ell$ depends on $\theta_j$ through several intermediate quantities, add one such product per path.
+
+**How ML uses it.** Every gradient of a loss is a chain rule: squared error is "square" composed with "residual" composed with "linear model", which gives $\nabla_\theta (\theta^\top x - y)^2 = 2(\theta^\top x - y)\,x$. Autograd applies the rule mechanically, from the loss back to the parameters; backpropagation in neural networks is the same rule applied to more layers.

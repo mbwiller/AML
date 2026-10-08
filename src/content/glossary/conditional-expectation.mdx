@@ -1,0 +1,12 @@
+---
+id: conditional-expectation
+term: Conditional expectation
+aliases: [conditional mean, regression function, "E[Y | X]"]
+field: probability
+firstUsedIn: u2-risk-and-gradient-descent
+related: [expectation, conditional-probability, law-of-total-expectation]
+---
+
+**What it is.** The mean of $Y$ computed with the conditional distribution of $Y$ given $X = x$: $\E[Y \mid X = x] = \int y\, p(y \mid x)\, dy$ (a sum for discrete $Y$). As a function of $x$ it is a number for each input; written $\E[Y \mid X]$ it is a random variable, a function of $X$. Two rules do most of the work: it is linear, and a function of $X$ comes out as a known factor, $\E[h(X)\,Y \mid X] = h(X)\,\E[Y \mid X]$.
+
+**How ML uses it.** $f^\star(x) = \E[Y \mid X = x]$ is the regression function: the predictor with the smallest expected squared error. Linear regression is well specified exactly when $\E[Y \mid X]$ is linear in the features.

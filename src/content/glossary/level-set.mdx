@@ -1,0 +1,12 @@
+---
+id: level-set
+term: Level set
+aliases: [contour, contour line, level curve, equal-value contour, isoline]
+field: calculus
+firstUsedIn: u2-risk-and-gradient-descent
+related: [gradient, quadratic-form, multivariate-gaussian]
+---
+
+**What it is.** The level set of $f : \mathbb{R}^d \to \mathbb{R}$ at height $c$ is $\{\theta : f(\theta) = c\}$, every input where $f$ takes the value $c$. In two dimensions it is a curve, and a contour plot draws several of them, like the lines on a topographic map. Moving along a level set leaves $f$ unchanged, so at a point with nonzero gradient the gradient is perpendicular to the level set through it and points toward higher levels.
+
+**How ML uses it.** Loss landscapes are drawn as level sets of $\hat R(\theta)$. For a quadratic loss with a positive definite Hessian they are ellipses whose axes are the Hessian's eigenvectors. Gradient-descent steps cross them at right angles, which explains the zigzag in a long, narrow valley. The contours of a Gaussian density are level sets of a quadratic form.

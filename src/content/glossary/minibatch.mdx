@@ -1,0 +1,12 @@
+---
+id: minibatch
+term: Minibatch
+aliases: [mini-batch, batch size, minibatch gradient]
+field: ml
+firstUsedIn: u2-risk-and-gradient-descent
+related: [stochastic-gradient-descent, unbiased-estimator, variance, iid]
+---
+
+**What it is.** A list $B$ of $b$ indices drawn at random from $\{1, \dots, n\}$, used to estimate the gradient of the empirical risk by the average $g_B = \frac1b \sum_{i \in B} \nabla \ell_i(\theta)$. Batch size $b = 1$ is plain SGD; $b = n$ (every example once) is full-batch gradient descent.
+
+**How ML uses it.** When $B$ is drawn uniformly, $g_B$ is an unbiased estimate of $\nabla \hat R(\theta)$, and when its $b$ indices are drawn independently its covariance is the single-example covariance divided by $b$ (for $b$ distinct indices, a subset, multiply by $(n-b)/(n-1)$). Larger batches give less noisy steps at a higher cost per step; on a GPU, a batch of 32 to 512 examples often costs little more than one. An epoch is one pass through the data in minibatches.

@@ -1,0 +1,12 @@
+---
+id: directional-derivative
+term: Directional derivative
+aliases: [rate of change along a direction, slope along u]
+field: calculus
+firstUsedIn: u2-risk-and-gradient-descent
+related: [gradient, derivative, cauchy-schwarz-inequality]
+---
+
+**What it is.** For a unit vector $u$, the directional derivative of $f$ at $\theta$ is the rate at which $f$ changes when you move from $\theta$ along $u$: $D_u f(\theta) = \lim_{t \to 0} \frac{f(\theta + t u) - f(\theta)}{t}$. For differentiable $f$ it equals $\nabla f(\theta)^\top u$, and partial derivatives are the special case $u = e_j$.
+
+**How ML uses it.** It turns "which way should the parameters move?" into a question about one number per direction. Since $\nabla f^\top u = \lVert \nabla f \rVert \cos\varphi$, the rate is largest along the gradient, zero along the level set, and most negative against the gradient, which is the direction gradient descent takes.

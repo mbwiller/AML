@@ -1,0 +1,12 @@
+---
+id: learning-rate
+term: Learning rate
+aliases: [step size, eta, η]
+field: ml
+firstUsedIn: u2-risk-and-gradient-descent
+related: [gradient, convergence-criterion, condition-number, stochastic-gradient-descent]
+---
+
+**What it is.** The positive number $\eta$ that scales each gradient-descent step: $\theta^{(t+1)} = \theta^{(t)} - \eta\,\nabla_\theta \hat R(\theta^{(t)})$. The step moves a distance $\eta\,\lVert\nabla_\theta \hat R\rVert$, so steps shrink on their own as the gradient flattens near a minimum. It may change with the iteration, written $\eta_t$ (a schedule).
+
+**How ML uses it.** It is the hyperparameter you tune first. Too small and training crawls; too large and the iterates oscillate or diverge. How large is too large depends on the curvature of the loss, which depends on the scale of the features and on whether the loss is an average or a sum. Lesson 2.5 derives the exact thresholds on a quadratic.

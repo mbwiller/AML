@@ -1,0 +1,12 @@
+---
+id: cauchy-schwarz-inequality
+term: Cauchy–Schwarz inequality
+aliases: [Cauchy-Schwarz, Cauchy–Schwarz, CS inequality]
+field: linear-algebra
+firstUsedIn: u2-risk-and-gradient-descent
+related: [gradient, directional-derivative, euclidean-distance]
+---
+
+**What it is.** For vectors $a, b \in \mathbb{R}^d$, $\lvert a^\top b \rvert \le \lVert a \rVert_2 \lVert b \rVert_2$, with equality exactly when one vector is a multiple of the other. It is what makes the angle well defined: $\cos\varphi = \frac{a^\top b}{\lVert a \rVert \lVert b \rVert}$ always lies in $[-1, 1]$, so $a^\top b = \lVert a \rVert \lVert b \rVert \cos\varphi$. Proof in one line: $0 \le \lVert a - \lambda b \rVert^2$ for every $\lambda$, then, for $b \neq 0$, choose $\lambda = a^\top b / \lVert b \rVert^2$.
+
+**How ML uses it.** For a step of fixed length, the first-order change $\nabla f^\top \Delta\theta$ is largest when the step points along the gradient. That is why the gradient is the steepest-ascent direction and its negative the steepest-descent direction. It also bounds correlations by 1.

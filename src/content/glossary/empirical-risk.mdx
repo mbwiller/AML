@@ -1,0 +1,12 @@
+---
+id: empirical-risk
+term: Empirical risk
+aliases: [training loss, training error, empirical error, ERM, empirical risk minimization]
+field: ml
+firstUsedIn: u2-risk-and-gradient-descent
+related: [expectation, iid, law-of-large-numbers, selection-bias]
+---
+
+**What it is.** The average loss of a model on the $n$ training examples, $\hat R(\theta) = \frac1n \sum_{i=1}^{n} \ell(f_\theta(x^{(i)}), y^{(i)})$. It is the computable stand-in for the true risk $R(\theta) = \E_{(X,Y)\sim P}[\ell(f_\theta(X), Y)]$, which needs the unknown distribution $P$. For a $\theta$ fixed before seeing the data, $\hat R(\theta)$ is an unbiased estimate of $R(\theta)$ with variance shrinking like $1/n$.
+
+**How ML uses it.** Empirical risk minimization trains a model: $\hat\theta = \argmin_\theta \hat R(\theta)$. The slides call this function "Loss" or "EmpiricalError". At the trained $\hat\theta$ it is no longer unbiased: it underestimates the true risk, which is why performance is reported on held-out data.

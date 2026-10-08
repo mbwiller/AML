@@ -1,0 +1,712 @@
+---
+title: "Gradient descent"
+unit: u2-risk-and-gradient-descent
+order: 4
+slug: gradient-descent
+summary: "When ∇R̂ = 0 cannot be solved, step against the gradient: the update rule, what convergence and the three stopping rules mean, the MSE gradient (2/n)Xᵀ(Xθ − y) derived two ways, and the PyTorch autograd loop."
+lectures:
+  - { lecture: 4, pages: "31-47" }
+concepts:
+  - iterative-optimization
+  - gradient-descent
+  - learning-rate
+  - gd-on-empirical-risk
+  - gd-fixed-points
+  - convergence-criterion
+  - gd-stopping-rules
+  - gd-convergence-behavior
+  - mse-gradient
+  - lms-update
+  - lsq-gradient-hessian-form
+  - autograd
+  - autograd-gd-loop
+prerequisites:
+  - empirical-risk
+  - gradient
+  - hessian
+  - first-order-condition
+  - chain-rule-calculus
+  - matrix-calculus-identities
+  - design-matrix
+  - vectorized-predictions
+  - linear-model
+companions:
+  - { notebook: "Code Companions/lecture4-code companion.ipynb", cells: "3-23" }
+estimatedMinutes: 50
+status: review
+authors: [jide]
+---
+
+{/* no-case-frontmatter: the hook mentions the VASCO dose-finding trial (docs/reference/pedagogy-and-curriculum.md Part C, C1) and the ADVERSE cohort only by their design (n = 300, dose and baseline SBP; a binary adverse event). STEPS (C8), the SGD case, belongs to lesson 2.5. src/content/cases/vasco.mdx and steps.mdx do not exist yet; add `cases: [vasco]` when they do. Every number in the worked examples comes from the L4 code companion as recorded in docs/course-map/02-lectures-L4-L5.md, or is computed by hand from it. */}
+
+<Frame
+  data="a fixed training set $\mathcal{D} = \{(x^{(i)}, y^{(i)})\}_{i=1}^{n}$, so the empirical risk is a function of $\theta$ alone"
+  model="any differentiable $f_\theta$; the linear model $f_\theta(x) = \theta^\top x$ in the examples"
+  objective="the empirical risk $\hat R(\theta) = \frac1n \sum_i \ell(f_\theta(x^{(i)}), y^{(i)})$; the mean squared error in the examples"
+  optimizer="gradient descent, $\theta^{(t+1)} = \theta^{(t)} - \eta\,\nabla_\theta \hat R(\theta^{(t)})$ (this lesson)"
+/>
+
+<Objectives>
+
+- State the gradient-descent algorithm (initialization, update, stopping rule) and explain why it steps against the gradient.
+- Prove that a fixed point of the update is a critical point, and say why a critical point need not be a minimum.
+- Relate the three stopping rules (loss change, gradient norm, parameter change) to one another.
+- Derive the mean-squared-error gradient $\frac{2}{n}X^\top(X\theta - y)$ twice: with matrix calculus and one example at a time with the chain rule.
+- Write the PyTorch autograd loop for linear regression, check its gradient by hand, and explain each line.
+
+</Objectives>
+
+<Hook>
+
+Lesson 1.4 fits the VASCO trial's 300 patients by least squares in one line, because setting the gradient of the mean squared error to zero gives a linear system. Unit 3 asks a different question of the same kind of data: will this patient have a serious adverse event? The natural loss for that question has a gradient whose zero no formula can isolate. Neural networks are worse still.
+
+So we need a method that never solves $\nabla \hat R(\theta) = 0$. It only asks, at the current $\theta$: which way is downhill, and how far should I step? Repeat until the answer is "nowhere".
+
+{/* hook-figure: the mse-bowl-gd widget in the Explore section is the hook's explorable */}
+
+</Hook>
+
+## From solving to iterating
+
+For a fixed training set, the [[empirical-risk]] $\hat R(\theta)$ is an ordinary function of $\theta$, and learning is minimizing it <SlideRef lecture={4} pages="12" />. Lesson 2.3 gave the recipe for a minimum: find where the [[gradient]] vanishes, then check the [[hessian]]. That recipe needs us to solve $\nabla_\theta \hat R(\theta) = 0$ for $\theta$, and usually we cannot: the equation has no closed-form solution <SlideRef lecture={4} pages="31" />.
+
+The alternative is iterative <SlideRef lecture={4} pages="32" />. Start from a guess $\theta^{(0)}$. Replace it by a value with a lower $\hat R$. Repeat until $\hat R$ stops decreasing. Two questions decide the method: in which direction to step, and how far.
+
+<Intuition>
+
+Take one parameter and look at the graph of $\hat R(\theta)$ <SlideRef lecture={4} pages="33-34" />. Where the slope $\hat R'(\theta)$ is negative, the curve falls to the right, so moving right lowers the loss. Where the slope is positive, moving left lowers it. The first algorithm on L4 p.34 says exactly that:
+
+- if $\hat R'(\theta^{(t)}) > 0$, set $\theta^{(t+1)} = \theta^{(t)} - \Delta$;
+- if $\hat R'(\theta^{(t)}) < 0$, set $\theta^{(t+1)} = \theta^{(t)} + \Delta$.
+
+Now choose the step size $\Delta = \eta\,\lvert \hat R'(\theta^{(t)})\rvert$ with a fixed $\eta > 0$. Both cases become one line, $\theta^{(t+1)} = \theta^{(t)} - \eta\,\hat R'(\theta^{(t)})$, because the sign of $\hat R'$ now does the choosing. The same choice makes the step proportional to the slope: steep far from the minimum, so the steps are long; flat near it, so the steps shrink by themselves. L4 p.39 draws this, with iterations 3 and 4 already short as the bowl flattens.
+
+</Intuition>
+
+<Callout type="slide">
+
+L4 p.34 writes $\Delta X = \eta^k f'(X^k)$, without the absolute value, and then adds the handwritten update $X^{k+1} = X^k - \eta^k f'(X^k)$. The update is right; the $\Delta X$ in the sign-case form has to be $\eta^k \lvert f'(X^k)\rvert$ for the two cases to agree with it.
+
+</Callout>
+
+<Check ids={["q-u2-l4-019"]} />
+
+## The gradient-descent algorithm
+
+With many parameters the slope becomes the gradient, a column vector with one partial derivative per parameter. Lesson 2.3 proved that $\nabla F(\theta)$ points in the direction of fastest increase of $F$ and $-\nabla F(\theta)$ in the direction of fastest decrease <SlideRef lecture={4} pages="16-20" />. Gradient descent steps that way.
+
+<Definition id="def-2-4-1" title="Gradient descent" source="L4 pp.36-37, 40">
+
+Let $F : \mathbb{R}^{d+1} \to \mathbb{R}$ be differentiable (one coordinate per parameter: $d$ feature weights and an intercept, as for the linear model below). Gradient descent
+
+1. initializes $\theta^{(0)}$ and sets $t = 0$;
+2. updates
+
+$$
+\theta^{(t+1)} = \theta^{(t)} - \eta_t\, \nabla_\theta F(\theta^{(t)}) \tag{2.4.1} \htmlId{eq-2-4-1}{}
+$$
+
+3. sets $t \leftarrow t + 1$ and repeats step 2 until a stopping rule (def-2-4-4) holds.
+
+To find a maximum instead, step along the gradient: $\theta^{(t+1)} = \theta^{(t)} + \eta_t\,\nabla_\theta F(\theta^{(t)})$ (gradient ascent). <SlideRef lecture={4} pages="36-37" /> <SlideRef lecture={4} pages="40" />
+
+Also written as: $X^{k+1} = X^k - \eta^k \nabla_X f(X^k)$ (L4 p.37); $\mathbf{w}^{(k+1)} \leftarrow \mathbf{w}^{(k)} - \eta\,\nabla_{\mathbf{w}} E^\top$ (L4 p.51).
+
+</Definition>
+
+<Definition id="def-2-4-2" title="Learning rate" source="L4 pp.34, 37">
+
+The positive number $\eta_t$ in <EqRef id="eq-2-4-1" /> is the [[learning-rate]] (step size). When it does not change with $t$ we write $\eta$. The step moves $\theta$ a distance $\eta_t\,\lVert\nabla F(\theta^{(t)})\rVert$, so the learning rate sets the scale and the gradient sets both the direction and the remaining length. <SlideRef lecture={4} pages="34" />
+
+Also written as: $\eta^k$ (L4), $\alpha$ (CS229), `step_size` (L4 companion), `lr` (`torch.optim`).
+
+</Definition>
+
+L4 p.37 lists "many solutions to choosing step size" and leaves the choice open. Lesson 2.5 analyzes it exactly: on a quadratic, $\eta$ below a curvature-dependent threshold converges, above it diverges.
+
+Why the direction of *fastest* decrease? L4 p.37 asks why we want the step that yields the largest change in the objective. It is not the only direction that helps. To first order, a small step $\Delta$ changes $F$ by $\nabla F(\theta)^\top \Delta$, so any $\Delta$ with $\nabla F(\theta)^\top \Delta < 0$ lowers $F$ if it is short enough (the L4 p.23 poll makes the same point for ascent). Among all steps of a given length, $-\nabla F$ gives the largest first-order decrease. Gradient descent is the greedy choice: best locally, with no promise about the path as a whole. Lesson 2.5 shows how that greed zigzags when the bowl is long and narrow.
+
+<Callout type="slide">
+
+The slides index iterations with a superscript, $X^k$ and $\theta^k$ (L4 pp.34–44), then $w^{(k)}$ with parentheses (L4 pp.48–53). We write $\theta^{(t)}$ throughout: parentheses, so the index is not read as a power, and $t$, because $k$ indexes classes later in the course. The slides' $f(X)$ on pp.31–41 is a generic function of a vector $X$; in this course $X$ is the design matrix, so we call the generic function $F$ and its variable $\theta$.
+
+</Callout>
+
+<Check ids={["q-u2-l3-004", "q-u2-l4-002", "q-u2-l4-003"]} />
+
+## Convergence and when to stop
+
+<Definition id="def-2-4-3" title="Convergence and fixed points" source="L4 p.38">
+
+An iterative algorithm converges if its iterates approach a fixed point, a value that the update maps to itself, so further updates do not change the estimate. For gradient descent with a fixed $\eta$, the update map is $T(\theta) = \theta - \eta\,\nabla F(\theta)$, and $\bar\theta$ is a fixed point when $T(\bar\theta) = \bar\theta$. <SlideRef lecture={4} pages="38" />
+
+</Definition>
+
+L4 p.38 says the fixed point is "where the gradient is 0". Here is why, and why the limit of a convergent run must be one.
+
+<Derivation
+  id="der-2-4-1"
+  title="The fixed points of gradient descent are exactly the critical points"
+  goalTex="T(\bar\theta) = \bar\theta \text{ for } T(\theta) = \theta - \eta\,\nabla F(\theta), \; \eta > 0"
+  resultTex="T(\bar\theta) = \bar\theta \iff \nabla F(\bar\theta) = 0, \qquad \theta^{(t)} \to \bar\theta \;\Longrightarrow\; \nabla F(\bar\theta) = 0 \;\text{ (for continuous } \nabla F)"
+  source="L4 p.38 (stated: 'arrive at a fixed point where the gradient is 0'; no argument)"
+>
+
+<Chunk title="A fixed point of the update has zero gradient">
+
+<Step justification="name the update map: with a fixed $\eta$, (2.4.1) reads $\theta^{(t+1)} = T(\theta^{(t)})$">
+$$T(\theta) = \theta - \eta\,\nabla F(\theta)$$
+</Step>
+
+<Step justification="definition of a fixed point (def-2-4-3), with $T$ written out">
+$$T(\bar\theta) = \bar\theta \iff \bar\theta - \eta\,\nabla F(\bar\theta) = \bar\theta$$
+</Step>
+
+<Step justification="subtract $\bar\theta$ from both sides">
+$$T(\bar\theta) = \bar\theta \iff -\eta\,\nabla F(\bar\theta) = 0$$
+</Step>
+
+<Step justification="divide by $-\eta$, which is not zero; a point with zero gradient is a critical point (def-2-3-7)" sticky="first-order-condition" fadeable>
+$$T(\bar\theta) = \bar\theta \iff \nabla F(\bar\theta) = 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="A limit of the iterates is a fixed point">
+
+<Step justification="the update holds at every iteration">
+$$\theta^{(t+1)} = \theta^{(t)} - \eta\,\nabla F(\theta^{(t)}) \quad \text{for all } t$$
+</Step>
+
+<Step justification="assume the iterates converge to $\bar\theta$; the shifted sequence $\theta^{(t+1)}$ has the same limit">
+$$\lim_{t\to\infty} \theta^{(t+1)} = \lim_{t\to\infty} \theta^{(t)} = \bar\theta$$
+</Step>
+
+<Step justification="a continuous function maps a convergent sequence to a convergent sequence, so the gradients converge too">
+$$\lim_{t\to\infty} \nabla F(\theta^{(t)}) = \nabla F(\bar\theta)$$
+</Step>
+
+<Step justification="take $t \to \infty$ on both sides of step 5, using steps 6 and 7" fadeable>
+$$\bar\theta = \bar\theta - \eta\,\nabla F(\bar\theta)$$
+</Step>
+
+<Step justification="step 8 says $T(\bar\theta) = \bar\theta$, so steps 2–4 apply">
+$$\nabla F(\bar\theta) = 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The result cuts both ways. A run that converges has found a critical point, which is necessary for a minimum but not sufficient; thm-2-3-4 says which kind of critical point it is. A run started exactly at a critical point that is not a minimum never leaves it, and iterates can stall for a long time near a saddle, where the gradient is small <SlideRef lecture={5} pages="13" />.
+
+<Callout type="slide">
+
+L4 pp.34 and 36 write the loop as "while $f'(X^k) \neq 0$". In floating-point arithmetic the gradient is almost never exactly zero, so that loop would run forever. L4 p.39 replaces it with tolerances, which is what every implementation does.
+
+</Callout>
+
+<Definition id="def-2-4-4" title="Convergence criteria" source="L4 pp.39-40, 46">
+
+A [[convergence-criterion]] stops the loop when one of these falls below a small tolerance:
+
+- the change in the objective, $\lvert F(\theta^{(t+1)}) - F(\theta^{(t)})\rvert < \epsilon_1$ (L4 p.39, and the loop on p.40);
+- the gradient norm, $\lVert\nabla F(\theta^{(t)})\rVert < \epsilon_2$ (L4 p.39);
+- the change in the parameters, $\lVert\theta^{(t+1)} - \theta^{(t)}\rVert < \epsilon_3$ (the L4 p.46 code, with $\epsilon_3 = 10^{-5}$).
+
+Implementations also cap the number of iterations, so that a run that never satisfies the test still ends. <SlideRef lecture={4} pages="39-40" /> <SlideRef lecture={4} pages="46" />
+
+</Definition>
+
+The slides list the first two and the code uses the third. They are not three unrelated tests; for gradient descent they measure the same thing on different scales.
+
+<Derivation
+  id="der-2-4-2"
+  title="The three stopping rules measure the gradient on different scales"
+  goalTex="\lVert\theta^{(t+1)} - \theta^{(t)}\rVert \text{ and } F(\theta^{(t)}) - F(\theta^{(t+1)}) \text{ in terms of } \lVert\nabla F(\theta^{(t)})\rVert"
+  resultTex="\lVert\theta^{(t+1)} - \theta^{(t)}\rVert = \eta\,\lVert\nabla F(\theta^{(t)})\rVert, \qquad F(\theta^{(t)}) - F(\theta^{(t+1)}) \approx \eta\,\lVert\nabla F(\theta^{(t)})\rVert^2"
+  source="L4 p.39 (two criteria stated) and p.46 (a third, in code); the relation between them is not on the slides"
+>
+
+<Chunk title="The parameter change is the gradient, rescaled">
+
+<Step justification="subtract $\theta^{(t)}$ from both sides of (2.4.1) with a fixed $\eta$">
+$$\theta^{(t+1)} - \theta^{(t)} = -\eta\,\nabla F(\theta^{(t)})$$
+</Step>
+
+<Step justification="take norms; $\lVert c\,v\rVert = \lvert c\rvert\,\lVert v\rVert$ and $\lvert -\eta\rvert = \eta$" fadeable>
+$$\lVert\theta^{(t+1)} - \theta^{(t)}\rVert = \eta\,\lVert\nabla F(\theta^{(t)})\rVert$$
+</Step>
+
+<Step justification="divide the stopping inequality by $\eta > 0$" fadeable>
+$$\lVert\theta^{(t+1)} - \theta^{(t)}\rVert < \epsilon_3 \iff \lVert\nabla F(\theta^{(t)})\rVert < \epsilon_3 / \eta$$
+</Step>
+
+</Chunk>
+
+<Chunk title="The loss change is η times the squared gradient norm, to first order">
+
+<Step justification="local linearity: for a small step, the change in $F$ is the gradient dotted with the step (L4 pp.13 and 15)" sticky="taylor-expansion">
+$$F(\theta^{(t+1)}) \approx F(\theta^{(t)}) + \nabla F(\theta^{(t)})^\top \big(\theta^{(t+1)} - \theta^{(t)}\big)$$
+</Step>
+
+<Step justification="substitute the step from step 1">
+$$F(\theta^{(t+1)}) \approx F(\theta^{(t)}) - \eta\,\nabla F(\theta^{(t)})^\top \nabla F(\theta^{(t)})$$
+</Step>
+
+<Step justification="a vector dotted with itself is its squared norm, $v^\top v = \lVert v\rVert^2$">
+$$F(\theta^{(t+1)}) \approx F(\theta^{(t)}) - \eta\,\lVert\nabla F(\theta^{(t)})\rVert^2$$
+</Step>
+
+<Step justification="move $F(\theta^{(t+1)})$ to the right-hand side" fadeable>
+$$F(\theta^{(t)}) - F(\theta^{(t+1)}) \approx \eta\,\lVert\nabla F(\theta^{(t)})\rVert^2$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Three consequences. First, the parameter-change test with tolerance $\epsilon_3$ is the gradient test with tolerance $\epsilon_3/\eta$: halve the learning rate and you have silently doubled the gradient tolerance. Second, the loss-change test is roughly a test on $\lVert\nabla F\rVert^2$, which becomes small much faster than $\lVert\nabla F\rVert$. Third, step 7 is a first-order statement: for a small enough step, gradient descent lowers $F$ whenever the gradient is not zero. How small "small enough" must be is the descent lemma of lesson 2.5.
+
+None of the three says how far $\theta^{(t)}$ is from the minimizer. Der-2-4-5 below makes that precise for least squares.
+
+<Check ids={["q-u2-l4-004", "q-u2-l4-005", "q-u2-l4-006", "q-u2-l4-007"]} />
+
+### What convergence can and cannot promise
+
+L4 p.41 states the guarantee: for an appropriate step size, on a [[convex-function|convex]] (bowl-shaped) function, gradient descent finds the minimum; on a non-convex function it finds a local minimum or stalls at an inflection point <SlideRef lecture={4} pages="41" />. Der-2-4-1 explains the second half: the iterates can only settle where the gradient is zero, and a non-convex function has critical points that are not its global minimum. Convexity rules them out, because every critical point of a differentiable convex function is a global minimum. The first half, that the iterates do settle, needs a condition on the step size; lesson 2.5 proves it (the rate for $L$-smooth convex functions, in a collapsed proof).
+
+Without that condition, nothing settles. L4 p.47 shows three runs on the same contours <SlideRef lecture={4} pages="47" />: one converges, one jitters around the minimum without settling, and one diverges, its steps growing each time. The only difference between them is $\eta$, and lesson 2.5 derives the thresholds that separate the three.
+
+<Check ids={["q-u2-l4-008"]} />
+
+## Gradient descent on the empirical risk
+
+Substitute the learning problem into def-2-4-1: the variable is $\theta$, and the function is the empirical risk of the training set <SlideRef lecture={4} pages="44" />.
+
+<Definition id="def-2-4-5" title="Gradient descent for supervised learning" source="L4 p.44">
+
+Given $\mathcal{D}$, a model class $f_\theta$, and a per-example loss $\ell$, initialize $\theta^{(0)}$ and repeat
+
+$$
+\theta^{(t+1)} = \theta^{(t)} - \eta\,\nabla_\theta \hat R(\theta^{(t)}), \qquad \hat R(\theta) = \frac{1}{n}\sum_{i=1}^{n} \ell\big(f_\theta(x^{(i)}), y^{(i)}\big) \tag{2.4.2} \htmlId{eq-2-4-2}{}
+$$
+
+until a convergence criterion holds. Each step uses all $n$ examples (full-batch gradient descent). <SlideRef lecture={4} pages="44" />
+
+Also written as: $\theta^{k+1} = \theta^k - \eta^k \nabla_\theta \mathrm{Loss}(\theta^k)$ (L4 p.44).
+
+</Definition>
+
+<Callout type="slide">
+
+L4 p.44 calls the objective $\mathrm{Loss}(\theta)$ and L4 p.10 defines it with a factor $\frac{1}{N}$ in front of a sum over $i = 1, \dots, n$. We write $\hat R(\theta)$ with $\frac1n$, matching lesson 2.2. The factor does not move the minimizer, but it scales the gradient, so it changes what a given $\eta$ does (see the pitfalls).
+
+</Callout>
+
+Nothing in <EqRef id="eq-2-4-2" /> depends on the model being linear or the loss being squared; it needs only a gradient. That is the point of L5 p.16, the take-away of the whole optimization unit: for a fixed dataset the loss is a function of $\theta$ alone, and gradient descent finds a $\theta$ that minimizes it <SlideRef lecture={5} pages="16" />. Unit 3 applies the same update to logistic regression, where no closed form exists.
+
+## The gradient of the mean squared error
+
+For the linear model with squared loss, $\hat R(\theta) = \frac1n\sum_i (\theta^\top x^{(i)} - y^{(i)})^2$, the mean squared error of lesson 1.3. The slides compute its gradient with autograd and never write it down <SlideRef lecture={4} pages="45-46" />. We derive it twice, because each derivation shows something the other hides.
+
+<Derivation
+  id="der-2-4-3"
+  title="The gradient of the mean squared error is (2/n)Xᵀ(Xθ − y)"
+  goalTex="\nabla_\theta \hat R(\theta) \text{ for } \hat R(\theta) = \frac{1}{n}\sum_{i=1}^{n} \big(\theta^\top x^{(i)} - y^{(i)}\big)^2"
+  resultTex="\nabla_\theta \hat R(\theta) = \frac{2}{n}\, X^\top (X\theta - y), \qquad \nabla^2_\theta \hat R(\theta) = \frac{2}{n}\, X^\top X"
+  source="L4 pp.45-46 (computed by autograd, never written); L3 p.17 (gradient descent described in words)"
+>
+
+<Chunk title="Write the empirical risk as a quadratic in θ">
+
+<Step justification="mean squared error of the linear model $f_\theta(x) = \theta^\top x$ (lesson 1.3)">
+$$\hat R(\theta) = \frac{1}{n}\sum_{i=1}^{n} \big(\theta^\top x^{(i)} - y^{(i)}\big)^2$$
+</Step>
+
+<Step justification="entry $i$ of $X\theta - y$ is $(x^{(i)})^\top\theta - y^{(i)}$ (der-1-2-1), and a sum of squared entries is a squared norm" sticky="design-matrix">
+$$\hat R(\theta) = \frac{1}{n}\,\lVert X\theta - y\rVert^2$$
+</Step>
+
+<Step justification="a squared norm is the vector's inner product with itself, $\lVert v\rVert^2 = v^\top v$">
+$$\hat R(\theta) = \frac{1}{n}\,(X\theta - y)^\top (X\theta - y)$$
+</Step>
+
+<Step justification="multiply out the product, using $(X\theta)^\top = \theta^\top X^\top$">
+$$\hat R(\theta) = \frac{1}{n}\big(\theta^\top X^\top X\theta - \theta^\top X^\top y - y^\top X\theta + y^\top y\big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Merge the cross terms and differentiate term by term">
+
+<Step justification="$\theta^\top X^\top y$ is a scalar, so it equals its transpose $y^\top X\theta$; write both as $(X^\top y)^\top\theta$" fadeable>
+$$\hat R(\theta) = \frac{1}{n}\big(\theta^\top X^\top X\theta - 2\,(X^\top y)^\top\theta + y^\top y\big)$$
+</Step>
+
+<Step justification="$\nabla_\theta\, \theta^\top A\theta = 2A\theta$ for symmetric $A$; here $A = X^\top X$, and $(X^\top X)^\top = X^\top X$" sticky="matrix-calculus-identities">
+$$\nabla_\theta\, \theta^\top X^\top X\theta = 2X^\top X\theta$$
+</Step>
+
+<Step justification="$\nabla_\theta\, b^\top\theta = b$ with the constant vector $b = X^\top y$" sticky="matrix-calculus-identities" fadeable>
+$$\nabla_\theta\, (X^\top y)^\top\theta = X^\top y$$
+</Step>
+
+<Step justification="$y^\top y$ does not contain $\theta$">
+$$\nabla_\theta\, y^\top y = 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Combine, factor, and differentiate once more">
+
+<Step justification="the gradient is linear: combine steps 6–8 with the coefficients of step 5" fadeable>
+$$\nabla_\theta \hat R(\theta) = \frac{1}{n}\big(2X^\top X\theta - 2X^\top y\big)$$
+</Step>
+
+<Step justification="factor $\frac{2}{n}X^\top$ out on the left" fadeable>
+$$\nabla_\theta \hat R(\theta) = \frac{2}{n}\, X^\top (X\theta - y)$$
+</Step>
+
+<Step justification="by step 9 the gradient is $\frac{2}{n}X^\top X\,\theta$ plus a constant, and the derivative of $A\theta$ with respect to $\theta$ is the matrix $A$" sticky="hessian">
+$$\nabla^2_\theta \hat R(\theta) = \frac{2}{n}\, X^\top X$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+\nabla_\theta \hat R(\theta) = \frac{2}{n}\, X^\top (X\theta - y) \tag{2.4.3} \htmlId{eq-2-4-3}{}
+$$
+
+Check the shapes: $X^\top$ is $(d+1) \times n$ and the residual vector $X\theta - y$ is $n \times 1$, so the gradient is $(d+1) \times 1$, a column with one entry per parameter, as a gradient must be. Setting <EqRef id="eq-2-4-3" /> to zero gives $X^\top X\theta = X^\top y$, the normal equations that lesson 1.4 solves in closed form; the Hessian of step 11 is what lesson 1.4 uses to prove the bowl is convex and lesson 2.5 uses to choose $\eta$.
+
+The matrix form is compact but hides where the gradient comes from. The chain rule, applied to one example at a time, shows it.
+
+<Derivation
+  id="der-2-4-4"
+  title="The same gradient, one example at a time (the LMS rule)"
+  goalTex="\nabla_\theta \hat R(\theta) \text{ as a sum of per-example gradients}"
+  resultTex="\nabla_\theta \hat R(\theta) = \frac{2}{n}\sum_{i=1}^{n} \big(\theta^\top x^{(i)} - y^{(i)}\big)\, x^{(i)} = \frac{2}{n}\, X^\top (X\theta - y)"
+  source="L4 pp.45-46 (gradient computed by autograd); the L4 companion names the resulting update the LMS or Widrow–Hoff rule"
+>
+
+<Chunk title="Split the risk and differentiate one example with the chain rule">
+
+<Step justification="write the mean squared error as an average of per-example losses">
+$$\hat R(\theta) = \frac{1}{n}\sum_{i=1}^{n} \ell_i(\theta), \qquad \ell_i(\theta) = \big(\theta^\top x^{(i)} - y^{(i)}\big)^2$$
+</Step>
+
+<Step justification="the gradient of a sum is the sum of the gradients, and constants factor out">
+$$\nabla_\theta \hat R(\theta) = \frac{1}{n}\sum_{i=1}^{n} \nabla_\theta\, \ell_i(\theta)$$
+</Step>
+
+<Step justification="chain rule: $\ell_i = u^2$ with the residual $u = \theta^\top x^{(i)} - y^{(i)}$, so $\partial \ell_i / \partial\theta_j = 2u \cdot \partial u / \partial\theta_j$" sticky="chain-rule-calculus">
+$$\frac{\partial \ell_i}{\partial \theta_j} = 2\big(\theta^\top x^{(i)} - y^{(i)}\big)\, \frac{\partial\, \theta^\top x^{(i)}}{\partial \theta_j}$$
+</Step>
+
+<Step justification="$\theta^\top x^{(i)} = \sum_k \theta_k x^{(i)}_k$, and only the term $k = j$ contains $\theta_j$; its coefficient is $x^{(i)}_j$" fadeable>
+$$\frac{\partial\, \theta^\top x^{(i)}}{\partial \theta_j} = x^{(i)}_j$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Stack, average, and recover the matrix form">
+
+<Step justification="substitute step 4 into step 3 and stack the partials over $j$ into a column" fadeable>
+$$\nabla_\theta\, \ell_i(\theta) = 2\big(\theta^\top x^{(i)} - y^{(i)}\big)\, x^{(i)}$$
+</Step>
+
+<Step justification="substitute step 5 into step 2" fadeable>
+$$\nabla_\theta \hat R(\theta) = \frac{2}{n}\sum_{i=1}^{n} \big(\theta^\top x^{(i)} - y^{(i)}\big)\, x^{(i)}$$
+</Step>
+
+<Step justification="the columns of $X^\top$ are the $x^{(i)}$, and a matrix times a vector combines the matrix's columns with the vector's entries as weights; here the weights are the residuals $r_i = \theta^\top x^{(i)} - y^{(i)}$">
+$$\sum_{i=1}^{n} r_i\, x^{(i)} = X^\top r = X^\top (X\theta - y)$$
+</Step>
+
+<Step justification="substitute step 6 into (2.4.2): the update for linear regression">
+$$\theta^{(t+1)} = \theta^{(t)} - \frac{2\eta}{n}\sum_{i=1}^{n} \big(f_{\theta^{(t)}}(x^{(i)}) - y^{(i)}\big)\, x^{(i)}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+\theta^{(t+1)} = \theta^{(t)} - \frac{2\eta}{n}\sum_{i=1}^{n} \big(f_{\theta^{(t)}}(x^{(i)}) - y^{(i)}\big)\, x^{(i)} \tag{2.4.4} \htmlId{eq-2-4-4}{}
+$$
+
+Read <EqRef id="eq-2-4-4" /> as a vote. Every patient pulls $\theta$ along their own feature vector $x^{(i)}$, with a strength equal to their residual. A patient whose blood pressure the model over-predicts ($f_\theta(x^{(i)}) > y^{(i)}$) pushes $\theta$ against $x^{(i)}$, lowering that patient's prediction; an under-predicted patient pushes the other way; a patient fitted exactly does not vote. When the votes cancel, the gradient is zero and gradient descent stops.
+
+<Callout type="beyond">
+
+The L4 companion calls this update the Least Mean Squares (LMS) or Widrow–Hoff learning rule <Notebook path="Code Companions/lecture4-code companion.ipynb" cells="19" />. The name comes from adaptive signal processing, where the rule is usually applied one example at a time, a single term of the sum per step. That one-example version is stochastic gradient descent, the subject of lesson 2.5. The same residual-times-input shape returns in Unit 3: the logistic-regression gradient is $\sum_i (\sigma(\theta^\top x^{(i)}) - y^{(i)})\,x^{(i)}$.
+
+</Callout>
+
+The residual form also answers the question der-2-4-2 left open: how far from the minimizer is an iterate with a small gradient?
+
+<Derivation
+  id="der-2-4-5"
+  title="For least squares, the gradient is curvature times distance to the minimizer"
+  goalTex="\nabla_\theta \hat R(\theta) \text{ in terms of } \theta - \theta^\star, \text{ where } \theta^\star \text{ minimizes } \hat R"
+  resultTex="\nabla_\theta \hat R(\theta) = H\,(\theta - \theta^\star), \quad H = \tfrac{2}{n}X^\top X; \qquad \text{one parameter } \big(\theta \in \R,\ h = \tfrac2n\textstyle\sum_i (x^{(i)})^2 > 0\big): \; \lvert\theta - \theta^\star\rvert = \lvert \hat R'(\theta)\rvert / h"
+  source="not on the slides; uses der-2-4-3 and the normal equations of lesson 1.4"
+>
+
+<Chunk title="Use the minimizer to eliminate y">
+
+<Step justification="$\theta^\star$ minimizes the differentiable $\hat R$, so its gradient (2.4.3) vanishes there" sticky="first-order-condition">
+$$\frac{2}{n}\, X^\top (X\theta^\star - y) = 0$$
+</Step>
+
+<Step justification="multiply by $\frac{n}{2}$ and move $X^\top y$ to the other side: the normal equations of lesson 1.4">
+$$X^\top y = X^\top X\,\theta^\star$$
+</Step>
+
+<Step justification="distribute $X^\top$ in (2.4.3)">
+$$\nabla_\theta \hat R(\theta) = \frac{2}{n}\big(X^\top X\,\theta - X^\top y\big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Factor, then read it in one dimension">
+
+<Step justification="substitute step 2" fadeable>
+$$\nabla_\theta \hat R(\theta) = \frac{2}{n}\big(X^\top X\,\theta - X^\top X\,\theta^\star\big)$$
+</Step>
+
+<Step justification="factor $X^\top X$ out on the left; $H = \frac{2}{n}X^\top X$ is the Hessian of der-2-4-3 step 11" fadeable>
+$$\nabla_\theta \hat R(\theta) = H\,(\theta - \theta^\star)$$
+</Step>
+
+<Step justification="with one parameter, $H$ is the number $h = \frac{2}{n}\sum_i (x^{(i)})^2$; take absolute values in step 5 and divide by $h > 0$">
+$$\lvert\theta - \theta^\star\rvert = \frac{\lvert \hat R'(\theta)\rvert}{h}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 6 is the reason a small gradient does not mean a nearby minimizer: divide a small slope by a small curvature and the distance can be large. A feature measured on a tiny scale has a small $\sum_i (x^{(i)})^2$, hence a flat bowl along its coefficient. The worked example below catches this happening in the L4 companion, and lesson 2.5 turns it into the condition number.
+
+<Check ids={["q-u2-l4-009", "q-u2-l4-010", "q-u2-l4-011", "q-u2-l4-012", "q-u2-l4-013"]} />
+
+## Gradient descent in PyTorch
+
+Deriving the gradient by hand is what this platform is for, but for a new model you would rather not. L3 p.16 already named the tool: programs that perform automatic differentiation <SlideRef lecture={3} pages="16" />.
+
+<Definition id="def-2-4-6" title="Autograd" source="L4 pp.45-46">
+
+[[autograd|Automatic differentiation]] records the operations that compute a scalar from tensors marked `requires_grad=True` (the forward pass). Calling `.backward()` on the scalar applies the [[chain-rule-calculus|chain rule]] from the scalar back to the marked tensors (the backward pass) and adds each gradient to that tensor's `.grad` attribute. <SlideRef lecture={4} pages="45-46" />
+
+</Definition>
+
+The L4 companion first runs autograd on the toy loss of lesson 2.3's worked example, $\ell(\theta) = 0.5\,(2\theta_1 - 2)^2 + 0.5\,(\theta_0 - 3)^2$ at $\theta = (\theta_0, \theta_1) = (-2, 3)$ <Notebook path="Code Companions/lecture4-code companion.ipynb" cells="3-11" />. Lesson 2.3 checks the printed value, 20.5, and gradient, $(-5, 8)$, by differentiating one coordinate at a time. Autograd reaches the same gradient another way: the forward pass records intermediate quantities, and `.backward()` runs the chain rule from the loss back to the parameters. Here is that backward view.
+
+<Derivation
+  id="der-2-4-6"
+  title="Autograd's backward pass on the companion's toy loss"
+  goalTex="\nabla_\theta\, \ell(-2, 3) \text{ by the chain rule through the recorded intermediates } u = 2\theta_1 - 2,\ v = \theta_0 - 3"
+  resultTex="\frac{\partial \ell}{\partial \theta_0} = \frac{\partial \ell}{\partial v}\,\frac{\partial v}{\partial \theta_0} = -5, \qquad \frac{\partial \ell}{\partial \theta_1} = \frac{\partial \ell}{\partial u}\,\frac{\partial u}{\partial \theta_1} = 8"
+  source="L4 companion cells 3-11 (autograd output shown); lesson 2.3's worked example checks the value and gradient coordinate by coordinate"
+>
+
+<Chunk title="Forward pass: record the intermediates">
+
+<Step justification="the forward pass computes and stores the two inner expressions at $\theta_0 = -2$, $\theta_1 = 3$; the loss they produce, $\ell = \frac12 u^2 + \frac12 v^2 = 20.5$, is checked in lesson 2.3">
+$$u = 2\theta_1 - 2 = 4, \qquad v = \theta_0 - 3 = -5$$
+</Step>
+
+<Step justification="local derivatives of the outer function $\ell = \frac12 u^2 + \frac12 v^2$: the derivative of $\frac12 u^2$ with respect to $u$ is $u$, and likewise for $v$" sticky="derivative">
+$$\frac{\partial \ell}{\partial u} = u = 4, \qquad \frac{\partial \ell}{\partial v} = v = -5$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Backward pass: the chain rule for each parameter">
+
+<Step justification="chain rule: $\theta_0$ reaches $\ell$ only through $v$, and $\partial v / \partial\theta_0 = 1$" sticky="chain-rule-calculus" fadeable>
+$$\frac{\partial \ell}{\partial \theta_0} = \frac{\partial \ell}{\partial v}\,\frac{\partial v}{\partial \theta_0} = (-5)(1) = -5$$
+</Step>
+
+<Step justification="chain rule: $\theta_1$ reaches $\ell$ only through $u$, and $\partial u / \partial\theta_1 = 2$" fadeable>
+$$\frac{\partial \ell}{\partial \theta_1} = \frac{\partial \ell}{\partial u}\,\frac{\partial u}{\partial \theta_1} = (4)(2) = 8$$
+</Step>
+
+<Step justification="stack the partials into a column; this is the notebook's `theta_tensor.grad`, and the gradient lesson 2.3 computes by hand">
+$$\nabla_\theta\, \ell(-2, 3) = \begin{bmatrix} -5 \\ 8 \end{bmatrix}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Then the companion trains a linear model on the last 20 patients of the diabetes data, with features `bmi` and a constant column `one`, and the target divided by 300 <Notebook path="Code Companions/lecture4-code companion.ipynb" cells="14-20" />. This is the loop on L4 p.46, the one HW1 asked you to reuse:
+
+```python
+threshold = 1e-5
+step_size = 0.1
+theta = torch.tensor(np.array([2., 1.]), requires_grad=True)
+theta_prev = torch.tensor(np.ones(2,), requires_grad=True)
+
+while torch.linalg.norm(theta - theta_prev) > threshold:
+    theta_prev = theta
+    prediction = f(X_train, theta)          # X_train @ theta
+    loss = mse_loss(prediction, y_train)    # (1/n) * ||X theta - y||^2
+    loss.backward()                         # fills theta.grad
+    with torch.no_grad():                   # do not record the update
+        theta = theta_prev - step_size * theta.grad
+        theta = theta.requires_grad_()      # a fresh leaf for the next pass
+```
+
+Line by line against the math:
+
+- `mse_loss` averages, so `loss` is $\hat R(\theta^{(t)})$ with the $\frac1n$, and after `loss.backward()`, `theta.grad` holds <EqRef id="eq-2-4-3" /> at $\theta^{(t)}$.
+- The update line is <EqRef id="eq-2-4-2" /> with $\eta = 0.1$. It runs inside `torch.no_grad()` because the update is not part of the loss; recording it would make the next backward pass differentiate through every past step.
+- The update creates a new tensor, and `requires_grad_()` marks it so that the next forward pass is recorded. Because `theta` is a new tensor each iteration, its `.grad` starts empty and nothing accumulates.
+- The loop test is the parameter-change criterion with $\epsilon_3 = 10^{-5}$, which by der-2-4-2 is the gradient test $\lVert\nabla \hat R\rVert \le 10^{-4}$.
+
+<Callout type="slide">
+
+L4 p.45 gives pseudocode first: `while abs(J(theta) - J(theta_prev)) > conv_threshold`, `theta.gradient`, and `theta.require_grad_()`. The last two are not PyTorch names; the real code on p.46 uses `theta.grad` and `theta.requires_grad_()`, and it also switches the test from the loss change to the parameter change. Both tests are legitimate (def-2-4-4), but they are not the same test.
+
+</Callout>
+
+Most PyTorch code hands the update to an optimizer object (`optimizer.zero_grad()`, then `optimizer.step()`); lesson 2.5 shows that loop.
+
+<Check ids={["q-u2-l4-014", "q-u2-l4-015", "q-u2-l4-016"]} />
+
+## Explore
+
+<Widget
+  name="mse-bowl-gd"
+  dataset="diabetes-bmi-20"
+  eta={0.1}
+  init={[2, 1]}
+  standardize={false}
+  stopping="parameter-change"
+  tolerance={0.00001}
+  showResiduals={true}
+  challenge="Run the companion's settings and watch where the path ends compared with the least-squares point. Which coordinate is still off? Turn on standardization and run again: how many iterations does it take now?"
+/>
+
+The contours are the level sets of $\hat R(\theta_{\text{bmi}}, \theta_{\text{one}})$ for the companion's 20 patients; the path is <EqRef id="eq-2-4-2" /> step by step. With the raw `bmi` feature, which lives in roughly $[-0.1, 0.1]$, the bowl is long and flat along $\theta_{\text{bmi}}$, the situation der-2-4-5 step 6 describes.
+
+## Worked examples
+
+<Example title="Two gradient steps on the companion's toy loss">
+
+Start from lesson 2.3's worked example, which der-2-4-6 reproduces: $\theta^{(0)} = (-2, 3)$, $\ell(\theta^{(0)}) = 20.5$, $\nabla \ell(\theta^{(0)}) = (-5, 8)$. Take $\eta = 0.1$, the companion's step size.
+
+**Step 1.** By <EqRef id="eq-2-4-1" />,
+
+$$\theta^{(1)} = \begin{bmatrix} -2 \\ 3 \end{bmatrix} - 0.1 \begin{bmatrix} -5 \\ 8 \end{bmatrix} = \begin{bmatrix} -1.5 \\ 2.2 \end{bmatrix}.$$
+
+The loss falls: $u = 2(2.2) - 2 = 2.4$ and $v = -1.5 - 3 = -4.5$, so $\ell(\theta^{(1)}) = \frac12(2.4)^2 + \frac12(-4.5)^2 = 2.88 + 10.125 = 13.005$.
+
+**The three stopping quantities after step 1.** The gradient norm is $\lVert(-5, 8)\rVert = \sqrt{89} \approx 9.434$. The parameter change is $\lVert\theta^{(1)} - \theta^{(0)}\rVert = \lVert(0.5, -0.8)\rVert = \sqrt{0.89} \approx 0.9434$, exactly $\eta$ times the gradient norm (der-2-4-2 step 2). The loss change is $20.5 - 13.005 = 7.495$, while the first-order estimate $\eta\,\lVert\nabla\ell\rVert^2 = 0.1 \times 89 = 8.9$ (der-2-4-2 step 7) overshoots it, because a step of length 0.94 is not small for this curved loss.
+
+**Step 2, faded.** Compute $\nabla \ell(\theta^{(1)})$ with der-2-4-6 steps 3 and 4, then $\theta^{(2)}$. Answer: $\partial\ell/\partial\theta_0 = v = -4.5$ and $\partial\ell/\partial\theta_1 = 2u = 4.8$, so $\theta^{(2)} = (-1.5 + 0.45,\; 2.2 - 0.48) = (-1.05, 1.72)$ and $\ell(\theta^{(2)}) = \frac12(1.44)^2 + \frac12(-4.05)^2 \approx 9.238$.
+
+The minimizer is $\theta^\star = (3, 1)$, where both $u$ and $v$ are zero. The error in $\theta_0$ went $-5, -4.5, -4.05$, shrinking by the factor 0.9 per step, while the error in $\theta_1$ went $2, 1.2, 0.72$, shrinking by 0.6. The coordinate with more curvature converges faster under the same $\eta$, which is lesson 2.5's starting point.
+
+</Example>
+
+<Example title="Why the companion's run stopped short of least squares">
+
+The companion's loop on 20 diabetes patients ran for more than 10,000 iterations and ended at $\theta \approx (3.714, 0.458)$ for (`bmi`, `one`), with MSE 0.024179 <Notebook path="Code Companions/lecture4-code companion.ipynb" cells="20-21" />. Scikit-learn's closed-form fit on the same data gives slope 3.738, intercept 0.458, and MSE 0.024178 <Notebook path="Code Companions/lecture4-code companion.ipynb" cells="23" />.
+
+The losses agree to five decimal places, but the slope is off by $3.738 - 3.714 \approx 0.024$. Why did the loop stop?
+
+It stopped when $\lVert\theta^{(t+1)} - \theta^{(t)}\rVert \le 10^{-5}$. By der-2-4-2 step 3 with $\eta = 0.1$, the gradient there had $\lVert\nabla \hat R\rVert \le 10^{-4}$. So the gradient was tiny while the slope was still visibly wrong, the situation der-2-4-5 warns about: in a flat direction a small gradient can hide a large error, and the loss barely notices, because moving along a flat direction costs little loss. Lesson 2.5 measures how flat the bowl is along the slope, turns that into the condition number, and shows why rescaling `bmi` (the standardization toggle in the widget) removes the problem.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u2-l4-017", "q-u2-l4-018"]} />
+
+## Pitfalls
+
+<Pitfall title="To minimize, step against the gradient, not along it" misconception="gd-sign-error">
+
+The belief: the update is $\theta + \eta\nabla\hat R$, because the gradient "points to the solution". The fix: the gradient points uphill, toward the fastest increase (lesson 2.3). With $+\eta\nabla\hat R$ and a small $\eta$, every step raises the loss; that is gradient ascent, the right tool only for maximizing, as in maximum likelihood written without the minus sign (Unit 3). The L4 p.42 poll answer is "exactly opposite to the gradient".
+
+</Pitfall>
+
+<Pitfall title="Spot the error: the sign-case step on L4 p.34" misconception="sign-case-step">
+
+The belief: L4 p.34's first algorithm works as written, with $X^{k+1} = X^k - \Delta X$ when $f'(X^k) > 0$, $X^{k+1} = X^k + \Delta X$ otherwise, and $\Delta X = \eta^k f'(X^k)$. The fix: in the second branch $f'(X^k) < 0$, so $\Delta X$ is negative and $X^k + \Delta X$ moves left, which is uphill when the slope is negative. Either take $\Delta X = \eta^k \lvert f'(X^k)\rvert$, or drop the cases: both branches then collapse to the handwritten update on the same slide, $X^{k+1} = X^k - \eta^k f'(X^k)$, which is correct.
+
+</Pitfall>
+
+<Pitfall title="Converged does not mean minimized" misconception="gd-fixed-point-is-minimum">
+
+The belief: when gradient descent stops, it has found a minimum. The fix: der-2-4-1 proves only that the limit is a critical point, $\nabla\hat R = 0$; thm-2-3-4 classifies it. On a non-convex loss that can be a local minimum, a saddle point, or a plateau's edge (L4 p.41, L5 p.13). Convexity is what upgrades "critical point" to "global minimum", which is why the least-squares bowl is safe and a neural network's loss is not.
+
+</Pitfall>
+
+<Pitfall title="Gradient descent does not converge for every learning rate" misconception="gd-always-converges">
+
+The belief: gradient descent always converges if you run it long enough, at worst slowly. The fix: L4 p.47 shows runs that jitter forever and runs that diverge, on the same convex bowl, differing only in $\eta$. Too large a step overshoots the minimum by more than it started away. Lesson 2.5 derives the exact limit on a quadratic.
+
+</Pitfall>
+
+<Pitfall title="A tiny gradient does not mean you are near the minimizer" misconception="small-gradient-near-optimum">
+
+The belief: $\lVert\nabla\hat R\rVert \le 10^{-4}$ means $\theta$ is within about $10^{-4}$ of $\theta^\star$. The fix: der-2-4-5 gives $\nabla\hat R = H(\theta - \theta^\star)$, so in a direction of small curvature the gradient is small even far away. The companion's run stopped with its slope off by 0.024 for this reason. The loss can be nearly optimal while the coefficients are not, which matters when you interpret coefficients.
+
+</Pitfall>
+
+<Pitfall title="The stopping rules are not interchangeable, and they depend on η" misconception="stopping-rule-confusion">
+
+The belief: "stop when the parameters change by less than $10^{-5}$" and "stop when the gradient is below $10^{-5}$" are the same rule. The fix: der-2-4-2 gives $\lVert\theta^{(t+1)} - \theta^{(t)}\rVert = \eta\lVert\nabla\hat R\rVert$, so the parameter rule is a gradient rule with tolerance $\epsilon_3/\eta$, and the loss-change rule tests roughly $\eta\lVert\nabla\hat R\rVert^2$. Change $\eta$ and the parameter and loss rules change with it. When you report "converged", say which test and which tolerance.
+
+</Pitfall>
+
+<Pitfall title="In the MSE gradient, Xᵀ goes on the left of the residual" misconception="mse-gradient-transpose">
+
+The belief: $\nabla\hat R = \frac{2}{n}(X\theta - y)^\top X$, or $\frac{2}{n}X(X\theta - y)$. The fix: der-2-4-4 step 7 builds the gradient as a sum of the feature vectors $x^{(i)}$ weighted by the residuals, and those vectors are the columns of $X^\top$, so $X^\top$ multiplies the residual from the left: $\frac{2}{n}X^\top(X\theta - y)$ is $(d+1) \times 1$, one entry per parameter. $(X\theta - y)^\top X$ has the right entries but is its transpose, a row; $X(X\theta - y)$ does not even multiply, since $X$ is $n \times (d+1)$ and $X\theta - y$ is $n \times 1$. Lesson 2.3 explains why gradients are columns; check shapes after every matrix-calculus step.
+
+</Pitfall>
+
+<Pitfall title="A learning rate is tied to the scale of the loss" misconception="scale-free-learning-rate">
+
+The belief: $\eta = 0.1$ means the same thing whether the loss is the mean or the sum of the squared errors. The fix: dropping the $\frac1n$ leaves the minimizer unchanged but multiplies the gradient by $n$, so every step is $n$ times longer: the sum with $\eta$ behaves like the mean with $n\eta$. A learning rate that converges for `mse_loss` can diverge for the sum on a large dataset. The same is true of rescaling a feature, which rescales its gradient entry.
+
+</Pitfall>
+
+<Pitfall title="The .grad attribute accumulates" misconception="grad-accumulates">
+
+The belief: every call to `.backward()` overwrites `theta.grad` with the current gradient. The fix: PyTorch adds the new gradient to whatever `.grad` already holds. The companion avoids the problem by creating a new `theta` tensor each iteration; a loop that updates the same tensor in place (as `optimizer.step()` does) must reset the gradient first, which is what `optimizer.zero_grad()` is for. Forget it and the second step uses the sum of two gradients, the third the sum of three.
+
+</Pitfall>
+
+<Connections>
+
+- Previous: 2.3 Gradients and optimality proves that $-\nabla F$ is the steepest-descent direction and states the first- and second-order conditions this lesson relies on.
+- Next: 2.5 Step size and conditioning analyzes $\eta$ exactly on a quadratic, explains the slow, flat direction in the companion's run with the [[condition-number]], proves convergence for [[l-smooth]] convex functions, and replaces the full gradient by a minibatch estimate ([[stochastic-gradient-descent]]).
+- Back: 1.4 Least squares solves $\nabla\hat R = 0$ for the same loss in closed form, $X^\top X\theta = X^\top y$, and uses der-2-4-3's Hessian to prove convexity.
+- Forward: Unit 3 trains logistic regression with <EqRef id="eq-2-4-2" />, where no closed form exists; its gradient has the residual-times-input shape of <EqRef id="eq-2-4-4" />.
+- Companion: <Notebook path="Code Companions/lecture4-code companion.ipynb" cells="3-23" /> (autograd on the toy loss, then gradient descent for linear regression on the diabetes data, cross-checked against scikit-learn).
+- Homework: HW1 Part II Q5 asked for exactly this loop, without `nn.Sequential`, and Q6 asked when gradient descent beats the closed form (large $n$ or $d$, streaming data, no closed form).
+- Graph neighbors: [[gradient]], [[learning-rate]], [[convergence-criterion]], [[autograd]], [[chain-rule-calculus]], [[matrix-calculus-identities]].
+
+</Connections>
+
+{/* no-homework-bridge: the lesson feeds HW1 (due Sep 16, past) and src/content/homework/hw1.mdx does not exist yet. When it lands, add <HomeworkBridge hw="hw1" skills={["gd-on-empirical-risk", "mse-gradient", "autograd-gd-loop", "gd-stopping-rules"]} /> here. */}
+
+<Summary>
+
+- **Gradient descent:** $\theta^{(t+1)} = \theta^{(t)} - \eta_t\,\nabla F(\theta^{(t)})$, from an initial guess, until a stopping rule holds. It steps along $-\nabla F$, the direction of fastest first-order decrease; $\eta$ is the learning rate.
+- **On the empirical risk:** $\theta^{(t+1)} = \theta^{(t)} - \eta\,\nabla_\theta\hat R(\theta^{(t)})$ with $\hat R = \frac1n\sum_i \ell(f_\theta(x^{(i)}), y^{(i)})$; it needs only a gradient, not a closed form.
+- **Fixed points:** $T(\bar\theta) = \bar\theta \iff \nabla F(\bar\theta) = 0$, and a convergent run ends at such a point: a critical point, not necessarily a minimum. Convexity makes it a global minimum; an appropriate $\eta$ makes the run converge (lesson 2.5).
+- **Stopping rules:** $\lVert\theta^{(t+1)} - \theta^{(t)}\rVert = \eta\,\lVert\nabla F\rVert$ and $F(\theta^{(t)}) - F(\theta^{(t+1)}) \approx \eta\,\lVert\nabla F\rVert^2$, so all three test the gradient on different scales.
+- **MSE gradient:** $\nabla_\theta\hat R = \frac{2}{n}X^\top(X\theta - y) = \frac{2}{n}\sum_i (\theta^\top x^{(i)} - y^{(i)})\,x^{(i)}$; Hessian $\frac{2}{n}X^\top X$.
+- **Distance to the minimizer:** for least squares, $\nabla\hat R(\theta) = H(\theta - \theta^\star)$, so a small gradient in a flat direction can hide a large error.
+- **PyTorch:** `requires_grad=True`, forward pass, `loss.backward()`, update inside `torch.no_grad()`; `.grad` accumulates unless the tensor is new or `zero_grad()` is called.
+
+</Summary>

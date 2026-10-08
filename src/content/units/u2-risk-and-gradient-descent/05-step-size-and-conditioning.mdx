@@ -1,0 +1,1016 @@
+---
+title: "Step size and conditioning"
+unit: u2-risk-and-gradient-descent
+order: 5
+slug: step-size-and-conditioning
+summary: "Gradient descent on a quadratic: the factor 1 − ηa, η_opt = 1/a, and the 2η_opt threshold; the eigenbasis and the condition number; the descent lemma; decaying schedules; SGD and minibatch unbiasedness."
+lectures:
+  - { lecture: 4, pages: "48-53" }
+  - { lecture: 5, pages: "3-16" }
+concepts:
+  - gd-quadratic-contraction
+  - optimal-step-size
+  - step-size-regimes
+  - uncoupled-descents
+  - single-rate-stability-bound
+  - eigenbasis-gd-modes
+  - condition-number
+  - best-fixed-step-size
+  - local-quadratic-model
+  - large-step-basin-escape
+  - l-smooth
+  - descent-lemma
+  - gd-convex-smooth-rate
+  - learning-rate-decay-schedules
+  - robbins-monro-conditions
+  - stochastic-gradient-descent
+  - minibatch
+  - minibatch-gradient-unbiased
+  - minibatch-gradient-variance
+  - sgd-noise-floor
+  - feature-scaling-conditioning
+  - pytorch-optimizer-loop
+prerequisites:
+  - learning-rate
+  - gradient
+  - hessian
+  - derivative
+  - taylor-expansion
+  - convex-function
+  - first-order-condition
+  - second-order-condition
+  - quadratic-form
+  - matrix-calculus-identities
+  - eigenvectors
+  - positive-semidefinite
+  - cauchy-schwarz-inequality
+  - expectation
+  - unbiased-estimator
+  - iid
+  - covariance-matrix
+  - trace
+  - empirical-risk
+  - z-score
+companions:
+  - { notebook: "Code Companions/lecture4-code companion.ipynb", cells: "12-23" }
+estimatedMinutes: 75
+status: review
+authors: [jide]
+---
+
+{/* no-case-frontmatter: the hook and the conditioning worked example use the VASCO dose-finding trial (docs/reference/pedagogy-and-curriculum.md Part C, C1), and the SGD example uses the STEPS micro-randomized trial (C8), but src/content/cases/vasco.mdx and steps.mdx do not exist yet. Add `cases: [vasco, steps]` when they do. Every VASCO number below is computed from the C1 specification (dose arms, B ~ N(155, 12^2)), not from a generated dataset. */}
+
+<Frame
+  data="a fixed training set $\mathcal{D} = \{(x^{(i)}, y^{(i)})\}_{i=1}^{n}$, so the loss is a function of $\theta$ alone"
+  model="any differentiable $f_\theta$; analyzed exactly on a quadratic objective $E(\theta) = \tfrac12 \theta^\top A \theta + b^\top \theta + c$"
+  objective="the empirical risk $\hat R(\theta)$, which near a minimizer looks like $\hat R(\theta^\star) + \tfrac12 (\theta - \theta^\star)^\top H (\theta - \theta^\star)$"
+  optimizer="$\theta^{(t+1)} = \theta^{(t)} - \eta_t\, g^{(t)}$ with $g^{(t)}$ the full gradient (GD) or a minibatch gradient (SGD)"
+/>
+
+<Objectives>
+
+- Derive the contraction factor $1 - \eta a$ for gradient descent on a 1-D quadratic, and from it $\eta_{opt} = 1/a$ and the four step-size regimes, including divergence above $2\eta_{opt}$.
+- Show that a diagonal quadratic splits into uncoupled 1-D problems, and that one shared step size must satisfy $\eta < 2\min_i \eta_{i,opt}$.
+- Diagonalize a general quadratic to show that each eigen-direction contracts by $1 - \eta\lambda_i$, and compute the best fixed step size and its rate $(\kappa - 1)/(\kappa + 1)$ in terms of the condition number.
+- Prove the descent lemma for $L$-smooth functions and explain why the quadratic analysis governs any smooth loss near its minimum.
+- Decide which decaying schedules can reach a minimum from any start (Robbins–Monro), and explain when a large step helps.
+- Prove that a minibatch gradient is an unbiased estimate of the full gradient whose variance shrinks like $1/b$.
+
+</Objectives>
+
+<Hook>
+
+The VASCO trial records each patient's dose (0 to 40 mg), baseline systolic pressure (around 155 mmHg), and 8-week change in pressure. You fit the change with an intercept, dose, and baseline by gradient descent on the mean squared error, with the Lecture 4 notebook's step size $\eta = 0.1$. The parameters blow up within a few steps. You shrink $\eta$ until they stop blowing up, run 10,000 steps, and the intercept has barely moved.
+
+Nothing is wrong with the code. One step size has to serve directions of the loss whose curvatures differ by a factor of millions. This lesson computes that factor from the trial's design and removes it with one line of preprocessing.
+
+{/* hook-figure: the gd-2d-eigen widget later in the lesson is the hook's explorable */}
+
+</Hook>
+
+## One step on a parabola
+
+Lesson 2.4 built the gradient-descent update $\theta^{(t+1)} = \theta^{(t)} - \eta\, \nabla_\theta \hat R(\theta^{(t)})$ and left one choice open: the [[learning-rate]] $\eta$. The slides end Lecture 4 with the question "Conditions for convergence?" <SlideRef lecture={4} pages="47" /> and three pictures: iterates that converge, iterates that jitter around the minimum forever, and iterates that diverge. Which $\eta$ produces which picture?
+
+We answer it exactly on the simplest objective that has a minimum, a parabola, and then show that the answer carries over to every smooth loss.
+
+<Definition id="def-2-5-1" title="Contraction factor and optimal step size" source="L4 p.48">
+
+Gradient descent with a fixed step size $\eta > 0$ on the 1-D quadratic
+
+$$E(\theta) = \tfrac12 a\,\theta^2 + b\,\theta + c, \qquad a > 0,$$
+
+multiplies the distance to the minimizer $\theta^\star$ by the **contraction factor** $1 - \eta a$ at every step. The **optimal step size** is the one that reaches $\theta^\star$ in a single step from any start:
+
+$$\eta_{opt} = \frac{1}{a} = \frac{1}{E''(\theta)}.$$
+
+<SlideRef lecture={4} pages="48" />
+
+Also written as: $\eta_{opt} = E''(w^{(k)})^{-1} = a^{-1}$ (L4 p.48, with $w$ for the parameter and $k$ for the iteration).
+
+</Definition>
+
+<Callout type="slide">
+
+L4 pp.48–53 and L5 pp.3–9 write the objective as $E(w)$ (an "energy"), the parameter as $w$ or $\mathbf{w}$, and the iteration as a superscript $(k)$. We write $\theta$ and $(t)$, as in the rest of the course, and keep the name $E$ for a generic objective. When the objective is a training loss, $E$ is the empirical risk $\hat R$.
+
+</Callout>
+
+<Intuition>
+
+Stand at $\theta^{(t)}$ to the right of the bottom of the parabola, a distance $e^{(t)} = \theta^{(t)} - \theta^\star$ away. The slope there is $a\,e^{(t)}$: the parabola's slope grows in proportion to the distance from the bottom, and $a$ is the rate. A gradient step moves you left by $\eta \cdot a\,e^{(t)}$.
+
+So every step removes the fraction $\eta a$ of the remaining distance. If $\eta a = 0.5$, you cover half the distance each step. If $\eta a = 1$, you cover all of it and land on $\theta^\star$. If $\eta a = 1.5$, you overshoot and end up half the distance away on the other side. If $\eta a = 2.5$, you overshoot so far that you land farther away than you started, on the opposite side, and every later step makes it worse. The single number $1 - \eta a$, the fraction of the distance that remains (with a sign for which side you are on), decides everything.
+
+</Intuition>
+
+<Derivation
+  id="der-2-5-1"
+  title="On a parabola, each gradient step multiplies the error by 1 − ηa"
+  goalTex="\theta^{(t+1)} - \theta^\star \text{ in terms of } \theta^{(t)} - \theta^\star, \text{ and the } \eta \text{ that reaches } \theta^\star \text{ in one step}"
+  resultTex="\theta^{(t+1)} - \theta^\star = (1 - \eta a)\,(\theta^{(t)} - \theta^\star), \qquad \eta_{opt} = \frac{1}{a}"
+  source="L4 p.48 (η_opt = a⁻¹ stated: 'can arrive at the optimum in a single step'; no derivation)"
+>
+
+<Chunk title="Find the minimizer of the parabola">
+
+<Step justification="differentiate term by term: the derivative of $\tfrac12 a\theta^2$ is $a\theta$, of $b\theta$ is $b$, of $c$ is 0" sticky="derivative">
+$$E'(\theta) = a\theta + b$$
+</Step>
+
+<Step justification="first-order condition: set $E'(\theta^\star) = 0$ and solve; $a > 0$ so we may divide" sticky="first-order-condition">
+$$\theta^\star = -\frac{b}{a}$$
+</Step>
+
+<Step justification="second-order condition: the second derivative is positive, so the critical point is the minimum" sticky="second-order-condition">
+$$E''(\theta) = a > 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Rewrite one step in terms of the distance to the minimizer">
+
+<Step justification="the gradient-descent update with fixed $\eta$, using step 1 for the derivative" sticky="learning-rate">
+$$\theta^{(t+1)} = \theta^{(t)} - \eta\,(a\,\theta^{(t)} + b)$$
+</Step>
+
+<Step justification="step 2 rearranged gives $b = -a\theta^\star$; substitute it into the slope" fadeable>
+$$a\,\theta^{(t)} + b = a\,(\theta^{(t)} - \theta^\star)$$
+</Step>
+
+<Step justification="subtract $\theta^\star$ from both sides of step 4 and use step 5 for the slope">
+$$\theta^{(t+1)} - \theta^\star = (\theta^{(t)} - \theta^\star) - \eta a\,(\theta^{(t)} - \theta^\star)$$
+</Step>
+
+<Step justification="factor out $\theta^{(t)} - \theta^\star$ and name the error $e^{(t)} = \theta^{(t)} - \theta^\star$" fadeable>
+$$e^{(t+1)} = (1 - \eta a)\, e^{(t)}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Unroll the recursion and choose the step that lands in one move">
+
+<Step justification="apply step 7 $t$ times, starting from $e^{(0)}$ (induction on $t$)">
+$$e^{(t)} = (1 - \eta a)^t\, e^{(0)}$$
+</Step>
+
+<Step justification="$e^{(1)} = (1 - \eta a)\,e^{(0)}$ is zero for every starting error exactly when the factor is zero" fadeable>
+$$1 - \eta a = 0 \iff \eta = \frac{1}{a} = \eta_{opt}$$
+</Step>
+
+<Step justification="by steps 1 and 3, $a = E''(\theta)$ and $a\theta^{(0)} + b = E'(\theta^{(0)})$, so the optimal step divides the slope by the curvature">
+$$\theta^{(1)} = \theta^{(0)} - \frac{E'(\theta^{(0)})}{E''(\theta^{(0)})} = \theta^\star$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+e^{(t+1)} = (1 - \eta a)\, e^{(t)}, \qquad e^{(t)} = \theta^{(t)} - \theta^\star \tag{2.5.1} \htmlId{eq-2-5-1}{}
+$$
+
+Step 10 is Newton's method: divide the slope by the curvature. On a parabola the curvature is the same everywhere, so one Newton step is exact. On other functions it is not, which is why the rest of this lesson needs more than $\eta_{opt}$.
+
+Now read off what every other $\eta$ does. L4 p.49 draws four panels and states three regimes <SlideRef lecture={4} pages="49" />; all of them follow from the sign and size of $1 - \eta a$ in <EqRef id="eq-2-5-1" />.
+
+<Derivation
+  id="der-2-5-2"
+  title="The four step-size regimes come from the sign and size of 1 − ηa"
+  goalTex="\text{the behavior of } e^{(t)} = (1-\eta a)^t e^{(0)} \text{ for each range of } \eta > 0"
+  resultTex="\begin{aligned} 0 < \eta < \eta_{opt} &: \text{monotone convergence} \\ \eta = \eta_{opt} &: \text{exact in one step} \\ \eta_{opt} < \eta < 2\eta_{opt} &: \text{oscillating convergence} \\ \eta = 2\eta_{opt} &: \text{bounces forever} \\ \eta > 2\eta_{opt} &: \text{divergence} \end{aligned}"
+  source="L4 p.49 (three regimes stated with four panels; no derivation)"
+>
+
+<Chunk title="When does the error shrink to zero?">
+
+<Step justification="take absolute values in der-2-5-1 step 8; the absolute value of a product is the product of absolute values">
+$$\lvert e^{(t)} \rvert = \lvert 1 - \eta a \rvert^t\, \lvert e^{(0)} \rvert$$
+</Step>
+
+<Step justification="a geometric sequence $r^t$ tends to 0 exactly when $\lvert r \rvert < 1$, so the error vanishes from every start exactly when">
+$$\lvert 1 - \eta a \rvert < 1$$
+</Step>
+
+<Step justification="write the inequality as $-1 < 1 - \eta a < 1$, subtract 1, and divide by $-a$, which flips both inequalities" fadeable>
+$$0 < \eta < \frac{2}{a} = 2\eta_{opt}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Read the sign of the factor">
+
+<Step justification="if $0 < \eta < 1/a$ then $0 < \eta a < 1$: the factor is between 0 and 1, so the error keeps its sign and shrinks; the iterates approach $\theta^\star$ from one side">
+$$0 < 1 - \eta a < 1 \quad (\text{monotone convergence})$$
+</Step>
+
+<Step justification="if $\eta = 1/a$ the factor is exactly 0, so the first step lands on the minimizer (der-2-5-1 step 9)">
+$$1 - \eta a = 0, \qquad e^{(1)} = 0 \quad (\text{exact in one step})$$
+</Step>
+
+<Step justification="if $1/a < \eta < 2/a$ then $1 < \eta a < 2$: the factor is negative but larger than $-1$, so the error flips sign every step while its size shrinks" fadeable>
+$$-1 < 1 - \eta a < 0 \quad (\text{oscillating convergence})$$
+</Step>
+
+<Step justification="if $\eta = 2/a$ the factor is exactly $-1$; step 8 of der-2-5-1 gives an error of constant size and alternating sign">
+$$e^{(t)} = (-1)^t\, e^{(0)} \quad (\text{jumps between } \theta^\star \pm e^{(0)} \text{ forever})$$
+</Step>
+
+<Step justification="if $\eta > 2/a$ the factor is below $-1$, so by step 1 the error grows by the factor $\eta a - 1 > 1$ every step" fadeable>
+$$\lvert e^{(t)} \rvert = (\eta a - 1)^t\, \lvert e^{(0)} \rvert \to \infty \quad (\text{divergence})$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The boundary case of step 7 is the "jittering" picture of L4 p.47: the iterate never settles, but it does not run away either. In floating point, any rounding that nudges $\eta a$ above 2 turns it into divergence.
+
+<Widget
+  name="gd-1d-quadratic"
+  a={2}
+  b={-4}
+  c={0}
+  eta={0.25}
+  showContraction={true}
+  markers={["eta_opt", "two_eta_opt"]}
+  challenge="Find an η that converges in exactly one step, one that oscillates but converges, and one that diverges. What is the contraction factor at each, and where does it sit relative to −1, 0, and 1?"
+/>
+
+<Check ids={["q-u2-l5-007", "q-u2-l5-008", "q-u2-l5-009", "q-u2-l5-012"]} />
+
+## Many coordinates, one step size
+
+### Uncoupled coordinates
+
+Now let $\theta \in \mathbb{R}^d$. L4 p.50 takes a quadratic whose curvature matrix is diagonal, $A = \operatorname{diag}(a_{11}, \dots, a_{dd})$ with every $a_{jj} > 0$, and observes that the energy restricted to each coordinate is its own parabola, with a shape that does not depend on the other coordinates <SlideRef lecture={4} pages="50" />. The slide states the consequence without proof: each coordinate has its own optimal rate $\eta_{j,opt} = 1/a_{jj}$, but the vector update uses one $\eta$ for all of them <SlideRef lecture={4} pages="51-52" />. What must that one $\eta$ satisfy?
+
+<Derivation
+  id="der-2-5-3"
+  title="On a diagonal quadratic, gradient descent runs d separate 1-D descents with one shared step size"
+  goalTex="\text{the condition on a single } \eta \text{ for GD on } E(\theta) = \tfrac12 \theta^\top A\theta + b^\top\theta + c,\ A = \operatorname{diag}(a_{11},\dots,a_{dd})"
+  resultTex="\theta^{(t)} \to \theta^\star \text{ from every start} \iff 0 < \eta < 2\min_j \eta_{j,opt} = \frac{2}{\max_j a_{jj}}"
+  source="L4 pp.50-52 and L5 p.7 (uncoupling and η < 2 min η_i,opt stated; no derivation)"
+>
+
+<Chunk title="Split the energy and the update by coordinate">
+
+<Step justification="a quadratic form with a diagonal matrix has no cross terms: $\theta^\top A \theta = \sum_j a_{jj}\theta_j^2$" sticky="quadratic-form">
+$$E(\theta) = \sum_{j=1}^{d} \Big(\tfrac12 a_{jj}\,\theta_j^2 + b_j\,\theta_j\Big) + c$$
+</Step>
+
+<Step justification="only the $j$-th term of the sum contains $\theta_j$; differentiate it as in der-2-5-1 step 1">
+$$\frac{\partial E}{\partial \theta_j} = a_{jj}\,\theta_j + b_j$$
+</Step>
+
+<Step justification="the $j$-th component of the vector update $\theta^{(t+1)} = \theta^{(t)} - \eta\nabla E(\theta^{(t)})$, where the gradient is the column of partial derivatives" sticky="gradient" fadeable>
+$$\theta_j^{(t+1)} = \theta_j^{(t)} - \eta\,\big(a_{jj}\,\theta_j^{(t)} + b_j\big)$$
+</Step>
+
+<Step justification="step 3 is der-2-5-1 step 4 with $a = a_{jj}$ and $b = b_j$, and it involves no other coordinate; so der-2-5-1 step 7 applies to each coordinate's error $e_j = \theta_j - \theta_j^\star$">
+$$e_j^{(t+1)} = (1 - \eta\, a_{jj})\, e_j^{(t)}, \qquad \eta_{j,opt} = \frac{1}{a_{jj}}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="One step size must suit every coordinate">
+
+<Step justification="the error vector tends to 0 exactly when each of its components does, and by step 4 each component is its own geometric sequence">
+$$e^{(t)} \to 0 \text{ from every start} \iff \lvert 1 - \eta\, a_{jj} \rvert < 1 \text{ for every } j$$
+</Step>
+
+<Step justification="der-2-5-2 step 3, applied to each coordinate">
+$$\iff 0 < \eta < \frac{2}{a_{jj}} = 2\eta_{j,opt} \text{ for every } j$$
+</Step>
+
+<Step justification="$\eta$ is below every one of the bounds exactly when it is below the smallest, and the smallest $2/a_{jj}$ belongs to the largest curvature" fadeable>
+$$\iff 0 < \eta < 2\min_j \eta_{j,opt} = \frac{2}{\max_j a_{jj}}$$
+</Step>
+
+<Step justification="multiply the bound $\eta < 2/a_{\max}$ by $a_{\min} > 0$ and subtract from 1: the flattest coordinate's factor is forced close to 1">
+$$1 - \eta\, a_{\min} > 1 - 2\,\frac{a_{\min}}{a_{\max}}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 8 is the whole problem in one inequality. The stiffest coordinate (largest curvature) caps $\eta$, and under that cap the flattest coordinate moves only a sliver of its remaining distance each step. When $a_{\max}/a_{\min}$ is large, the flat coordinate needs a very large number of steps. This is the slide's warning that a safe single rate "makes the learning very slow, and will oscillate in all directions where $\eta_{i,opt} \le \eta < 2\eta_{i,opt}$" <SlideRef lecture={5} pages="7" />.
+
+<Callout type="slide">
+
+L4 p.51 and L5 p.7 write the vector update as $\mathbf{w}^{(k+1)} \leftarrow \mathbf{w}^{(k)} - \eta \nabla_{\mathbf{w}} E^\top$: the slides treat $\nabla_{\mathbf{w}} E$ as a row there and transpose it into a column. We treat gradients as columns throughout, so no transpose is needed. L5 p.7 writes the coordinate update with $\partial E(w_i^{(k)})/\partial w$; the derivative is with respect to the coordinate $w_i$ (our $\theta_j$), and $E$ depends on the whole vector, even though on a diagonal quadratic only the $j$-th term matters. L4 p.51's version, $\partial E / d\partial \mathrm{w}$, is a typo (see Pitfalls).
+
+</Callout>
+
+### The eigenbasis
+
+A diagonal $A$ is a special case: real losses couple their coordinates. The MSE of linear regression has Hessian $\frac{2}{n}X^\top X$ (der-2-4-3), which is diagonal only when the feature columns are orthogonal. L5 p.8 asserts that "the optimal step size is inversely proportional to the eigenvalues of the Hessian" <SlideRef lecture={5} pages="8" />. The reason is that every symmetric positive definite $A$ becomes diagonal after a rotation.
+
+<Derivation
+  id="der-2-5-4"
+  title="In the eigenbasis of A, gradient descent contracts each eigen-direction by 1 − ηλᵢ"
+  goalTex="\text{the error recursion and stability condition for GD on } E(\theta) = \tfrac12 \theta^\top A\theta + b^\top\theta + c,\ A \text{ symmetric positive definite}"
+  resultTex="v_i^{(t+1)} = (1 - \eta\lambda_i)\, v_i^{(t)} \text{ with } v = Q^\top(\theta - \theta^\star), \qquad \theta^{(t)} \to \theta^\star \text{ from every start} \iff 0 < \eta < \frac{2}{\lambda_{\max}}"
+  source="L5 p.8 (stated: 'the optimal step size is inversely proportional to the eigenvalues of the Hessian'; no derivation)"
+>
+
+<Chunk title="Write one step as a matrix times the error">
+
+<Step justification="matrix calculus: $\nabla_\theta \tfrac12 \theta^\top A \theta = A\theta$ for symmetric $A$, and $\nabla_\theta b^\top \theta = b$" sticky="matrix-calculus-identities">
+$$\nabla E(\theta) = A\theta + b$$
+</Step>
+
+<Step justification="first-order condition $A\theta^\star + b = 0$; a positive definite matrix is invertible" sticky="first-order-condition">
+$$\theta^\star = -A^{-1} b, \qquad b = -A\theta^\star$$
+</Step>
+
+<Step justification="subtract $\theta^\star$ from both sides of the update and substitute $\nabla E(\theta^{(t)}) = A(\theta^{(t)} - \theta^\star)$ from steps 1 and 2" fadeable>
+$$e^{(t+1)} = e^{(t)} - \eta A\, e^{(t)} = (I - \eta A)\, e^{(t)}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Rotate into the eigenbasis, where the coordinates uncouple, and read off stability">
+
+<Step justification="spectral theorem: a symmetric matrix has an orthonormal basis of eigenvectors $q_1, \dots, q_d$ (the columns of $Q$, with $Q^\top Q = I$) and real eigenvalues $\Lambda = \operatorname{diag}(\lambda_1, \dots, \lambda_d)$" sticky="eigenvectors">
+$$A = Q \Lambda Q^\top$$
+</Step>
+
+<Step justification="define the rotated error $v^{(t)} = Q^\top e^{(t)}$, so $e^{(t)} = Q v^{(t)}$ ($Q$ square, so $QQ^\top = I$); multiply step 3 by $Q^\top$ on the left, insert step 4, and use $Q^\top Q = I$" fadeable>
+$$v^{(t+1)} = Q^\top (I - \eta Q\Lambda Q^\top)\, Q\, v^{(t)} = (I - \eta\Lambda)\, v^{(t)}$$
+</Step>
+
+<Step justification="$I - \eta\Lambda$ is diagonal, so it acts on each component separately: der-2-5-3 step 4 with $a_{jj}$ replaced by $\lambda_i$">
+$$v_i^{(t+1)} = (1 - \eta\lambda_i)\, v_i^{(t)}, \qquad \eta_{i,opt} = \frac{1}{\lambda_i}$$
+</Step>
+
+<Step justification="an orthogonal matrix preserves length: $\lVert Q^\top e \rVert^2 = e^\top Q Q^\top e = \lVert e \rVert^2$, so the error shrinks exactly when the rotated error does">
+$$\lVert e^{(t)} \rVert = \lVert v^{(t)} \rVert$$
+</Step>
+
+<Step justification="der-2-5-3 steps 5 to 7 with $a_{jj} \to \lambda_i$; every $\lambda_i > 0$ because $A$ is positive definite" sticky="positive-semidefinite" fadeable>
+$$\theta^{(t)} \to \theta^\star \text{ from every start} \iff 0 < \eta < \frac{2}{\lambda_{\max}}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+0 < \eta < \frac{2}{\lambda_{\max}(A)} \tag{2.5.2} \htmlId{eq-2-5-2}{}
+$$
+
+The eigenvectors $q_i$ are the axes of the elliptical level sets of $E$, and the "uncoupled descents" of L4 p.50 happen along those axes. In the original coordinates the iterates zigzag across the narrow axis of the ellipse; in the eigenbasis they are $d$ independent parabolas.
+
+### The condition number
+
+<Definition id="def-2-5-2" title="Condition number" source="L5 p.9">
+
+For a symmetric positive definite matrix $A$ with eigenvalues $\lambda_{\min} = \lambda_d \le \dots \le \lambda_1 = \lambda_{\max}$, the [[condition-number]] is
+
+$$\kappa(A) = \frac{\lambda_{\max}}{\lambda_{\min}} \ge 1.$$
+
+For gradient descent, $A$ is the Hessian of the objective. Since $\eta_{i,opt} = 1/\lambda_i$, the ratio of the largest to the smallest optimal rate is $\kappa$. <SlideRef lecture={5} pages="9" />
+
+Also written as: $\dfrac{\max_i \eta_{i,opt}}{\min_i \eta_{i,opt}}$ (L5 p.9).
+
+</Definition>
+
+L5 p.9 says convergence "is particularly slow if $\max_i \eta_{i,opt} / \min_i \eta_{i,opt}$ is large" and that the ideal $\eta$ would be close to both the largest and the smallest optimal rate, which is impossible <SlideRef lecture={5} pages="9" />. How slow, and what is the best compromise?
+
+<Derivation
+  id="der-2-5-5"
+  title="The best single step size is 2/(λ_max + λ_min), and it contracts by (κ − 1)/(κ + 1)"
+  goalTex="\min_{\eta > 0}\ \rho(\eta), \quad \rho(\eta) = \max_i \lvert 1 - \eta\lambda_i \rvert"
+  resultTex="\eta^\star = \frac{2}{\lambda_{\max} + \lambda_{\min}}, \qquad \rho(\eta^\star) = \frac{\kappa - 1}{\kappa + 1}, \qquad t \approx \frac{\kappa}{2}\ln\frac{1}{\varepsilon} \text{ steps to shrink the error by } \varepsilon"
+  source="L5 p.9 (stated: 'convergence is particularly slow if max η_i,opt / min η_i,opt is large'; no rate given)"
+>
+
+<Chunk title="Reduce the worst direction to two candidates">
+
+<Step justification="by der-2-5-4 steps 6 and 7, each $\lvert v_i \rvert$ shrinks by $\lvert 1 - \eta\lambda_i \rvert$ per step, so the whole error shrinks at least as fast as the worst factor $\rho(\eta)$">
+$$\lVert e^{(t)} \rVert \le \rho(\eta)^t\, \lVert e^{(0)} \rVert, \qquad \rho(\eta) = \max_i \lvert 1 - \eta\lambda_i \rvert$$
+</Step>
+
+<Step justification="the absolute value of a number is the larger of the number and its negative">
+$$\lvert 1 - \eta\lambda_i \rvert = \max\big(1 - \eta\lambda_i,\ \eta\lambda_i - 1\big)$$
+</Step>
+
+<Step justification="with $\eta > 0$, the first entry is largest at $\lambda_i = \lambda_{\min}$ and the second at $\lambda_i = \lambda_{\max}$, and both values are attained">
+$$\rho(\eta) = \max\big(1 - \eta\lambda_{\min},\ \eta\lambda_{\max} - 1\big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Balance the flattest and the stiffest direction, then count the steps">
+
+<Step justification="the first entry decreases in $\eta$ and the second increases, so their maximum is smallest where they are equal; solve $1 - \eta\lambda_{\min} = \eta\lambda_{\max} - 1$" fadeable>
+$$\eta^\star = \frac{2}{\lambda_{\max} + \lambda_{\min}}$$
+</Step>
+
+<Step justification="substitute $\eta^\star$ into the first entry of step 3 and put it over a common denominator">
+$$\rho(\eta^\star) = 1 - \frac{2\lambda_{\min}}{\lambda_{\max} + \lambda_{\min}} = \frac{\lambda_{\max} - \lambda_{\min}}{\lambda_{\max} + \lambda_{\min}}$$
+</Step>
+
+<Step justification="divide numerator and denominator by $\lambda_{\min}$ and use $\kappa = \lambda_{\max}/\lambda_{\min}$" sticky="condition-number" fadeable>
+$$\rho(\eta^\star) = \frac{\kappa - 1}{\kappa + 1}$$
+</Step>
+
+<Step justification="require $\rho^t \le \varepsilon$ and take logs; for large $\kappa$, $\ln\frac{\kappa + 1}{\kappa - 1} = \ln\frac{1 + 1/\kappa}{1 - 1/\kappa} \approx \frac{2}{\kappa}$ (first-order Taylor expansion of $\ln(1 \pm u)$)" sticky="taylor-expansion">
+$$t \ge \frac{\ln(1/\varepsilon)}{\ln\frac{\kappa + 1}{\kappa - 1}} \approx \frac{\kappa}{2}\,\ln\frac{1}{\varepsilon}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+\kappa = \frac{\lambda_{\max}}{\lambda_{\min}}, \qquad \rho(\eta^\star) = \frac{\kappa - 1}{\kappa + 1} \tag{2.5.3} \htmlId{eq-2-5-3}{}
+$$
+
+With $\kappa = 1$ (a round bowl) one step reaches the minimum. With $\kappa = 100$ the best possible fixed step removes only about 2% of the error per step, and shrinking the error a millionfold takes about $50 \ln 10^6 \approx 690$ steps. The iteration count grows in proportion to $\kappa$: no fixed step size escapes it.
+
+<Widget
+  name="gd-2d-eigen"
+  lambda1={1}
+  lambda2={3}
+  rotation={0}
+  eta={0.25}
+  start={[-15, 15]}
+  showModes={true}
+  challenge="Reproduce L4 p.53: set η to 0.75, 1, 1.5, 2, and 2.1 times 1/3. Which run reaches a small error in the fewest steps? Then rotate the ellipse by 30 degrees: does anything about the per-mode factors change?"
+/>
+
+<Example title="The five learning rates of L4 p.53, factor by factor">
+
+L4 p.53 runs fixed-step gradient descent on a 2-D diagonal quadratic with $\eta_{1,opt} = 1$ and $\eta_{2,opt} = 0.33$, so $a_{11} = 1$ and, reading 0.33 as $1/3$, $a_{22} = 3$ and $\kappa = 3$ <SlideRef lecture={4} pages="53" />. It tries five step sizes, each a multiple of $\eta_{2,opt}$. By der-2-5-3 step 4 the coordinate errors shrink by $1 - \eta$ and $1 - 3\eta$:
+
+| $\eta / \eta_{2,opt}$ | $\eta$ | factor, $\theta_1$ ($a = 1$) | factor, $\theta_2$ ($a = 3$) | worst $\lvert\text{factor}\rvert$ | what the slide shows |
+|---|---|---|---|---|---|
+| 2.1 | 0.70 | 0.30 | −1.10 | 1.10 | zigzag in $\theta_2$ that grows: diverges |
+| 2 | 0.667 | 0.333 | −1 | 1 | zigzag in $\theta_2$ of constant size |
+| 1.5 | 0.50 | 0.50 | −0.50 | 0.50 | damped zigzag: converges |
+| 1 | 0.333 | 0.667 | 0 | 0.667 | $\theta_2$ exact after one step, then straight along $\theta_1$ |
+| 0.75 | 0.25 | 0.75 | 0.25 | 0.75 | smooth, slowest |
+
+The run that looks least tidy, the damped zigzag at $1.5\,\eta_{2,opt}$, is the fastest of the five. It is exactly der-2-5-5's best step, $\eta^\star = 2/(3 + 1) = 0.5$, with factor $(3 - 1)/(3 + 1) = 0.5$ in both coordinates. Landing the stiff coordinate exactly ($\eta = \eta_{2,opt}$) wastes speed on the flat one.
+
+</Example>
+
+<Check ids={["q-u2-l5-010", "q-u2-l5-011", "q-u2-l5-016", "q-u2-l5-025", "q-u2-l5-014"]} />
+
+## Beyond quadratics
+
+### Every smooth loss is locally a quadratic
+
+L5 p.8 extends the analysis to "generic convex multivariate functions (not necessarily quadratic)" through a quadratic Taylor expansion <SlideRef lecture={5} pages="8" />. Here is that argument, and what it says about the L5 p.10 claim that a step larger than $2\eta_{opt}$ "can actually help escape local optima" <SlideRef lecture={5} pages="10" />.
+
+<Derivation
+  id="der-2-5-6"
+  title="Near a minimizer, gradient descent behaves like it does on the Hessian's quadratic"
+  goalTex="e^{(t+1)} \text{ for GD on a twice continuously differentiable } E \text{ near a local minimizer } \theta^\star"
+  resultTex="e^{(t+1)} \approx \big(I - \eta H\big)\, e^{(t)}, \ H = \nabla^2 E(\theta^\star): \text{ locally stable iff } \eta < \frac{2}{\lambda_{\max}(H)}; \text{ GD cannot settle where } \lambda_{\max}(H) > \frac{2}{\eta}"
+  source="L5 p.8 (quadratic Taylor expansion stated, 'much of the analysis still applies'); L5 p.10 (escaping local optima stated)"
+>
+
+<Chunk title="Expand the loss around the minimizer">
+
+<Step justification="second-order Taylor expansion around $\theta^\star$, with $e = \theta - \theta^\star$ and $H = \nabla^2 E(\theta^\star)$" sticky="taylor-expansion">
+$$E(\theta) \approx E(\theta^\star) + \nabla E(\theta^\star)^\top e + \tfrac12\, e^\top H e$$
+</Step>
+
+<Step justification="first-order condition at a local minimizer: $\nabla E(\theta^\star) = 0$" sticky="first-order-condition">
+$$E(\theta) \approx E(\theta^\star) + \tfrac12\, e^\top H e$$
+</Step>
+
+<Step justification="differentiate the quadratic model: der-2-5-4 step 1 with $A = H$ and no linear term ($H$ is symmetric because the second partials of a twice continuously differentiable function commute)" sticky="hessian">
+$$\nabla E(\theta) \approx H e$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Run gradient descent on the model, and see why a large step leaves a sharp basin">
+
+<Step justification="subtract $\theta^\star$ from both sides of the update and substitute step 3, as in der-2-5-4 step 3" fadeable>
+$$e^{(t+1)} \approx (I - \eta H)\, e^{(t)}$$
+</Step>
+
+<Step justification="assume a nondegenerate minimum, $H \succ 0$ (by the second-order sufficient condition it is then a strict local minimum); der-2-5-4 applies with the eigenvalues of $H$" sticky="second-order-condition" fadeable>
+$$\text{locally stable} \iff 0 < \eta < \frac{2}{\lambda_{\max}(H)}, \qquad \eta_{i,opt} = \frac{1}{\lambda_i(H)}$$
+</Step>
+
+<Step justification="if $\eta > 2/\lambda_{\max}(H)$, the component of the error along the top eigenvector is multiplied by $1 - \eta\lambda_{\max} < -1$ each step: der-2-5-2 step 8 along that direction">
+$$\lvert v_1^{(t)} \rvert \approx \lvert 1 - \eta\lambda_{\max}(H) \rvert^t\, \lvert v_1^{(0)} \rvert \to \text{grows}$$
+</Step>
+
+<Step justification="step 6 holds at every minimizer, so a fixed $\eta$ is pushed out of every basin whose top curvature exceeds $2/\eta$; it can settle only in flatter ones" fadeable>
+$$\text{GD with step } \eta \text{ can settle at } \theta^\star \text{ only if } \lambda_{\max}\big(\nabla^2 E(\theta^\star)\big) < \frac{2}{\eta}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Steps 1 to 5 are approximations: they hold while the error is small enough for the quadratic model to be accurate. That is also the honest reading of step 6. Once the error grows, the model stops applying, and the iterate goes wherever the true loss sends it: possibly into a wider basin, possibly off to infinity. The slide's sentence is right in both halves <SlideRef lecture={5} pages="10" />. A step above $2/\lambda_{\max}$ of a narrow basin can carry the iterate out of it, but if $\eta$ stays above $2/\lambda_{\max}$ for every basin, step 7 says it never settles anywhere. That tension is what decaying schedules resolve.
+
+### The descent lemma
+
+The quadratic analysis needs a Hessian at the minimizer. A cleaner guarantee needs only a bound on curvature everywhere.
+
+<Definition id="def-2-5-3" title="L-smooth function" source="beyond the slides (the 'appropriate step size' of L4 p.41)">
+
+A differentiable $f : \mathbb{R}^d \to \mathbb{R}$ is [[l-smooth|$L$-smooth]] if its gradient is $L$-Lipschitz:
+
+$$\lVert \nabla f(x) - \nabla f(y) \rVert \le L\, \lVert x - y \rVert \quad \text{for all } x, y.$$
+
+For a twice-differentiable $f$ this holds exactly when every eigenvalue of every Hessian $\nabla^2 f(x)$ lies in $[-L, L]$. For the quadratic $\tfrac12\theta^\top A\theta + b^\top \theta$ with $A$ positive semi-definite, $\nabla f(x) - \nabla f(y) = A(x - y)$, and the smallest valid $L$ is $\lambda_{\max}(A)$.
+
+Also written as: "$\nabla f$ is Lipschitz with constant $L$"; $\beta$-smooth (some optimization texts).
+
+</Definition>
+
+<Callout type="beyond">
+
+The slides never define $L$-smoothness. L4 p.41 says that "for appropriate step size, for convex (bowl-shaped) functions gradient descent will always find the minimum" <SlideRef lecture={4} pages="41" />. $L$ makes "appropriate" precise: it plays the role that $a$ plays for a parabola and $\lambda_{\max}$ for a quadratic.
+
+</Callout>
+
+<Proof collapsed title="An L-smooth function lies below a parabola" keyIdea="integrate the gradient along the segment from x to y, and bound how far it drifts from ∇f(x) by L times the distance">
+
+Fix $x, y$ and let $h = y - x$. The function $s \mapsto f(x + s h)$ on $[0, 1]$ has derivative $\nabla f(x + s h)^\top h$ by the chain rule, so by the fundamental theorem of calculus
+
+$$f(y) - f(x) = \int_0^1 \nabla f(x + s h)^\top h \, ds.$$
+
+Subtract $\nabla f(x)^\top h = \int_0^1 \nabla f(x)^\top h\, ds$ from both sides:
+
+$$f(y) - f(x) - \nabla f(x)^\top h = \int_0^1 \big(\nabla f(x + s h) - \nabla f(x)\big)^\top h\, ds.$$
+
+By the [[cauchy-schwarz-inequality|Cauchy–Schwarz inequality]], the integrand is at most $\lVert \nabla f(x + s h) - \nabla f(x) \rVert\, \lVert h \rVert$, and by $L$-smoothness that is at most $L\, s\, \lVert h \rVert \cdot \lVert h \rVert$. Integrating $L s \lVert h \rVert^2$ over $s \in [0, 1]$ gives $\tfrac{L}{2}\lVert h \rVert^2$. Therefore
+
+$$f(y) \le f(x) + \nabla f(x)^\top (y - x) + \frac{L}{2}\lVert y - x \rVert^2.$$
+
+The right side is a parabola in $y$ that touches $f$ at $x$ and lies above it everywhere.
+
+</Proof>
+
+<Derivation
+  id="der-2-5-7"
+  title="The descent lemma: any step size below 2/L decreases an L-smooth function"
+  goalTex="f(\theta^{(t+1)}) \text{ versus } f(\theta^{(t)}) \text{ for } \theta^{(t+1)} = \theta^{(t)} - \eta\nabla f(\theta^{(t)}),\ f \text{ L-smooth}"
+  resultTex="f(\theta^{(t+1)}) \le f(\theta^{(t)}) - \eta\Big(1 - \frac{L\eta}{2}\Big)\big\lVert \nabla f(\theta^{(t)}) \big\rVert^2"
+  source="beyond the slides (L3 p.21 states the guarantee for 'suitable step sizes'; L4 pp.33-37 assume that stepping against the gradient decreases f; pedagogy reference Part B topic 3)"
+>
+
+<Chunk title="Bound the loss after one step">
+
+<Step justification="the quadratic upper bound proved above, at $x = \theta^{(t)}$ and $y = \theta^{(t+1)}$" sticky="l-smooth">
+$$f(\theta^{(t+1)}) \le f(\theta^{(t)}) + \nabla f(\theta^{(t)})^\top (\theta^{(t+1)} - \theta^{(t)}) + \frac{L}{2}\big\lVert \theta^{(t+1)} - \theta^{(t)} \big\rVert^2$$
+</Step>
+
+<Step justification="the gradient step moves by $-\eta$ times the gradient; write $g = \nabla f(\theta^{(t)})$">
+$$\theta^{(t+1)} - \theta^{(t)} = -\eta\, g$$
+</Step>
+
+<Step justification="substitute step 2 into step 1; $g^\top g = \lVert g \rVert^2$ and $\lVert -\eta g \rVert^2 = \eta^2 \lVert g \rVert^2$" fadeable>
+$$f(\theta^{(t+1)}) \le f(\theta^{(t)}) - \eta\, \lVert g \rVert^2 + \frac{L\eta^2}{2}\, \lVert g \rVert^2$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Factor, and read off which step sizes guarantee progress">
+
+<Step justification="factor out $\eta\, \lVert g \rVert^2$">
+$$f(\theta^{(t+1)}) \le f(\theta^{(t)}) - \eta\Big(1 - \frac{L\eta}{2}\Big)\lVert g \rVert^2$$
+</Step>
+
+<Step justification="the factor $\eta(1 - L\eta/2)$ is positive exactly when $0 < \eta < 2/L$, so the loss strictly decreases unless the gradient is already zero" fadeable>
+$$0 < \eta < \frac{2}{L},\ g \ne 0 \implies f(\theta^{(t+1)}) < f(\theta^{(t)})$$
+</Step>
+
+<Step justification="the guaranteed decrease $\eta(1 - L\eta/2)$ is a downward parabola in $\eta$ with maximum where its derivative $1 - L\eta$ vanishes, at $\eta = 1/L$" fadeable>
+$$\eta = \frac{1}{L} \implies f(\theta^{(t+1)}) \le f(\theta^{(t)}) - \frac{1}{2L}\lVert g \rVert^2$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+f(\theta^{(t+1)}) \le f(\theta^{(t)}) - \eta\Big(1 - \frac{L\eta}{2}\Big)\big\lVert \nabla f(\theta^{(t)}) \big\rVert^2 \tag{2.5.4} \htmlId{eq-2-5-4}{}
+$$
+
+For a convex quadratic, $L = \lambda_{\max}$, so the threshold $2/L$ in step 5 is the threshold $2/\lambda_{\max}$ of <EqRef id="eq-2-5-2" />, and $1/L$ is the stiffest direction's $\eta_{opt}$. The descent lemma says that the same threshold works for every $L$-smooth function, convex or not, without any Taylor approximation. What it does not say is where the iterates end up: on a non-convex loss, a decreasing sequence can stop at a saddle point or a local minimum, the "convergence issues" listed on L5 p.13 <SlideRef lecture={5} pages="13" />. Adding [[convex-function|convexity]] closes that gap.
+
+<Theorem id="thm-2-5-1" title="Gradient descent on a convex L-smooth function" source="L4 p.41 (stated qualitatively: 'for appropriate step size … will always find the minimum')">
+
+Let $f$ be convex and $L$-smooth with a minimizer $\theta^\star$, and run gradient descent with $\eta = 1/L$. Then for every $t \ge 1$,
+
+$$f(\theta^{(t)}) - f(\theta^\star) \le \frac{L\, \lVert \theta^{(0)} - \theta^\star \rVert^2}{2t}.$$
+
+</Theorem>
+
+<Proof collapsed title="Gradient descent on a convex L-smooth function converges at rate 1/t" keyIdea="bound f by its tangent plane at the current iterate, combine with the descent lemma, and the per-step gaps telescope into a distance">
+
+Write $g_s = \nabla f(\theta^{(s)})$ and $f^\star = f(\theta^\star)$.
+
+*Descent.* By der-2-5-7 step 6, $f(\theta^{(s+1)}) \le f(\theta^{(s)}) - \frac{1}{2L}\lVert g_s \rVert^2$. In particular the values $f(\theta^{(s)})$ never increase.
+
+*Convexity.* The tangent plane at $\theta^{(s)}$ lies below $f$, so $f^\star \ge f(\theta^{(s)}) + g_s^\top(\theta^\star - \theta^{(s)})$, that is, $f(\theta^{(s)}) \le f^\star + g_s^\top(\theta^{(s)} - \theta^\star)$.
+
+*Combine.* Substituting the second inequality into the first,
+
+$$f(\theta^{(s+1)}) - f^\star \le g_s^\top(\theta^{(s)} - \theta^\star) - \frac{1}{2L}\lVert g_s \rVert^2.$$
+
+*Complete the square.* Since $\theta^{(s+1)} = \theta^{(s)} - g_s/L$,
+
+$$\lVert \theta^{(s+1)} - \theta^\star \rVert^2 = \lVert \theta^{(s)} - \theta^\star \rVert^2 - \frac{2}{L} g_s^\top(\theta^{(s)} - \theta^\star) + \frac{1}{L^2}\lVert g_s \rVert^2.$$
+
+Multiplying by $L/2$ and rearranging shows that the right side of the combined inequality equals $\frac{L}{2}\big(\lVert \theta^{(s)} - \theta^\star \rVert^2 - \lVert \theta^{(s+1)} - \theta^\star \rVert^2\big)$.
+
+*Telescope.* Sum over $s = 0, \dots, t-1$. The distances cancel in pairs:
+
+$$\sum_{s=0}^{t-1}\big(f(\theta^{(s+1)}) - f^\star\big) \le \frac{L}{2}\big(\lVert \theta^{(0)} - \theta^\star \rVert^2 - \lVert \theta^{(t)} - \theta^\star \rVert^2\big) \le \frac{L}{2}\lVert \theta^{(0)} - \theta^\star \rVert^2.$$
+
+*Use monotonicity.* Every term on the left is at least the last one, $f(\theta^{(t)}) - f^\star$, so the left side is at least $t\,(f(\theta^{(t)}) - f^\star)$. Divide by $t$. The same argument with any fixed $\eta \le 1/L$ gives the bound $\lVert \theta^{(0)} - \theta^\star \rVert^2 / (2\eta t)$.
+
+</Proof>
+
+Compare the two rates. Without more assumptions the gap closes like $1/t$, which can be very slow. When the loss is also curved from below (all Hessian eigenvalues at least some $\mu > 0$, as for a positive definite quadratic), der-2-5-5 gives geometric decrease at a rate set by $\kappa$. Either way, the step size is capped by the largest curvature.
+
+<Check ids={["q-u2-l5-022", "q-u2-l5-026"]} />
+
+## Decaying schedules
+
+L5 p.11 proposes the way out of the tension at the end of der-2-5-6: start with a large learning rate, then reduce it as the iterations proceed <SlideRef lecture={5} pages="11" />. The figure shows a first jump out of a shallow basin and then shorter and shorter jumps that settle into the deeper one.
+
+<Definition id="def-2-5-4" title="Learning-rate schedule and the Robbins–Monro conditions" source="L5 p.11 (schedules); Robbins–Monro conditions beyond the slides">
+
+A learning-rate schedule is a sequence $\eta_0, \eta_1, \eta_2, \dots$ of positive step sizes, with update $\theta^{(t+1)} = \theta^{(t)} - \eta_t\, g^{(t)}$. L5 p.11 lists three:
+
+$$\eta_t = \frac{\eta_0}{t + 1}, \qquad \eta_t = \frac{\eta_0}{(t + 1)^2}, \qquad \eta_t = \eta_0\, e^{-\beta t}\ (\beta > 0).$$
+
+A schedule satisfies the **Robbins–Monro conditions** if
+
+$$\sum_{t=0}^{\infty} \eta_t = \infty \qquad \text{and} \qquad \sum_{t=0}^{\infty} \eta_t^2 < \infty.$$
+
+<SlideRef lecture={5} pages="11" />
+
+Also written as: $\eta_k$ with iteration index $k$ (L5 p.11).
+
+</Definition>
+
+<Callout type="slide">
+
+L5 p.11 calls $\eta_0/(k+1)$ "linear decay" and $\eta_0/(k+1)^2$ "quadratic decay". Neither decreases linearly or quadratically in $k$: they are inverse ($1/k$) and inverse-square ($1/k^2$) decay. The slide also says to start with a learning rate "greater than 2"; from L5 p.10 the intended meaning is greater than $2\eta_{opt}$ of the basins you want to leave.
+
+</Callout>
+
+Do all three schedules work? The first condition answers a simple question: is the total distance the iterates may travel unlimited?
+
+<Derivation
+  id="der-2-5-8"
+  title="A schedule with finite total step length can stall; only 1/(t+1) among the slide's three passes Robbins–Monro"
+  goalTex="\text{which of } \tfrac{\eta_0}{t+1},\ \tfrac{\eta_0}{(t+1)^2},\ \eta_0 e^{-\beta t} \text{ can reach } \theta^\star \text{ from any start, for a loss with } \lVert \nabla E \rVert \le G \text{ everywhere}"
+  resultTex="\lVert \theta^{(T)} - \theta^{(0)} \rVert \le G\sum_{t<T}\eta_t; \quad \sum_t \tfrac{\eta_0}{t+1} = \infty,\ \sum_t \tfrac{\eta_0}{(t+1)^2} = \tfrac{\pi^2}{6}\eta_0,\ \sum_t \eta_0 e^{-\beta t} = \tfrac{\eta_0}{1 - e^{-\beta}}"
+  source="L5 p.11 (three schedules stated; which ones converge is not discussed)"
+>
+
+<Chunk title="Total travel is bounded by the sum of the step sizes">
+
+<Step justification="the displacement after $T$ steps is the sum of the $T$ updates; the norm of a sum is at most the sum of the norms (triangle inequality)">
+$$\lVert \theta^{(T)} - \theta^{(0)} \rVert = \Big\lVert \sum_{t=0}^{T-1} \eta_t\, \nabla E(\theta^{(t)}) \Big\rVert \le \sum_{t=0}^{T-1} \eta_t\, \lVert \nabla E(\theta^{(t)}) \rVert$$
+</Step>
+
+<Step justification="assume the gradient norm is at most $G$ everywhere, $\lVert \nabla E(\theta) \rVert \le G$ for all $\theta$ (a Lipschitz loss, such as the logistic loss with bounded features); then every term of step 1 is at most $\eta_t G$">
+$$\lVert \theta^{(T)} - \theta^{(0)} \rVert \le G \sum_{t=0}^{T-1} \eta_t$$
+</Step>
+
+<Step justification="under the assumption of step 2: to arrive at $\theta^\star$ the iterates must travel at least $\lVert \theta^{(0)} - \theta^\star \rVert$, which can be any size for an arbitrary start, so the total step length must be unlimited" fadeable>
+$$\text{reaching } \theta^\star \text{ from every start requires } \sum_{t=0}^{\infty} \eta_t = \infty$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Test the slide's three schedules">
+
+<Step justification="the harmonic series $1 + \tfrac12 + \tfrac13 + \cdots$ diverges">
+$$\sum_{t=0}^{\infty} \frac{\eta_0}{t + 1} = \eta_0 \sum_{k=1}^{\infty} \frac{1}{k} = \infty$$
+</Step>
+
+<Step justification="the sum of $1/k^2$ is $\pi^2/6$ (the Basel problem); all that matters is that it is finite" fadeable>
+$$\sum_{t=0}^{\infty} \frac{\eta_0}{(t + 1)^2} = \eta_0\,\frac{\pi^2}{6} < \infty$$
+</Step>
+
+<Step justification="a geometric series with ratio $e^{-\beta} < 1$ sums to $1/(1 - e^{-\beta})$" fadeable>
+$$\sum_{t=0}^{\infty} \eta_0\, e^{-\beta t} = \frac{\eta_0}{1 - e^{-\beta}} < \infty$$
+</Step>
+
+<Step justification="square the inverse schedule: the squares form the convergent sum of step 5, so $\eta_0/(t+1)$ meets both conditions">
+$$\sum_{t=0}^{\infty} \Big(\frac{\eta_0}{t + 1}\Big)^2 = \eta_0^2\, \frac{\pi^2}{6} < \infty$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+\sum_{t=0}^{\infty} \eta_t = \infty, \qquad \sum_{t=0}^{\infty} \eta_t^2 < \infty \tag{2.5.5} \htmlId{eq-2-5-5}{}
+$$
+
+So, for a loss whose gradient norm never exceeds $G$, inverse-square and exponential decay can stall: by steps 2, 5, and 6, the iterates never get farther than $G\eta_0\pi^2/6$ or $G\eta_0/(1 - e^{-\beta})$ from where they started, wherever the minimum is. Exponential decay is still widely used, because in practice $\eta_0$ and $\beta$ are tuned so that the budget is large enough for the distance actually needed. It is a tuning choice, not a guarantee. Without a bound on the gradient the conclusion still holds on a quadratic: there $e^{(T)} = \prod_{t<T}(1 - \eta_t a)\,e^{(0)}$, and when $\sum_t \eta_t < \infty$ (and no $\eta_t a$ equals 1 or 2) the product converges to a nonzero limit, so the error never reaches 0.
+
+Why the second condition? With exact gradients, a fixed $\eta$ below $2/\lambda_{\max}$ already converges on a convex quadratic (der-2-5-4), so no decay is needed. The second condition is for noisy gradients, the subject of the next section. Each noisy step adds an error of size proportional to $\eta_t$, and independent errors add up through their variances, which scale like $\eta_t^2$. Requiring $\sum \eta_t^2 < \infty$ keeps the total accumulated noise finite, while $\sum \eta_t = \infty$ keeps enough total movement to reach the minimum.
+
+<Widget
+  name="learning-rate-schedules"
+  schedule="inverse"
+  eta0={1}
+  beta={0.1}
+  showCumulative={true}
+  challenge="Start far from the minimum. Which schedules stall before they arrive? Compare the cumulative sum of η_t with the distance to the minimum."
+/>
+
+<Check ids={["q-u2-l5-018", "q-u2-l5-003", "q-u2-l5-002"]} />
+
+## Stochastic and minibatch gradient descent
+
+Computing $\nabla \hat R(\theta)$ costs one gradient per training example at every step. L5 p.14 proposes the standard fix: approximate the gradient at each step using one example (true SGD) or a few (minibatch SGD), an estimate the slide calls "noisy but unbiased" <SlideRef lecture={5} pages="14" />.
+
+<Definition id="def-2-5-5" title="Stochastic and minibatch gradient" source="L5 p.14">
+
+Write $\ell_i(\theta) = \ell(f_\theta(x^{(i)}), y^{(i)})$, so the [[empirical-risk]] is $\hat R(\theta) = \frac1n \sum_{i=1}^n \ell_i(\theta)$. A [[minibatch]] is a list of $b$ indices $I_1, \dots, I_b$, each drawn uniformly from $\{1, \dots, n\}$, and the minibatch gradient is
+
+$$g_B(\theta) = \frac{1}{b} \sum_{k=1}^{b} \nabla \ell_{I_k}(\theta).$$
+
+[[stochastic-gradient-descent|Stochastic gradient descent]] is the update $\theta^{(t+1)} = \theta^{(t)} - \eta_t\, g_{B_t}(\theta^{(t)})$ with a fresh minibatch $B_t$ each step; $b = 1$ is plain SGD. <SlideRef lecture={5} pages="14" />
+
+Also written as: "true SGD" for $b = 1$ and "minibatch SGD" for $b > 1$ (L5 p.14); $B$ for the set of indices.
+
+</Definition>
+
+<Derivation
+  id="der-2-5-9"
+  title="A minibatch gradient is unbiased for the full gradient, and its covariance shrinks like 1/b"
+  goalTex="\mathbb{E}[g_B(\theta)] \text{ and } \operatorname{Cov}(g_B(\theta)) \text{ for } b \text{ indices drawn independently and uniformly}"
+  resultTex="\mathbb{E}[g_B(\theta)] = \nabla \hat R(\theta), \qquad \operatorname{Cov}(g_B(\theta)) = \frac{\Sigma_1(\theta)}{b}, \qquad \mathbb{E}\big\lVert g_B(\theta) - \nabla\hat R(\theta)\big\rVert^2 = \frac{\operatorname{tr}\Sigma_1(\theta)}{b}"
+  source="L5 p.14 (stated: 'noisy but unbiased'; no derivation)"
+>
+
+<Chunk title="One example: the expected gradient is the full gradient">
+
+<Step justification="the gradient of a sum is the sum of the gradients, and constants factor out">
+$$\nabla \hat R(\theta) = \frac{1}{n} \sum_{i=1}^{n} \nabla \ell_i(\theta)$$
+</Step>
+
+<Step justification="expectation of a function of a discrete random variable: weight each value by its probability, here $P(I = i) = 1/n$" sticky="expectation">
+$$\mathbb{E}\big[\nabla \ell_I(\theta)\big] = \sum_{i=1}^{n} P(I = i)\, \nabla \ell_i(\theta) = \frac{1}{n}\sum_{i=1}^{n} \nabla \ell_i(\theta)$$
+</Step>
+
+<Step justification="the right side of step 2 is the right side of step 1" sticky="unbiased-estimator" fadeable>
+$$\mathbb{E}\big[\nabla \ell_I(\theta)\big] = \nabla \hat R(\theta)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Average b independent draws: still unbiased, with noise shrinking like 1/b">
+
+<Step justification="linearity of expectation: the expectation of an average is the average of the expectations">
+$$\mathbb{E}\big[g_B(\theta)\big] = \frac{1}{b}\sum_{k=1}^{b} \mathbb{E}\big[\nabla \ell_{I_k}(\theta)\big]$$
+</Step>
+
+<Step justification="each $I_k$ is uniform, so each of the $b$ terms equals $\nabla \hat R(\theta)$ by step 3" fadeable>
+$$\mathbb{E}\big[g_B(\theta)\big] = \frac{1}{b}\cdot b\, \nabla \hat R(\theta) = \nabla \hat R(\theta)$$
+</Step>
+
+<Step justification="the indices are independent, so the covariance of a sum is the sum of the covariances; scaling a random vector by $1/b$ scales its covariance by $1/b^2$" sticky="covariance-matrix" fadeable>
+$$\operatorname{Cov}\big(g_B(\theta)\big) = \frac{1}{b^2}\sum_{k=1}^{b} \operatorname{Cov}\big(\nabla \ell_{I_k}(\theta)\big)$$
+</Step>
+
+<Step justification="the indices are identically distributed, so the $b$ covariances are all equal to the single-example covariance $\Sigma_1(\theta) = \operatorname{Cov}(\nabla \ell_I(\theta))$" sticky="iid" fadeable>
+$$\operatorname{Cov}\big(g_B(\theta)\big) = \frac{1}{b^2}\cdot b\,\Sigma_1(\theta) = \frac{\Sigma_1(\theta)}{b}$$
+</Step>
+
+<Step justification="for a random vector with mean $\mu$, $\mathbb{E}\lVert Z - \mu \rVert^2$ is the sum of the component variances, the trace of the covariance; use step 5 for the mean" sticky="trace">
+$$\mathbb{E}\big\lVert g_B(\theta) - \nabla \hat R(\theta) \big\rVert^2 = \frac{\operatorname{tr}\,\Sigma_1(\theta)}{b}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+\mathbb{E}\big[g_B(\theta)\big] = \nabla \hat R(\theta) \tag{2.5.6} \htmlId{eq-2-5-6}{}
+$$
+
+In practice minibatches are usually drawn without replacement: shuffle the data, then take consecutive blocks of $b$. The estimate is still unbiased, because each example lands in the block with probability $b/n$, so $\mathbb{E}[g_B] = \frac1b \sum_i \frac{b}{n} \nabla \ell_i = \nabla \hat R$. Its covariance is slightly smaller than $\Sigma_1/b$, by the factor $(n - b)/(n - 1)$, and it is zero at $b = n$, where the minibatch is the whole dataset.
+
+Two consequences shape how SGD behaves.
+
+**Unbiased does not mean every step goes downhill.** <EqRef id="eq-2-5-6" /> is a statement about the average over minibatches. A single minibatch gradient can point uphill for $\hat R$, so individual SGD steps can increase the training loss. The loss curve of SGD is jagged even when it trends down.
+
+**A constant step size leaves a noise floor.** At the minimizer, $\nabla \hat R(\theta^\star) = \frac1n \sum_i \nabla \ell_i(\theta^\star) = 0$, but the individual $\nabla \ell_i(\theta^\star)$ are generally not zero: the examples disagree, and they only cancel on average. So $\theta^\star - \eta\, g_B(\theta^\star) \ne \theta^\star$ for most minibatches, and $\theta^\star$ is not a fixed point of constant-step SGD. The iterates keep jittering in a region around $\theta^\star$ whose size grows with $\eta$ and with $\operatorname{tr}\Sigma_1 / b$. A schedule satisfying <EqRef id="eq-2-5-5" /> shrinks that region to a point.
+
+<Callout type="slide">
+
+L5 p.14 says SGD is "still guaranteed to converge to the global minimum for convex loss surfaces". That needs a decaying step size: with a constant $\eta$, the argument above shows the iterates do not settle at the minimum. With a schedule satisfying the Robbins–Monro conditions and a convex loss, the guarantee holds; its proof is beyond this course.
+
+</Callout>
+
+The noise is not only a cost. Each step costs $b$ example-gradients instead of $n$, so for the same computation SGD takes $n/b$ times as many steps. Early in training, when the iterate is far from the minimum, the full gradient is large compared with the noise and the cheap steps make fast progress. The same noise is what the L3 slides credit with nudging the iterate out of poor local minima on non-convex losses <SlideRef lecture={3} pages="21" />.
+
+L5 p.15 shows the loop that every PyTorch optimizer runs <SlideRef lecture={5} pages="15" />:
+
+```python
+for input, target in dataset:
+    optimizer.zero_grad()            # clear gradients from the previous step
+    output = model(input)
+    loss = loss_fn(output, target)
+    loss.backward()                  # autograd fills .grad (lesson 2.4)
+    optimizer.step()                 # θ ← θ − η · grad for torch.optim.SGD
+```
+
+Each pass through the body is one SGD step on the minibatch `input`. `torch.optim.SGD` implements exactly the update of def-2-5-5. Adam, RMSprop, Adagrad, and the rest of the list on L5 p.15 keep the same loop but rescale each coordinate's step using running statistics of past gradients: a per-coordinate step size, which is the fix der-2-5-3 asks for when curvatures differ.
+
+<Widget
+  name="sgd-noise"
+  n={100}
+  batchSize={1}
+  eta={0.1}
+  showMeanGradient={true}
+  challenge="At batch size 1, average many sampled gradient arrows at one point: does the average match the full gradient? Raise the batch size to 4 and then 16. By what factor does the spread of the arrows shrink?"
+/>
+
+<Example title="STEPS: one decision point at a time">
+
+The STEPS micro-randomized trial (Part C, C8 specification) prompts 40 participants at 5 decision points a day for 42 days, about 8,400 decision points, and records the steps taken in the next 30 minutes. The data arrive as a stream, five per participant per day.
+
+A regression of $\log(1 + \text{steps})$ on the context and the prompt indicator can be updated by SGD as each decision point arrives: one example, one gradient, one step. If each new decision point were a fresh independent draw from the data-generating distribution, step 3 of der-2-5-9 would apply with the true distribution in place of the uniform index, and each step would be an unbiased estimate of the gradient of the true risk $R(\theta)$ (lesson 2.2), not only of $\hat R$.
+
+The STEPS generative story breaks that premise in two ways: each participant has a personal offset $u_i$, and the prompt's effect decays over the 42 days. Consecutive decision points from one participant are correlated, and late data differ from early data. The derivation tells you what to protect: draw each minibatch across participants and times, so that each one stays a fair sample of the population.
+
+</Example>
+
+<Check ids={["q-u2-l5-019", "q-u2-l5-020", "q-u2-l5-024", "q-u2-l5-013"]} />
+
+## Conditioning in practice
+
+The worked examples below compute condition numbers for real design choices. For least squares, $\hat R(\theta) = \frac1n\lVert X\theta - y\rVert_2^2$ has Hessian $H = \frac{2}{n}X^\top X$ at every $\theta$ (der-2-4-3), so der-2-5-4 applies exactly, with no Taylor approximation. Three facts let us bound $\kappa$ from the diagonal and $2 \times 2$ blocks of $H$.
+
+- For a symmetric $H$ and any unit vector $u$, $\lambda_{\min} \le u^\top H u \le \lambda_{\max}$: write $u$ in the eigenbasis, $u^\top H u = \sum_i \lambda_i (q_i^\top u)^2$, a weighted average of the eigenvalues with weights summing to 1.
+- Taking $u = e_j$ gives $\lambda_{\min} \le H_{jj} \le \lambda_{\max}$.
+- The minimum of $u^\top H u$ over all unit vectors is at most its minimum over unit vectors supported on two coordinates $j, k$, and that restricted minimum is the smallest eigenvalue of the $2 \times 2$ block of $H$ on $j, k$. So $\lambda_{\min}(H)$ is at most that block's smallest eigenvalue.
+
+<Example title="VASCO: why gradient descent stalls, and the one-line fix">
+
+Fit the 8-week change in systolic pressure on $x = (1, D, B)$: an intercept, dose $D$ in mg, and baseline $B$ in mmHg. The C1 specification gives 50 patients at each dose in $\{0, 2.5, 5, 10, 20, 40\}$ and $B \sim \mathcal{N}(155, 12^2)$ (variance $12^2$). The diagonal of $H = \frac2n X^\top X$ is twice the mean of each squared column. For the baseline we use the population values, $\mathbb{E}[B] = 155$ and $\mathbb{E}[B^2] = 155^2 + 12^2 = 24{,}169$; a sample of 300 will differ slightly.
+
+- Intercept: $H_{11} = 2$.
+- Dose: $H_{22} = 2 \cdot \frac{0 + 2.5^2 + 5^2 + 10^2 + 20^2 + 40^2}{6} = 2 \cdot 355.2 \approx 710$.
+- Baseline: $H_{33} \approx 2 \cdot 24{,}169 = 48{,}338$.
+
+**The cap on $\eta$.** $\lambda_{\max} \ge H_{33} \approx 48{,}338$, so by <EqRef id="eq-2-5-2" /> every $\eta$ above $2/48{,}338 \approx 4.1 \times 10^{-5}$ diverges. The notebook's $\eta = 0.1$ is over 2,000 times too large.
+
+**The flat direction.** The intercept and baseline columns are nearly parallel: every baseline is about 155 times the intercept's 1, give or take 12. Their $2 \times 2$ block of $H$ is
+
+$$2\begin{bmatrix} 1 & 155 \\ 155 & 24{,}169 \end{bmatrix}, \qquad \text{trace } 48{,}340, \qquad \det = 4\,(24{,}169 - 155^2) = 4 \cdot 144 = 576.$$
+
+The two eigenvalues multiply to 576 and add to 48,340, so the small one is about $576 / 48{,}340 \approx 0.012$. Therefore $\lambda_{\min}(H) \lesssim 0.012$ and
+
+$$\kappa \gtrsim \frac{48{,}338}{0.012} \approx 4 \times 10^6.$$
+
+The bound is close to the exact value. For features $(1, D, B)$ in raw mg and mmHg, with $H = \frac2n X^\top X$ built from population moments and balanced arms, the three eigenvalues are about 0.0119, 376, and 48,674, so $\kappa \approx 4 \times 10^6$; across simulated samples of 300 patients it ranges over about $3$–$5 \times 10^6$.
+
+**What that costs.** At any stable $\eta$, der-2-5-3 step 8 (with eigenvalues in place of diagonal entries) gives a per-step factor above $1 - 2/\kappa \approx 1 - 5 \times 10^{-7}$ in the flattest direction. After 10,000 steps that direction keeps more than $(1 - 5 \times 10^{-7})^{10{,}000} \approx e^{-0.005} \approx 99.5\%$ of its initial error. That flat direction mixes the intercept and the baseline coefficient, which is the hook's stalled intercept.
+
+**The fix.** Replace dose and baseline by their [[z-score|z-scores]] $z_D, z_B$ (mean 0, standard deviation 1, with the $1/n$ convention). The columns of ones and $z_D$, $z_B$ are now orthogonal because each $z$ averages to 0, and each $z$ column has mean square 1, so
+
+$$H = 2\begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & r \\ 0 & r & 1 \end{bmatrix}, \qquad \lambda \in \{2,\ 2(1 + r),\ 2(1 - r)\}, \qquad \kappa = \frac{1 + \lvert r \rvert}{1 - \lvert r \rvert},$$
+
+where $r$ is the sample correlation of dose and baseline. Dose is randomized, so $r$ is close to 0 and $\kappa$ is close to 1: by der-2-5-5, gradient descent with $\eta \approx \frac12$ is nearly exact in one step. Standardizing does not change which predictions the model can make; it changes the coordinates, and with them the Hessian that gradient descent sees.
+
+</Example>
+
+<Example title="The Lecture 4 notebook's slow convergence, explained">
+
+The Lecture 4 code companion (<Notebook path="Code Companions/lecture4-code companion.ipynb" cells="12-23" />) runs gradient descent on the last 20 diabetes patients with features `bmi` and a constant column `one`, using `mse_loss` (the mean, so $H = \frac{2}{20}X^\top X$), $\eta = 0.1$, and the stopping rule $\lVert \theta^{(t)} - \theta^{(t-1)} \rVert \le 10^{-5}$. After more than 10,000 iterations it reports $\theta \approx (3.714, 0.458)$ for (slope, intercept), while scikit-learn's least-squares solution is $(3.738, 0.458)$.
+
+The scikit-learn `bmi` feature is already scaled to roughly $[-0.1, 0.1]$. If every $\lvert \text{bmi} \rvert \le 0.1$, the diagonal of $H$ is $2 \cdot \text{mean}(\text{bmi}^2) \le 0.02$ for the slope and $2$ for the intercept, so $\lambda_{\min} \le 0.02$, $\lambda_{\max} \ge 2$, and $\kappa \ge 100$. The stopping point gives a sharper bound. By der-2-4-2 the run stopped with $\lVert\nabla \hat R\rVert \le 10^{-4}$, while the slope was still $3.738 - 3.714 \approx 0.0237$ from its least-squares value and the intercept matched. By der-2-4-5, $\nabla \hat R = H(\theta - \theta^\star)$, so the slope entry of the gradient is about $h_{\text{bmi}} \times 0.0237$, and the curvature along the slope is at most about $10^{-4}/0.0237 \approx 0.0042$, against 2 along the intercept. That puts $\kappa$ at several hundred. Also $\lambda_{\max} \le \operatorname{tr} H \le 2.02$, so $\eta\lambda_{\max} \le 0.21$: the run is stable, far below the $2/\lambda_{\max}$ cap, and in the flat direction the per-step factor $1 - 0.1\lambda_{\min}$ is at least 0.998.
+
+The stopping rule makes this visible. Once the stiff direction has converged, each update has length about $\eta\lambda_{\min}\lvert v_{\min} \rvert$ (der-2-5-4 step 6), so the rule fires when the remaining error in the flat direction falls to about $10^{-5}/(\eta\lambda_{\min})$, which is at least $10^{-5}/0.002 = 0.005$, and larger if $\lambda_{\min}$ is below its bound. A slope that stops 0.024 short of the least-squares value is what an ill-conditioned problem with a parameter-change stopping rule should produce. Centering `bmi` would make the two columns orthogonal; scaling it to unit variance would then make $\kappa = 1$.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u2-l5-001", "q-u2-l5-004", "q-u2-l5-005", "q-u2-l5-006", "q-u2-l5-017", "q-u2-l5-021", "q-u2-l5-015", "q-u2-l5-023"]} />
+
+## Pitfalls
+
+<Pitfall title="Spot the error: L4 p.51 writes ∂E/d∂w" misconception="partial-derivative-notation">
+
+L4 p.51 writes the coordinate update with $\frac{\partial E}{d\partial \mathrm{w}}$. That symbol mixes a partial and a total derivative and drops the coordinate index. The intended quantity is the partial derivative with respect to one coordinate, $\frac{\partial E}{\partial \theta_j}$ (the slides' $\frac{\partial E}{\partial w_i}$), holding the other coordinates fixed. On a diagonal quadratic it equals $a_{jj}\theta_j + b_j$ (der-2-5-3 step 2).
+
+</Pitfall>
+
+<Pitfall title="A smaller step size is not always safer" misconception="too-small-eta-safe">
+
+The belief: if you are unsure, pick a tiny $\eta$; it may be slow, but nothing can go wrong. The fix: below $2/\lambda_{\max}$ every $\eta$ converges, but the number of steps grows like $1/(\eta\lambda_{\min})$ (der-2-5-4 step 6). On an ill-conditioned problem a needlessly small $\eta$ can mean the run stops (by iteration budget or a parameter-change rule) far from the minimum, as in the Lecture 4 notebook. The best fixed step is $2/(\lambda_{\max} + \lambda_{\min})$ (der-2-5-5), not the smallest.
+
+</Pitfall>
+
+<Pitfall title="The stable step size is set by the stiffest direction, not the flattest" misconception="set-eta-by-flat-direction">
+
+The belief: the flat direction is the slow one, so choose $\eta = 1/\lambda_{\min}$, its optimal rate, to speed it up. The fix: with $\kappa > 2$, that $\eta$ exceeds $2/\lambda_{\max}$, and the stiff direction diverges (der-2-5-4 step 8). One step size must satisfy every direction at once; to speed up the flat direction, change the problem (standardize features) or use per-coordinate step sizes.
+
+</Pitfall>
+
+<Pitfall title="Fixed-step gradient descent can converge without any decay" misconception="needs-decay-to-converge">
+
+The belief (the L5 p.12 poll): gradient descent will not converge without a decaying learning rate. The fix: with exact gradients, any fixed $\eta$ with $0 < \eta < 2/\lambda_{\max}$ converges on a convex quadratic (der-2-5-4), and any $\eta < 2/L$ decreases every $L$-smooth loss (der-2-5-7). Decay is needed for noisy (stochastic) gradients and for escaping sharp basins early on, not for plain gradient descent.
+
+</Pitfall>
+
+<Pitfall title="More data or more dimensions do not by themselves call for a smaller step" misconception="eta-depends-on-n-or-d">
+
+The belief (the L5 p.12 poll): with a large dataset, or many features, or a large model, always start with a small learning rate. The fix: the stability bound is $2/\lambda_{\max}$ of the Hessian (<EqRef id="eq-2-5-2" />). Because $\hat R$ keeps the $\frac1n$, its Hessian is an average of per-example Hessians, and its size does not grow with $n$. Its largest eigenvalue depends on feature scales and correlations, not on the count of features or parameters. (If you drop the $\frac1n$ and minimize a sum, the Hessian does grow with $n$, which is one reason to keep it.)
+
+</Pitfall>
+
+<Pitfall title="Leaving a basin is not always a failure" misconception="divergence-always-bad">
+
+The belief (the L5 p.12 poll): an iterate that runs away from where it was is always a bad sign. The fix: a step above $2/\lambda_{\max}$ of a sharp basin pushes the iterate out of that basin (der-2-5-6 step 6), which on a non-convex loss can be how it reaches a better one (L5 p.10). What is always bad is keeping $\eta$ too large forever: then it never settles anywhere (der-2-5-6 step 7). Start large, then decay.
+
+</Pitfall>
+
+<Pitfall title="Not every decaying schedule reaches the minimum" misconception="any-decay-converges">
+
+The belief: any learning rate that goes to zero will eventually get there. The fix: if $\sum_t \eta_t$ is finite, and the gradient norm is at most $G$ everywhere, the iterates can travel at most $G\sum_t \eta_t$ (der-2-5-8 step 2), so from a far enough start they stall before the minimum. Of L5 p.11's three schedules, only $\eta_0/(t+1)$ meets both Robbins–Monro conditions; $\eta_0/(t+1)^2$ and $\eta_0 e^{-\beta t}$ have finite total length.
+
+</Pitfall>
+
+<Pitfall title="Feature scaling changes how fast gradient descent converges" misconception="scaling-irrelevant-to-gd">
+
+The belief: rescaling a feature only rescales its coefficient, so it cannot matter to the optimizer. The fix: the model's predictions and the minimum loss are unchanged, but the Hessian $\frac{2}{n}X^\top X$ is not. In the VASCO example, raw mg and mmHg give $\kappa \approx 4 \times 10^6$ ($3$–$5 \times 10^6$ across samples); z-scores give $\kappa = (1 + \lvert r\rvert)/(1 - \lvert r \rvert)$, close to 1. That is a factor of millions in the number of gradient-descent steps (der-2-5-5 step 7).
+
+</Pitfall>
+
+<Pitfall title="Unbiased does not mean each SGD step goes downhill" misconception="sgd-each-step-descends">
+
+The belief: since the minibatch gradient is unbiased, every SGD step decreases the training loss. The fix: unbiasedness (<EqRef id="eq-2-5-6" />) is about the average over minibatches. One minibatch can disagree with the full gradient, and its step can increase $\hat R$. SGD's training loss decreases on average and fluctuates from step to step.
+
+</Pitfall>
+
+<Pitfall title="Constant-step SGD does not settle at the minimum" misconception="sgd-constant-step-converges">
+
+The belief: with a small constant step, SGD converges to $\theta^\star$ just as gradient descent does. The fix: at $\theta^\star$ the full gradient is zero but the per-example gradients are not, so a minibatch step moves the iterate away from $\theta^\star$. Constant-step SGD hovers in a region whose size grows with $\eta$ and with $\operatorname{tr}\Sigma_1/b$ (der-2-5-9 step 8). A Robbins–Monro schedule, or a larger batch late in training, shrinks it.
+
+</Pitfall>
+
+<Connections>
+
+- Previous: 2.4 Gradient descent (`gradient-descent`) built the update $\theta^{(t+1)} = \theta^{(t)} - \eta\nabla\hat R(\theta^{(t)})$, the MSE gradient, convergence criteria, and the autograd loop that this lesson tunes.
+- Before that: 2.3 Gradients and optimality supplies the gradient, the Hessian, and the first- and second-order conditions used in der-2-5-1, der-2-5-4, and der-2-5-6; 2.2 True and empirical risk explains why the minibatch gradient of $\hat R$ is also an estimate of the gradient of $R$ when examples are fresh draws.
+- Least squares: der-2-4-3 in lesson 2.4 derives the Hessian $\frac2n X^\top X$ used in the worked examples; 1.4 Least squares and the normal equations solves the same problem in closed form.
+- Next: Unit 3 trains logistic regression, which has no closed form, with exactly these tools: L5 p.16's take-away is that for a fixed dataset the loss is a function of $\theta$ alone, and gradient descent finds the best $\theta$ <SlideRef lecture={5} pages="16" />.
+- Notebook: <Notebook path="Code Companions/lecture4-code companion.ipynb" cells="12-23" /> runs the diabetes gradient-descent loop analyzed in the second worked example.
+- Graph neighbors: [[condition-number]], [[l-smooth]], [[taylor-expansion]], [[convex-function]], [[stochastic-gradient-descent]], [[minibatch]], [[eigenvectors]], [[hessian]].
+
+</Connections>
+
+{/* no-homework-bridge: Unit 2 fed HW1 (due 2026-09-16) and HW2 (due 2026-10-05), both past, and no src/content/homework file covers step sizes. HW3 does not use this lesson. */}
+
+<Summary>
+
+- **1-D quadratic** $E = \tfrac12 a\theta^2 + b\theta + c$: each step multiplies the error by $1 - \eta a$; $\eta_{opt} = 1/a = 1/E''$ lands in one step (a Newton step).
+- **Regimes:** $0 < \eta < \eta_{opt}$ monotone; $\eta_{opt} < \eta < 2\eta_{opt}$ oscillating but convergent; $\eta = 2\eta_{opt}$ bounces forever; $\eta > 2\eta_{opt}$ diverges.
+- **Diagonal quadratic:** coordinates uncouple, $\eta_{j,opt} = 1/a_{jj}$; one shared step needs $\eta < 2\min_j \eta_{j,opt} = 2/\max_j a_{jj}$.
+- **General quadratic:** in the eigenbasis of $A$, mode $i$ contracts by $1 - \eta\lambda_i$; stable iff $0 < \eta < 2/\lambda_{\max}$.
+- **Condition number** $\kappa = \lambda_{\max}/\lambda_{\min}$: best fixed step $\eta^\star = 2/(\lambda_{\max} + \lambda_{\min})$ contracts by $(\kappa - 1)/(\kappa + 1)$; steps needed grow like $\kappa$.
+- **Any smooth loss** near a minimizer: $e^{(t+1)} \approx (I - \eta H)e^{(t)}$ with $H$ the Hessian there; GD cannot settle where $\lambda_{\max}(H) > 2/\eta$.
+- **Descent lemma** ($L$-smooth): $f(\theta^{(t+1)}) \le f(\theta^{(t)}) - \eta(1 - L\eta/2)\lVert\nabla f\rVert^2$; any $\eta < 2/L$ decreases $f$. Convex + $L$-smooth with $\eta = 1/L$: $f(\theta^{(t)}) - f^\star \le L\lVert\theta^{(0)} - \theta^\star\rVert^2/(2t)$.
+- **Robbins–Monro:** $\sum\eta_t = \infty$, $\sum\eta_t^2 < \infty$. $\eta_0/(t+1)$ passes; $\eta_0/(t+1)^2$ and $\eta_0e^{-\beta t}$ have finite total travel.
+- **Minibatch gradient:** $\mathbb{E}[g_B] = \nabla\hat R$; $\operatorname{Cov}(g_B) = \Sigma_1/b$. Constant-step SGD hovers near $\theta^\star$; decaying steps let it settle.
+- **Conditioning in practice:** for least squares $H = \frac2n X^\top X$; standardizing features can cut $\kappa$ by orders of magnitude.
+
+</Summary>

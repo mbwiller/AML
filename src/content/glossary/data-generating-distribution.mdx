@@ -1,0 +1,12 @@
+---
+id: data-generating-distribution
+term: Data-generating distribution
+aliases: [DGP, data-generating process, population distribution, P]
+field: ml
+firstUsedIn: u2-risk-and-gradient-descent
+related: [random-variable, iid, conditional-expectation]
+---
+
+**What it is.** The joint distribution $P$ of an input and its target, $(X, Y) \sim P$, from which every example in a dataset is assumed drawn: $(x^{(i)}, y^{(i)}) \overset{\text{iid}}{\sim} P$. It is unknown. A toy example is $Y = \alpha + \beta X + \varepsilon$ with $X$ and $\varepsilon$ Gaussian. Any such $P$ can be written as $Y = f^\star(X) + \varepsilon$, with $f^\star(x) = \E[Y \mid X = x]$ and $\E[\varepsilon \mid X] = 0$.
+
+**How ML uses it.** It defines the target of learning. True risk is an expectation under $P$; empirical risk is an average over draws from $P$; generalization means doing well on a fresh draw from the same $P$. When deployment data come from a different distribution, these guarantees no longer apply.

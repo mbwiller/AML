@@ -1,0 +1,12 @@
+---
+id: random-variable
+term: Random variable
+aliases: [RV, random vector, realization]
+field: probability
+firstUsedIn: u2-risk-and-gradient-descent
+related: [expectation, variance, data-generating-distribution]
+---
+
+**What it is.** A function $X : \Omega \to E$ that assigns a value to every outcome $\omega$ of a random experiment. It is something you construct: on the sample space of two coin tosses, "number of heads" and "whether any head appeared" are two different random variables. Its distribution is $P_X(B) = P(X \in B) = P(\{\omega : X(\omega) \in B\})$. A random vector stacks several random variables. Capital letters ($X$, $Y$) name the variable; lowercase ($x^{(i)}$) names one observed value, a realization.
+
+**How ML uses it.** Features and targets are modeled as random variables, and a dataset is $n$ realizations of them. That is what lets us talk about expected loss, unbiased estimates, and generalization to the next patient.

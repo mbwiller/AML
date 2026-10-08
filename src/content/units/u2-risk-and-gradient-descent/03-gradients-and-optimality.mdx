@@ -1,0 +1,767 @@
+---
+title: "Gradients and optimality conditions"
+unit: u2-risk-and-gradient-descent
+order: 3
+slug: gradients-and-optimality
+summary: "Derivatives as local linearity, the gradient as a column vector, proofs that it is the steepest-ascent direction (Cauchy–Schwarz) and perpendicular to level sets, and first- and second-order conditions for minima, maxima, and saddles."
+lectures:
+  - { lecture: 4, pages: "12-30" }
+  - { lecture: 4, pages: "37" }
+  - { lecture: 4, pages: "42" }
+  - { lecture: 4, pages: "51" }
+concepts:
+  - derivative
+  - gradient
+  - local-linear-approximation
+  - directional-derivative
+  - cauchy-schwarz-inequality
+  - gradient-steepest-ascent
+  - steepest-descent-direction
+  - level-set
+  - gradient-orthogonal-level-sets
+  - hessian
+  - critical-point
+  - interior-extremum-zero-gradient
+  - hessian-test-local-extrema
+  - saddle-point
+prerequisites:
+  - linear-function
+  - quadratic-form
+  - positive-semidefinite
+  - eigenvectors
+  - matrix-calculus-identities
+  - first-order-condition
+  - second-order-condition
+companions:
+  - { notebook: "Code Companions/lecture4-code companion.ipynb", cells: "3-11" }
+estimatedMinutes: 60
+status: review
+authors: [jide]
+---
+
+{/* no-case-frontmatter: the hook uses the VASCO dose-finding trial (docs/reference/pedagogy-and-curriculum.md Part C, C1), but src/content/cases/vasco.mdx does not exist yet. Add `cases: [vasco]` when it does. Only C1 specification parameters are used (n = 300, the log(1 + D) regression); no dataset numbers are invented. */}
+
+{/* sticky-prerequisites: der-2-3-4 uses the chain-rule-calculus term (lesson 2.4) and der-2-3-6 uses the taylor-expansion term (lesson 2.5) as sticky notes. They are deliberately not listed in `prerequisites`: lessons 2.4 and 2.5 teach them and list `gradient` and `hessian` as prerequisites, so listing them here would create a cycle in the derived graph. */}
+
+<Frame
+  data="a fixed training set, so the empirical risk $\hat R(\theta) = \frac1n \sum_{i=1}^n \ell(f_\theta(x^{(i)}), y^{(i)})$ is a function of $\theta$ alone (L4 p.12)"
+  model="any model class whose loss is differentiable in $\theta \in \mathbb{R}^d$"
+  objective="minimize $\hat R(\theta)$; this lesson says what a minimizer must look like"
+  optimizer="the tools: gradient, Hessian, optimality conditions; gradient descent itself is lesson 2.4"
+/>
+
+<Objectives>
+
+- Define the derivative, partial derivatives, the gradient (a column vector), and the Hessian, and state their shapes.
+- Derive the directional derivative $D_u f(\theta) = \nabla f(\theta)^\top u$ from local linearity.
+- Prove the Cauchy–Schwarz inequality and use it to prove that the gradient is the direction of steepest ascent and its negative the direction of steepest descent.
+- Prove that the gradient is perpendicular to the level set through a point.
+- Prove the first-order necessary condition $\nabla f(\theta^\star) = 0$ and the second-order conditions (positive definite, negative definite, indefinite Hessian), and recognize when the test is silent.
+
+</Objectives>
+
+<Hook>
+
+The VASCO trial enrolls 300 patients and fits the 8-week change in systolic blood pressure with a line in $\log(1 + D)$, two parameters $\theta = (\theta_0, \theta_1)$, scored by mean squared error. Lesson 1.4 will solve this particular problem in closed form. The logistic regression of Unit 3 has no closed form at all, and neither do most models after it.
+
+So picture yourself standing at a current guess $\theta$ with the loss surface hidden. You may move $\theta$ a small, fixed distance in any direction you like. Of the infinitely many directions, which one lowers the loss the most? And how would you know you are standing at the bottom?
+
+{/* hook-figure: the inner-product-dial widget after der-2-3-3 is the hook's explorable */}
+
+</Hook>
+
+## A loss is a function of the parameters
+
+Once the dataset is fixed, the empirical risk of lesson 2.2 depends on nothing but $\theta$ <SlideRef lecture={4} pages="12" />. Training is then a problem about one function $f : \mathbb{R}^d \to \mathbb{R}$: find the $\theta$ where it is smallest. The slide's plan has two steps, find where the gradient is zero and then check the Hessian, and this lesson builds both tools and proves why they work. Throughout, $f$ stands for any such function and $\hat R$ is the one we care about.
+
+<Callout type="slide">
+
+L4 writes the variable of the function being minimized as $X$ (pp.13–37) and its dimension as $d$ on p.15 but $n$ on p.22. We write $\theta \in \mathbb{R}^d$: in this course $x$ is an input and $n$ counts examples, while the function we will minimize is $\hat R(\theta)$. The slide's $\langle A, B \rangle$ is our $a^\top b$.
+
+</Callout>
+
+## Derivatives and local linearity
+
+<Definition id="def-2-3-1" title="Derivative" source="L4 pp.13-14">
+
+For $f : \mathbb{R} \to \mathbb{R}$, the [[derivative]] at $\theta$ is
+
+$$f'(\theta) = \lim_{h \to 0} \frac{f(\theta + h) - f(\theta)}{h},$$
+
+when the limit exists. It is the slope of the tangent line: a small increment $\Delta\theta$ produces $\Delta f \approx f'(\theta)\,\Delta\theta$. Its sign says whether $f$ is increasing ($f' > 0$), decreasing ($f' < 0$), or locally flat ($f' = 0$), and its magnitude says how steeply. <SlideRef lecture={4} pages="13-14" />
+
+Also written as: $\frac{df}{d\theta}$; the slide writes $\Delta y = \alpha\,\Delta x$ with $\alpha$ the derivative.
+
+</Definition>
+
+L4 p.13 puts the idea in one sentence: at a fine enough resolution, any smooth function is locally linear. The next two definitions make that sentence precise in $d$ dimensions.
+
+<Definition id="def-2-3-2" title="Partial derivative and gradient" source="L4 p.15">
+
+For $f : \mathbb{R}^d \to \mathbb{R}$, the partial derivative $\frac{\partial f}{\partial \theta_j}(\theta)$ is the derivative of $t \mapsto f(\theta + t\,e_j)$ at $t = 0$: vary coordinate $j$ alone, hold the rest fixed. The [[gradient]] collects the $d$ partials into a column vector, the same shape as $\theta$:
+
+$$\nabla f(\theta) = \begin{bmatrix} \dfrac{\partial f}{\partial \theta_1}(\theta) \\ \vdots \\ \dfrac{\partial f}{\partial \theta_d}(\theta) \end{bmatrix} \in \mathbb{R}^{d}.$$
+
+<SlideRef lecture={4} pages="15" />
+
+Also written as: $\nabla_X y$ (L4 p.15), $\nabla_\theta f$, $\frac{\partial f}{\partial \theta}$; some texts use a row vector, which this course does not.
+
+</Definition>
+
+<Definition id="def-2-3-3" title="Differentiable function (local linearity)" source="L4 pp.13, 15">
+
+$f : \mathbb{R}^d \to \mathbb{R}$ is differentiable at $\theta$ if there is a vector $g \in \mathbb{R}^d$ such that, for every step $h$,
+
+$$
+f(\theta + h) = f(\theta) + g^\top h + r(h), \qquad \frac{r(h)}{\lVert h \rVert} \to 0 \text{ as } h \to 0. \tag{2.3.1} \htmlId{eq-2-3-1}{}
+$$
+
+The linear part $g^\top h$ is the slide's $\Delta y = \alpha_1 \Delta x_1 + \cdots + \alpha_d \Delta x_d$; the remainder $r(h)$ shrinks faster than the step. der-2-3-1 shows that $g$ can only be $\nabla f(\theta)$. <SlideRef lecture={4} pages="13" /> <SlideRef lecture={4} pages="15" />
+
+Also written as: $\Delta y = \nabla_X y^\top \Delta X$ (L4 p.15), $f(\theta + h) = f(\theta) + \nabla f(\theta)^\top h + o(\lVert h \rVert)$.
+
+</Definition>
+
+<Callout type="slide">
+
+L4 p.15 asserts $\Delta y = \langle \nabla_X y, \Delta X \rangle$ directly. Two facts hide in that line: that a differentiable function's linear part is the vector of partials, and that a function with continuous partials is differentiable. der-2-3-1 proves the first; the collapsed proof after der-2-3-2 proves the second.
+
+</Callout>
+
+<Check ids={["q-u2-l3-003"]} />
+
+<Intuition>
+
+In one dimension take $f(\theta) = \theta^2$ at $\theta = 1$. The tangent line is $1 + 2(\theta - 1)$, and the gap between the curve and the line is $(\theta - 1)^2$, which shrinks like the square of the step: zoom in and the curve becomes its tangent. That gap is the remainder $r(h) = h^2$ of <EqRef id="eq-2-3-1" />, and $r(h)/h = h \to 0$.
+
+In two dimensions take the bowl $f(\theta) = \theta_1^2 + \theta_2^2$. Its gradient is $\nabla f(\theta) = (2\theta_1, 2\theta_2)^\top = 2\theta$, an arrow pointing straight away from the bottom of the bowl. The level sets are circles centered at the origin, and the arrow $2\theta$ is a radius, perpendicular to the circle through $\theta$. Walk along the circle and the height does not change; walk along the radius and it changes fastest. The rest of the lesson proves that both observations hold for every differentiable function, not just this bowl.
+
+</Intuition>
+
+## The slope in any direction
+
+A partial derivative measures change along a coordinate axis. To compare all directions we need the rate of change along an arbitrary unit vector.
+
+<Definition id="def-2-3-4" title="Directional derivative" source="beyond the slides (implicit in L4 pp.15-17)">
+
+For a unit vector $u \in \mathbb{R}^d$, $\lVert u \rVert = 1$, the [[directional-derivative]] of $f$ at $\theta$ is
+
+$$D_u f(\theta) = \lim_{t \to 0} \frac{f(\theta + t u) - f(\theta)}{t}.$$
+
+With $u = e_j$ it is the partial derivative $\frac{\partial f}{\partial \theta_j}(\theta)$.
+
+Also written as: $\nabla_u f$, $\partial_u f$.
+
+</Definition>
+
+<Derivation
+  id="der-2-3-1"
+  title="The slope along u is the inner product of the gradient with u"
+  goalTex="D_u f(\theta) \text{ in terms of the linear part } g \text{ of a differentiable } f, \text{ and the identity of } g"
+  resultTex="g = \nabla f(\theta), \qquad D_u f(\theta) = \nabla f(\theta)^\top u \quad \text{for every unit vector } u"
+  source="L4 p.15 (stated: Δy = ⟨∇y, ΔX⟩)"
+>
+
+<Chunk title="Write the difference quotient with local linearity">
+
+<Step justification="definition of the directional derivative (def-2-3-4)" sticky="directional-derivative">
+$$D_u f(\theta) = \lim_{t \to 0} \frac{f(\theta + t u) - f(\theta)}{t}$$
+</Step>
+
+<Step justification="local linearity, equation 2.3.1, with the step $h = t u$">
+$$f(\theta + t u) = f(\theta) + g^\top (t u) + r(t u)$$
+</Step>
+
+<Step justification="subtract $f(\theta)$, divide by $t \ne 0$, and pull the scalar $t$ out of $g^\top(tu) = t\,g^\top u$" sticky="linear-function" fadeable>
+$$\frac{f(\theta + t u) - f(\theta)}{t} = g^\top u + \frac{r(t u)}{t}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Let the remainder vanish and identify the linear part as the gradient">
+
+<Step justification="$\lVert t u \rVert = \lvert t \rvert\,\lVert u \rVert = \lvert t \rvert$ because $u$ is a unit vector">
+$$\left\lvert \frac{r(t u)}{t} \right\rvert = \frac{\lvert r(t u) \rvert}{\lVert t u \rVert}$$
+</Step>
+
+<Step justification="as $t \to 0$ the step $h = t u \to 0$, so $r(h)/\lVert h \rVert \to 0$ by equation 2.3.1; take the limit in step 3" fadeable>
+$$D_u f(\theta) = g^\top u$$
+</Step>
+
+
+<Step justification="with $u = e_j$ the directional derivative is the partial derivative (def-2-3-4)">
+$$D_{e_j} f(\theta) = \frac{\partial f}{\partial \theta_j}(\theta)$$
+</Step>
+
+<Step justification="step 5 with $u = e_j$; $g^\top e_j$ picks out the $j$-th entry of $g$" fadeable>
+$$g_j = g^\top e_j = \frac{\partial f}{\partial \theta_j}(\theta) \quad \text{for every } j, \quad \text{so } g = \nabla f(\theta)$$
+</Step>
+
+<Step justification="substitute step 7 into step 5">
+$$D_u f(\theta) = \nabla f(\theta)^\top u$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+D_u f(\theta) = \nabla f(\theta)^\top u \tag{2.3.2} \htmlId{eq-2-3-2}{}
+$$
+
+One vector of $d$ numbers answers infinitely many questions: the slope in every direction is a single inner product with $\nabla f(\theta)$. That is why the course stores the gradient, and why autograd computes it, rather than slopes direction by direction.
+
+<Check ids={["q-u2-l3-006"]} />
+
+## The gradient is the direction of steepest ascent
+
+Which unit direction makes $\nabla f(\theta)^\top u$ largest? L4 pp.16–17 answer with "a well-known vector property": the inner product of two vectors of fixed lengths is largest when they are aligned <SlideRef lecture={4} pages="16-17" />. That property is the [[cauchy-schwarz-inequality]], and the slides do not prove it.
+
+<Theorem id="thm-2-3-1" title="Cauchy–Schwarz inequality" source="L4 p.16 (stated as a well-known property)">
+
+For all $a, b \in \mathbb{R}^d$,
+
+$$
+\lvert a^\top b \rvert \le \lVert a \rVert\, \lVert b \rVert, \tag{2.3.3} \htmlId{eq-2-3-3}{}
+$$
+
+with equality if and only if one of the vectors is a scalar multiple of the other.
+
+</Theorem>
+
+<Callout type="beyond">
+
+The slides state this; here is a proof that uses only the fact that a squared length cannot be negative.
+
+</Callout>
+
+<Derivation
+  id="der-2-3-2"
+  title="Cauchy–Schwarz from a squared length that cannot be negative"
+  goalTex="\lvert a^\top b \rvert \le \lVert a \rVert\, \lVert b \rVert, \text{ with the equality case}"
+  resultTex="\lvert a^\top b \rvert \le \lVert a \rVert\, \lVert b \rVert, \quad \text{equality} \iff a = \lambda b \text{ for some } \lambda \text{ (or } b = 0)"
+  source="L4 p.16 (stated: 'the inner product between two vectors of fixed lengths is maximum when the two vectors are aligned')"
+>
+
+<Chunk title="Set aside the zero vector, then use a squared length that cannot be negative">
+
+<Step justification="if $b = 0$ both sides are 0, so the inequality holds with equality and $b = 0 \cdot a$; from here on $b \ne 0$, so $\lVert b \rVert^2 > 0$">
+$$b = 0 \;\Longrightarrow\; \lvert a^\top b \rvert = 0 = \lVert a \rVert\,\lVert b \rVert$$
+</Step>
+
+
+<Step justification="a squared norm is a sum of squares, so it is nonnegative for every real $\lambda$">
+$$0 \le \lVert a - \lambda b \rVert^2 \quad \text{for every } \lambda \in \mathbb{R}$$
+</Step>
+
+<Step justification="expand $(a - \lambda b)^\top (a - \lambda b)$; the two cross terms $a^\top b$ and $b^\top a$ are equal" fadeable>
+$$0 \le \lVert a \rVert^2 - 2\lambda\, a^\top b + \lambda^2 \lVert b \rVert^2$$
+</Step>
+
+<Step justification="choose $\lambda^\star = a^\top b / \lVert b \rVert^2$, the vertex of this parabola in $\lambda$, where the right side is smallest">
+$$0 \le \lVert a \rVert^2 - 2\frac{(a^\top b)^2}{\lVert b \rVert^2} + \frac{(a^\top b)^2}{\lVert b \rVert^4}\,\lVert b \rVert^2$$
+</Step>
+
+<Step justification="cancel $\lVert b \rVert^2$ in the last term and combine it with the middle term" fadeable>
+$$0 \le \lVert a \rVert^2 - \frac{(a^\top b)^2}{\lVert b \rVert^2}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Rearrange and read off the equality case">
+
+<Step justification="multiply by $\lVert b \rVert^2 > 0$ and move the fraction to the left">
+$$(a^\top b)^2 \le \lVert a \rVert^2\, \lVert b \rVert^2$$
+</Step>
+
+<Step justification="both sides are nonnegative, and the square root is increasing on $[0, \infty)$" fadeable>
+$$\lvert a^\top b \rvert \le \lVert a \rVert\, \lVert b \rVert$$
+</Step>
+
+<Step justification="equality in step 7 holds exactly when step 5 is an equality, which by steps 2 to 5 means $\lVert a - \lambda^\star b \rVert^2 = 0$; conversely, if $a = \lambda b$ both sides of step 7 equal $\lvert \lambda \rvert \lVert b \rVert^2$">
+$$\lvert a^\top b \rvert = \lVert a \rVert\, \lVert b \rVert \iff a = \lambda^\star b$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+For nonzero $a, b$, inequality <EqRef id="eq-2-3-3" /> says $\frac{a^\top b}{\lVert a \rVert \lVert b \rVert} \in [-1, 1]$, so it is the cosine of exactly one angle $\varphi \in [0^\circ, 180^\circ]$. That angle is the slide's $\langle A, B \rangle = \lVert A \rVert \lVert B \rVert \cos\varphi$, and the cosine curve on L4 p.16 is this ratio as $B$ rotates around the unit circle: largest at $0^\circ$, zero at $90^\circ$, smallest at $180^\circ$.
+
+<Proof collapsed title="Continuous partial derivatives make a function differentiable" keyIdea="move one coordinate at a time, apply the mean value theorem to each move, and bound the leftover with Cauchy–Schwarz">
+
+This is the fact behind L4 p.15's $\Delta y = \sum_j \alpha_j \Delta x_j$: if all partials of $f$ exist near $\theta$ and are continuous at $\theta$, then $f$ satisfies <EqRef id="eq-2-3-1" /> with $g = \nabla f(\theta)$.
+
+Fix a step $h = (h_1, \dots, h_d)$ and walk from $\theta$ to $\theta + h$ one coordinate at a time, through the points $p_0 = \theta$ and $p_k = \theta + \sum_{j \le k} h_j e_j$, so $p_d = \theta + h$. The total change telescopes:
+
+$$f(\theta + h) - f(\theta) = \sum_{k=1}^{d} \big[f(p_k) - f(p_{k-1})\big].$$
+
+Between $p_{k-1}$ and $p_k$ only coordinate $k$ moves, by $h_k$. The one-variable mean value theorem gives a point $\xi_k$ on that segment with $f(p_k) - f(p_{k-1}) = h_k \frac{\partial f}{\partial \theta_k}(\xi_k)$. Subtract the linear part:
+
+$$r(h) = f(\theta + h) - f(\theta) - \nabla f(\theta)^\top h = \sum_{k=1}^{d} h_k \Big[\frac{\partial f}{\partial \theta_k}(\xi_k) - \frac{\partial f}{\partial \theta_k}(\theta)\Big] = h^\top \delta(h),$$
+
+where $\delta(h)$ is the vector of bracketed differences. By <EqRef id="eq-2-3-3" />, $\lvert r(h) \rvert \le \lVert h \rVert\, \lVert \delta(h) \rVert$, so $\lvert r(h) \rvert / \lVert h \rVert \le \lVert \delta(h) \rVert$. As $h \to 0$ every $\xi_k \to \theta$, and continuity of the partials at $\theta$ sends every entry of $\delta(h)$ to 0. Hence $r(h)/\lVert h \rVert \to 0$.
+
+Every loss in this course (MSE, the logistic negative log-likelihood, cross-entropy) has continuous partials wherever it is defined, so <EqRef id="eq-2-3-1" /> and everything that follows applies to it.
+
+</Proof>
+
+Now the slide's argument can be made exact <SlideRef lecture={4} pages="17" />. Combine the slope formula <EqRef id="eq-2-3-2" /> with Cauchy–Schwarz.
+
+<Theorem id="thm-2-3-2" title="The gradient is the direction of steepest ascent" source="L4 p.17 (highlighted conclusion); L4 pp.18-20, 35, 37">
+
+Let $f$ be differentiable at $\theta$ with $\nabla f(\theta) \ne 0$. Among all unit vectors $u$, the directional derivative $D_u f(\theta)$ is
+
+$$
+\text{largest, equal to } \lVert \nabla f(\theta) \rVert, \text{ only at } u^\star = \frac{\nabla f(\theta)}{\lVert \nabla f(\theta) \rVert}; \qquad \text{smallest, equal to } -\lVert \nabla f(\theta) \rVert, \text{ only at } -u^\star. \tag{2.3.4} \htmlId{eq-2-3-4}{}
+$$
+
+</Theorem>
+
+<Derivation
+  id="der-2-3-3"
+  title="The gradient is the steepest-ascent direction and its negative the steepest-descent direction"
+  goalTex="\max_{\lVert u \rVert = 1} D_u f(\theta) \;\text{ and }\; \min_{\lVert u \rVert = 1} D_u f(\theta), \text{ with the directions that attain them}"
+  resultTex="\argmax_{\lVert u \rVert = 1} D_u f(\theta) = \frac{\nabla f(\theta)}{\lVert \nabla f(\theta) \rVert}, \quad \max = \lVert \nabla f(\theta) \rVert; \qquad \argmin_{\lVert u \rVert = 1} D_u f(\theta) = -\frac{\nabla f(\theta)}{\lVert \nabla f(\theta) \rVert}, \quad \min = -\lVert \nabla f(\theta) \rVert"
+  source="L4 pp.16-17 (stated: 'the gradient is the direction of fastest increase in f(X)'); L4 p.37 (move exactly opposite the gradient)"
+>
+
+<Chunk title="Bound the slope in every direction">
+
+<Step justification="der-2-3-1: the slope along $u$ is an inner product with the gradient" sticky="directional-derivative">
+$$D_u f(\theta) = \nabla f(\theta)^\top u$$
+</Step>
+
+<Step justification="a number is at most its absolute value, then Cauchy–Schwarz (der-2-3-2) with $a = \nabla f(\theta)$, $b = u$" sticky="cauchy-schwarz-inequality">
+$$D_u f(\theta) \le \lvert \nabla f(\theta)^\top u \rvert \le \lVert \nabla f(\theta) \rVert\, \lVert u \rVert$$
+</Step>
+
+<Step justification="$u$ is a unit vector, $\lVert u \rVert = 1$" fadeable>
+$$D_u f(\theta) \le \lVert \nabla f(\theta) \rVert \quad \text{for every unit } u$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Find the only directions that reach the bounds">
+
+<Step justification="$u^\star = \nabla f(\theta)/\lVert \nabla f(\theta) \rVert$ has length 1; substitute it into step 1 and use $\nabla f^\top \nabla f = \lVert \nabla f \rVert^2$" fadeable>
+$$D_{u^\star} f(\theta) = \frac{\nabla f(\theta)^\top \nabla f(\theta)}{\lVert \nabla f(\theta) \rVert} = \lVert \nabla f(\theta) \rVert$$
+</Step>
+
+<Step justification="equality in step 2 needs both inequalities tight: Cauchy–Schwarz forces $u = c\,\nabla f(\theta)$, unit length forces $c = \pm 1/\lVert \nabla f(\theta) \rVert$, and $\nabla f^\top u \ge 0$ forces the plus sign">
+$$D_u f(\theta) = \lVert \nabla f(\theta) \rVert \iff u = u^\star$$
+</Step>
+
+
+<Step justification="apply steps 1 to 5 to $-f$, whose gradient is $-\nabla f(\theta)$ and whose slope along $u$ is $-D_u f(\theta)$" fadeable>
+$$D_u f(\theta) \ge -\lVert \nabla f(\theta) \rVert, \quad \text{with equality only at } u = -u^\star$$
+</Step>
+
+<Step justification="write the inner product in step 1 with the angle $\varphi$ between $u$ and $\nabla f(\theta)$ (the cosine form after der-2-3-2)">
+$$D_u f(\theta) = \lVert \nabla f(\theta) \rVert \cos\varphi$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 7 says more than the slide's highlighted sentence. To first order, $f$ increases along every direction with $\cos\varphi > 0$, a whole half of all directions, not only along the gradient; that is why the first statement of the L4 p.23 poll is true. It decreases along every direction with $\cos\varphi < 0$, and it does not change, to first order, along directions at $90^\circ$ to the gradient. The gradient is the best of many uphill directions, at rate $\lVert \nabla f(\theta) \rVert$.
+
+Steepest descent is the case gradient descent uses <SlideRef lecture={4} pages="37" />: to lower $\hat R$ fastest from $\theta^{(t)}$, step along $-\nabla \hat R(\theta^{(t)})$, giving $\theta^{(t+1)} = \theta^{(t)} - \eta\, \nabla \hat R(\theta^{(t)})$. Lesson 2.4 builds the algorithm on this update; lesson 2.5 asks how large $\eta$ may be.
+
+<Callout type="note">
+
+Steepest is a local, first-order statement. It compares directions for an infinitesimal step and says nothing about where the minimum is. In a long, narrow valley the steepest-descent direction points mostly across the valley, not along it toward the bottom; the worked example below shows a case, and lesson 2.5 shows what this does to gradient descent.
+
+</Callout>
+
+<Widget
+  name="inner-product-dial"
+  gradient={[3, 4]}
+  showCosineCurve={true}
+  showHalfSpace={true}
+  challenge="Rotate the unit step all the way around. At which angle is the rate largest, and what is its value? Find every angle at which the rate is exactly zero."
+/>
+
+<Check ids={["q-u2-l3-001", "q-u2-l3-002", "q-u2-l3-004", "q-u2-l3-005"]} />
+
+## Gradients are perpendicular to level sets
+
+L4 p.51 adds one line to a contour plot of an elliptical bowl: the gradient is perpendicular to the equal-value contour <SlideRef lecture={4} pages="51" />. The contour plots of L4 pp.18–20 and every loss landscape in Unit 2 are drawn with these curves, so we name them and prove the remark.
+
+<Definition id="def-2-3-5" title="Level set" source="L4 p.51 ('equal-value contour'); L4 pp.18-20 (floor contour map)">
+
+The [[level-set]] of $f$ at height $c$ is $L_c = \{\theta \in \mathbb{R}^d : f(\theta) = c\}$. In two dimensions it is a contour line. A vector $v$ is tangent to $L_c$ at $\theta$ if $v = \gamma'(0)$ for some differentiable curve $\gamma$ that stays in $L_c$ and passes through $\gamma(0) = \theta$.
+
+Also written as: contour, equal-value contour (L4 p.51), isoline.
+
+</Definition>
+
+<Derivation
+  id="der-2-3-4"
+  title="The gradient is perpendicular to the level set"
+  goalTex="\nabla f(\theta)^\top v \text{ for a tangent vector } v = \gamma'(0) \text{ of the level set through } \theta, \text{ with } f \text{ differentiable at } \theta"
+  resultTex="\nabla f(\theta)^\top \gamma'(0) = 0 \quad \text{for every differentiable curve } \gamma \text{ in } L_{f(\theta)} \text{ with } \gamma(0) = \theta"
+  source="L4 p.51 (stated: 'gradient is perpendicular to equal-value contour')"
+>
+
+<Chunk title="Differentiate along a curve that stays on the level set">
+
+<Step justification="the curve stays in $L_c$ with $c = f(\theta)$ (def-2-3-5)" sticky="level-set">
+$$f(\gamma(t)) = c \quad \text{for every } t \text{ near } 0$$
+</Step>
+
+<Step justification="the two sides are equal functions of $t$ near 0, so their derivatives at $t = 0$ are equal; the derivative of a constant is 0">
+$$\frac{d}{dt} f(\gamma(t))\Big|_{t=0} = 0$$
+</Step>
+
+<Step justification="chain rule at $t = 0$ only: $\gamma$ is differentiable at 0 and $f$ is differentiable at $\gamma(0) = \theta$, so the rate of change of $f$ along $\gamma$ is the gradient dotted with the velocity" sticky="chain-rule-calculus" fadeable>
+$$\frac{d}{dt} f(\gamma(t))\Big|_{t=0} = \nabla f(\theta)^\top \gamma'(0)$$
+</Step>
+
+<Step justification="substitute step 3 into step 2" fadeable>
+$$\nabla f(\theta)^\top \gamma'(0) = 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The derivation shows that the gradient is perpendicular to every tangent vector of the level set. Calling it perpendicular to the level set itself needs more: the level set must be a smooth curve (or surface) near $\theta$, which holds when $f$ is continuously differentiable ($f \in C^1$) and $\nabla f(\theta) \ne 0$, by the implicit function theorem. At a critical point the level set can be a single point, as at the bottom of a bowl, or two crossing curves, as at a saddle.
+
+Combined with der-2-3-3, the picture is complete. At a point with $\nabla f(\theta) \ne 0$, the gradient is perpendicular to the contour through $\theta$, and of the two perpendicular directions it is the one that climbs to higher contours, because its slope $\lVert \nabla f(\theta) \rVert$ is positive. On a contour map the gradient arrows cross the contour lines at right angles, pointing uphill, and they are longest where the lines are packed closest.
+
+<Check ids={["q-u2-l3-009"]} />
+
+## Curvature: the Hessian
+
+The gradient tells us which way is up. It cannot tell a valley floor from a hilltop, since both have zero gradient <SlideRef lecture={4} pages="21" />. For that we need second derivatives.
+
+<Definition id="def-2-3-6" title="Hessian" source="L4 p.22">
+
+For $f : \mathbb{R}^d \to \mathbb{R}$ with second partial derivatives, the [[hessian]] at $\theta$ is the $d \times d$ matrix
+
+$$\nabla^2 f(\theta) = \begin{bmatrix} \dfrac{\partial^2 f}{\partial \theta_1^2} & \dfrac{\partial^2 f}{\partial \theta_1 \partial \theta_2} & \cdots & \dfrac{\partial^2 f}{\partial \theta_1 \partial \theta_d} \\ \vdots & \vdots & \ddots & \vdots \\ \dfrac{\partial^2 f}{\partial \theta_d \partial \theta_1} & \dfrac{\partial^2 f}{\partial \theta_d \partial \theta_2} & \cdots & \dfrac{\partial^2 f}{\partial \theta_d^2} \end{bmatrix}.$$
+
+Row $j$ is the gradient of $\frac{\partial f}{\partial \theta_j}$, written as a row: the Hessian is the derivative of the gradient. <SlideRef lecture={4} pages="22" />
+
+Also written as: $\nabla^2_x f(x_1, \dots, x_n)$ (L4 p.22, with $n$ for the dimension), $H_f(\theta)$, $H_E(\mathbf{w})$ (L5 p.8).
+
+</Definition>
+
+When the second partials are continuous, the order of differentiation does not matter, $\frac{\partial^2 f}{\partial \theta_j \partial \theta_k} = \frac{\partial^2 f}{\partial \theta_k \partial \theta_j}$ (Schwarz's theorem from multivariable calculus, which we use without proof), so the Hessian is symmetric. A symmetric matrix has real eigenvalues and an orthonormal basis of [[eigenvectors]], and we classify it by the signs of its eigenvalues, as for a [[quadratic-form]]: [[positive-semidefinite|positive definite]] when $v^\top H v > 0$ for every $v \ne 0$ (all eigenvalues positive), negative definite when $v^\top H v < 0$ for every $v \ne 0$ (all negative), and indefinite when eigenvalues of both signs occur.
+
+For a quadratic the Hessian is constant. If $f(\theta) = \tfrac12 \theta^\top A \theta + b^\top \theta + c$ with $A$ symmetric, the [[matrix-calculus-identities]] give $\nabla f(\theta) = A\theta + b$ and $\nabla^2 f(\theta) = A$. The 1-D slide parabola $E = \tfrac12 a w^2 + bw + c$ of L4 p.48 is the case $d = 1$, with $E'' = a$; lesson 2.5 analyzes gradient descent on it.
+
+## Where can a minimum be? Optimality conditions
+
+<Definition id="def-2-3-7" title="Local extrema, critical points, and saddle points" source="L4 pp.25-30; L5 p.13">
+
+$\theta^\star$ is a local minimum of $f$ if there is $\delta > 0$ with $f(\theta) \ge f(\theta^\star)$ whenever $\lVert \theta - \theta^\star \rVert < \delta$; a strict local minimum if the inequality is strict for $\theta \ne \theta^\star$; a global minimum if it holds for every $\theta$. Maxima are defined with the inequality reversed. A critical (stationary) point is a $\theta^\star$ with $\nabla f(\theta^\star) = 0$. A saddle point is a critical point that is neither a local minimum nor a local maximum: every neighborhood contains points where $f$ is higher and points where it is lower. <SlideRef lecture={4} pages="25-30" /> <SlideRef lecture={5} pages="13" />
+
+Also written as: stationary point; in 1-D, L4 p.28 calls the critical points "local maxima, local minima, or inflection points".
+
+</Definition>
+
+<Theorem id="thm-2-3-3" title="First-order necessary condition" source="L4 pp.26, 29-30 (stated)">
+
+If $f$ is differentiable at $\theta^\star$ and $\theta^\star$ is a local minimum or a local maximum of $f$ on $\mathbb{R}^d$, then
+
+$$
+\nabla f(\theta^\star) = 0. \tag{2.3.5} \htmlId{eq-2-3-5}{}
+$$
+
+</Theorem>
+
+The slides justify this with "really tiny shifts will not change the function value" <SlideRef lecture={4} pages="29" />. The proof makes that precise one coordinate at a time.
+
+<Derivation
+  id="der-2-3-5"
+  title="At an interior minimum every partial derivative is zero"
+  goalTex="\frac{\partial f}{\partial \theta_j}(\theta^\star) \text{ at a local minimum } \theta^\star \text{ of } f : \mathbb{R}^d \to \mathbb{R}"
+  resultTex="\nabla f(\theta^\star) = 0"
+  source="L4 pp.26, 29-30 (stated: 'both maxima and minima have zero derivative'; 'at the max/min the gradient is 0')"
+>
+
+<Chunk title="Restrict f to one coordinate line and approach from the right">
+
+<Step justification="local minimum (def-2-3-7) with the point $\theta^\star + t e_j$, whose distance from $\theta^\star$ is $\lvert t \rvert$; call $g(t) = f(\theta^\star + t e_j)$">
+$$g(t) \ge g(0) \quad \text{whenever } \lvert t \rvert < \delta$$
+</Step>
+
+<Step justification="definition of the partial derivative (def-2-3-2)" sticky="derivative">
+$$g'(0) = \frac{\partial f}{\partial \theta_j}(\theta^\star) = \lim_{t \to 0} \frac{g(t) - g(0)}{t}$$
+</Step>
+
+
+<Step justification="for $0 < t < \delta$ the numerator is $\ge 0$ by step 1 and the denominator is positive">
+$$\frac{g(t) - g(0)}{t} \ge 0$$
+</Step>
+
+<Step justification="let $t \to 0$ from above; a limit of nonnegative numbers is nonnegative" fadeable>
+$$g'(0) \ge 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Approach from the left and conclude">
+
+<Step justification="for $-\delta < t < 0$ the numerator is still $\ge 0$ but the denominator is negative, so the quotient flips sign" fadeable>
+$$\frac{g(t) - g(0)}{t} \le 0$$
+</Step>
+
+<Step justification="let $t \to 0$ from below; a limit of nonpositive numbers is nonpositive">
+$$g'(0) \le 0$$
+</Step>
+
+
+<Step justification="steps 4 and 6 together, with step 2" fadeable>
+$$\frac{\partial f}{\partial \theta_j}(\theta^\star) = 0$$
+</Step>
+
+<Step justification="$j$ was arbitrary, so every entry of the gradient is zero; for a local maximum apply steps 1 to 7 to $-f$" sticky="first-order-condition">
+$$\nabla f(\theta^\star) = 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The condition is necessary, not sufficient. Minima, maxima, saddles, and 1-D inflection points with zero slope all satisfy <EqRef id="eq-2-3-5" />, as the three stacked panels of L4 p.28 show <SlideRef lecture={4} pages="28" />. It also relies on $\theta^\star$ being free to move in every direction; on the edge of a constrained region, such as a probability that must stay in $[0, 1]$, a minimum can have a nonzero gradient. Every problem in this lesson is unconstrained, $\theta \in \mathbb{R}^d$.
+
+Solving $\nabla f(\theta) = 0$ is how lesson 1.4 will find the least-squares solution. L4 p.31 notes that usually this equation has no closed-form solution, which is what sends us to the iterative methods of lesson 2.4 <SlideRef lecture={4} pages="31" />.
+
+<Theorem id="thm-2-3-4" title="Second-order conditions" source="L4 pp.27-28, 30 (stated); L5 p.13 (saddle points)">
+
+Let $f$ have continuous second partial derivatives near $\theta^\star$, let $\nabla f(\theta^\star) = 0$, and let $H = \nabla^2 f(\theta^\star)$.
+
+1. If $H$ is positive definite, $\theta^\star$ is a strict local minimum.
+2. If $H$ is negative definite, $\theta^\star$ is a strict local maximum.
+3. If $H$ has a positive and a negative eigenvalue, $\theta^\star$ is a saddle point.
+4. For $d = 1$: $f''(\theta^\star) > 0$ gives a strict local minimum and $f''(\theta^\star) < 0$ a strict local maximum.
+
+If $H$ is positive or negative semidefinite but singular (in 1-D, $f''(\theta^\star) = 0$), the test says nothing.
+
+</Theorem>
+
+<Callout type="slide">
+
+L4 p.30 lists only the positive definite and negative definite cases. The indefinite case, where most critical points of high-dimensional losses live, appears as "saddle points" on L5 p.13, where gradient descent can stall. L4 pp.27–28 state the 1-D test; p.28's third panel shows $f'' = 0$ at an inflection point, which is an example, not a rule (see the pitfalls).
+
+</Callout>
+
+The proof expands $f$ to second order around $\theta^\star$. The gradient term vanishes by <EqRef id="eq-2-3-5" />, so near $\theta^\star$ the function looks like the quadratic form $\tfrac12 v^\top H v$, and the eigenvalues of $H$ decide its sign. The [[taylor-expansion]] used in step 1 is lesson 2.5's sticky note; here we need only its statement.
+
+<Derivation
+  id="der-2-3-6"
+  title="A positive definite Hessian at a critical point gives a strict local minimum"
+  goalTex="\operatorname{sign}\big(f(\theta^\star + v) - f(\theta^\star)\big) \text{ for small } v \ne 0, \text{ given } \nabla f(\theta^\star) = 0,\ \nabla^2 f(\theta^\star) \succ 0"
+  resultTex="f(\theta^\star + v) - f(\theta^\star) \ge \tfrac14 \lambda_{\min} \lVert v \rVert^2 > 0 \quad \text{for } 0 < \lVert v \rVert < \delta"
+  source="L4 p.30 (stated: 'positive definite (eigenvalues positive) → local minimum'); L4 p.27 (1-D)"
+>
+
+<Chunk title="Expand to second order and diagonalize the quadratic term">
+
+<Step justification="second-order Taylor expansion at $\theta^\star$, with a remainder that shrinks faster than $\lVert v \rVert^2$; $H = \nabla^2 f(\theta^\star)$" sticky="taylor-expansion">
+$$f(\theta^\star + v) = f(\theta^\star) + \nabla f(\theta^\star)^\top v + \tfrac12 v^\top H v + r(v), \qquad \frac{r(v)}{\lVert v \rVert^2} \to 0$$
+</Step>
+
+<Step justification="first-order condition: $\nabla f(\theta^\star) = 0$, then subtract $f(\theta^\star)$" fadeable>
+$$f(\theta^\star + v) - f(\theta^\star) = \tfrac12 v^\top H v + r(v)$$
+</Step>
+
+
+<Step justification="spectral theorem for the symmetric $H$: $H = Q \Lambda Q^\top$ with $Q$ orthogonal and $\Lambda = \operatorname{diag}(\lambda_1, \dots, \lambda_d)$; set $z = Q^\top v$" sticky="eigenvectors">
+$$v^\top H v = z^\top \Lambda z = \sum_{k=1}^{d} \lambda_k z_k^2$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Bound the quadratic term by the smallest eigenvalue and beat the remainder">
+
+<Step justification="each $\lambda_k \ge \lambda_{\min}$ and each $z_k^2 \ge 0$" fadeable>
+$$\sum_{k=1}^{d} \lambda_k z_k^2 \ge \lambda_{\min} \sum_{k=1}^{d} z_k^2$$
+</Step>
+
+<Step justification="$Q$ is orthogonal, so $\lVert z \rVert^2 = v^\top Q Q^\top v = \lVert v \rVert^2$; positive definite means $\lambda_{\min} > 0$" sticky="positive-semidefinite" fadeable>
+$$v^\top H v \ge \lambda_{\min} \lVert v \rVert^2, \qquad \lambda_{\min} > 0$$
+</Step>
+
+
+<Step justification="substitute step 5 into step 2 and factor out $\lVert v \rVert^2$ for $v \ne 0$">
+$$f(\theta^\star + v) - f(\theta^\star) \ge \lVert v \rVert^2 \Big( \tfrac12 \lambda_{\min} + \frac{r(v)}{\lVert v \rVert^2} \Big)$$
+</Step>
+
+<Step justification="since $r(v)/\lVert v \rVert^2 \to 0$, some $\delta > 0$ makes $\lvert r(v) \rvert / \lVert v \rVert^2 < \tfrac14 \lambda_{\min}$ whenever $0 < \lVert v \rVert < \delta$; the bracket is then above $\tfrac14 \lambda_{\min}$">
+$$f(\theta^\star + v) - f(\theta^\star) \ge \tfrac14 \lambda_{\min} \lVert v \rVert^2 > 0 \quad \text{for } 0 < \lVert v \rVert < \delta$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+<Derivation
+  id="der-2-3-7"
+  title="Negative definite gives a maximum, mixed signs give a saddle, and the 1-D test"
+  goalTex="\text{the kind of critical point when } \nabla^2 f(\theta^\star) \text{ is negative definite, indefinite, or } 1 \times 1"
+  resultTex="H \prec 0 \Rightarrow \text{strict local max}; \quad \lambda_+ > 0 > \lambda_- \Rightarrow \text{saddle}; \quad d = 1: f''(\theta^\star) \gtrless 0 \Rightarrow \text{strict local min / max}"
+  source="L4 p.30 (negative definite stated); L5 p.13 (saddle points named); L4 pp.27-28 (1-D test stated)"
+>
+
+<Chunk title="Negative definite, and the one-dimensional test">
+
+<Step justification="$g = -f$ has $\nabla g(\theta^\star) = 0$ and Hessian $-H$; negating a matrix negates its eigenvalues, so $-H$ is positive definite">
+$$\nabla^2 g(\theta^\star) = -H \succ 0$$
+</Step>
+
+<Step justification="der-2-3-6 applied to $g$: a strict local minimum of $-f$ is a strict local maximum of $f$" fadeable>
+$$f(\theta^\star + v) < f(\theta^\star) \quad \text{for } 0 < \lVert v \rVert < \delta$$
+</Step>
+
+<Step justification="for $d = 1$ the Hessian is the $1 \times 1$ matrix $f''(\theta^\star)$, whose only eigenvalue is $f''(\theta^\star)$; apply der-2-3-6 for the minimum and steps 1 and 2 for the maximum" sticky="second-order-condition">
+$$f''(\theta^\star) > 0 \Rightarrow \text{strict local min}, \qquad f''(\theta^\star) < 0 \Rightarrow \text{strict local max}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Eigenvalues of both signs: up one way, down another">
+
+<Step justification="der-2-3-6 step 2 along $v = t q_+$, where $q_+$ is a unit eigenvector with eigenvalue $\lambda_+ > 0$, so $v^\top H v = t^2 q_+^\top H q_+ = \lambda_+ t^2$">
+$$f(\theta^\star + t q_+) - f(\theta^\star) = \tfrac12 \lambda_+ t^2 + r(t q_+)$$
+</Step>
+
+<Step justification="the argument of der-2-3-6 step 7 with $\lambda_+$ in place of $\lambda_{\min}$" fadeable>
+$$f(\theta^\star + t q_+) > f(\theta^\star) \quad \text{for small } t \ne 0$$
+</Step>
+
+<Step justification="the same two steps along a unit eigenvector $q_-$ with eigenvalue $\lambda_- < 0$: the quadratic term $\tfrac12 \lambda_- t^2$ is negative and beats the remainder" fadeable>
+$$f(\theta^\star + t q_-) < f(\theta^\star) \quad \text{for small } t \ne 0$$
+</Step>
+
+<Step justification="every neighborhood of $\theta^\star$ contains points of steps 5 and 6, higher and lower than $f(\theta^\star)$; definition of a saddle (def-2-3-7)">
+$$\theta^\star \text{ is neither a local minimum nor a local maximum: a saddle point}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Why does the test say nothing when $H$ is positive or negative semidefinite but singular? Along an eigenvector with eigenvalue 0 the quadratic term vanishes, so the sign of $f(\theta^\star + v) - f(\theta^\star)$ is decided by the remainder, which the Hessian does not see. Three one-dimensional functions make the point. $\theta^4$, $-\theta^4$, and $\theta^3$ all have $f'(0) = 0$ and $f''(0) = 0$; the first has a strict global minimum at 0, the second a strict global maximum, and the third neither. A zero eigenvalue alone does not silence the test: if $H$ also has eigenvalues of both signs, case 3 still gives a saddle.
+
+<Widget
+  name="hessian-classifier"
+  eigenvalues={[2, -1]}
+  rotation={30}
+  showLevelSets={true}
+  challenge="Drag the two eigenvalues to make the critical point a minimum, then a maximum, then a saddle. Now set one eigenvalue to 0: which other surfaces share that Hessian?"
+/>
+
+<Check ids={["q-u2-l3-007", "q-u2-l3-008", "q-u2-l3-011", "q-u2-l3-012"]} />
+
+## Worked examples
+
+<Example title="The autograd toy loss from the L4 companion">
+
+Section 1 of the L4 code companion (<Notebook path="Code Companions/lecture4-code companion.ipynb" cells="3-11" />) defines the toy loss
+
+$$\ell(\theta) = \tfrac12 (2\theta_1 - 2)^2 + \tfrac12 (\theta_0 - 3)^2, \qquad \theta = (\theta_0, \theta_1)^\top,$$
+
+evaluates it at $\theta = (-2, 3)^\top$, and lets autograd fill in the gradient. The notebook prints the loss `20.5000` and the gradient `tensor([-5., 8.])`. We reproduce both by hand and then use the lesson's results.
+
+**Value.** $\ell(-2, 3) = \tfrac12 (6 - 2)^2 + \tfrac12 (-5)^2 = 8 + 12.5 = 20.5$.
+
+**Gradient** (def-2-3-2). Differentiate one coordinate at a time:
+
+$$\frac{\partial \ell}{\partial \theta_0} = \theta_0 - 3, \qquad \frac{\partial \ell}{\partial \theta_1} = 2(2\theta_1 - 2) = 4\theta_1 - 4, \qquad \nabla \ell(-2, 3) = \begin{bmatrix} -5 \\ 8 \end{bmatrix},$$
+
+which matches the notebook's `[-5., 8.]`, entry for entry.
+
+**Steepest ascent** (der-2-3-3). The fastest rate of increase is $\lVert \nabla \ell \rVert = \sqrt{25 + 64} = \sqrt{89} \approx 9.434$, along $u^\star = (-5, 8)^\top / \sqrt{89} \approx (-0.530, 0.848)^\top$. The steepest-descent direction is $-u^\star \approx (0.530, -0.848)^\top$, with rate $-9.434$.
+
+**Level set** (der-2-3-4). The level set through $(-2, 3)$ is the ellipse $\tfrac12(\theta_0 - 3)^2 + 2(\theta_1 - 1)^2 = 20.5$. Its tangent direction at $(-2, 3)$ must be perpendicular to $(-5, 8)$, so it is along $(8, 5)$: indeed $(-5)(8) + (8)(5) = 0$.
+
+**Hessian and the critical point** (def-2-3-6, der-2-3-5, der-2-3-6). The second partials are $\frac{\partial^2 \ell}{\partial \theta_0^2} = 1$, $\frac{\partial^2 \ell}{\partial \theta_1^2} = 4$, and the mixed partials are 0, so $\nabla^2 \ell = \operatorname{diag}(1, 4)$ at every $\theta$. Setting the gradient to zero gives the only critical point, $\theta^\star = (3, 1)^\top$. The Hessian's eigenvalues 1 and 4 are positive, so $\theta^\star$ is a strict local minimum; since $\ell \ge 0$ everywhere and $\ell(\theta^\star) = 0$, it is also the global minimum.
+
+**The steepest direction does not aim at the minimum.** From $(-2, 3)$ the minimizer lies in the direction $\theta^\star - \theta = (5, -2)^\top$. The steepest-descent direction is $-\nabla \ell = (5, -8)^\top$. They are not parallel: the cosine of the angle between them is $\frac{25 + 16}{\sqrt{89}\,\sqrt{29}} \approx 0.807$, about $36^\circ$. The slope toward the minimizer, by <EqRef id="eq-2-3-2" />, is $\nabla \ell^\top (5, -2)^\top / \sqrt{29} = -41/\sqrt{29} \approx -7.61$: downhill, but less steeply than $-9.434$. The $\theta_1$ direction has curvature 4 against 1 for $\theta_0$, so the gradient overweights it; lesson 2.5 shows how unequal curvatures slow gradient descent.
+
+</Example>
+
+<Example title="Classifying critical points in one dimension">
+
+Take $f(\theta) = \theta^3 - 3\theta$, the shape of L4 p.28's stacked panels. Then $f'(\theta) = 3\theta^2 - 3$, which is zero at $\theta = -1$ and $\theta = 1$, and $f''(\theta) = 6\theta$.
+
+At $\theta = 1$: $f''(1) = 6 > 0$, a strict local minimum with $f(1) = -2$. At $\theta = -1$: $f''(-1) = -6 < 0$, a strict local maximum with $f(-1) = 2$. Neither is global, since $f(\theta) \to \pm\infty$ as $\theta \to \pm\infty$: the second-order conditions are local.
+
+At $\theta = 0$, $f''(0) = 0$ and $f''$ changes sign, so $f$ has an inflection point there. It is not a critical point, because $f'(0) = -3 \ne 0$. An inflection point is about the sign change of $f''$, a critical point about $f' = 0$; the inflection point drawn on L4 p.28 happens to be both.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u2-l3-010", "q-u2-l3-014"]} />
+
+## Pitfalls
+
+<Pitfall title="The gradient is a column, the same shape as θ" misconception="gradient-row-vector">
+
+The belief: the gradient of a scalar function of a $d \times 1$ vector is a $1 \times d$ row (or a scalar). The fix: in this course, as on L4 p.15, $\nabla f(\theta)$ is the $d \times 1$ column of partials, the same shape as $\theta$, which is what makes $\theta - \eta \nabla f(\theta)$ a valid update and $\nabla f^\top \Delta\theta$ a $1 \times 1$ scalar. Some texts define the derivative as a row and transpose it; L4 p.51's $\nabla_{\mathbf{w}} E^\top$ is such a transpose. Check shapes whenever you combine sources.
+
+</Pitfall>
+
+<Pitfall title="The gradient is not the only direction that increases f" misconception="only-gradient-increases">
+
+The belief: if you do not move exactly along $\nabla f$, $f$ goes down. The fix: by der-2-3-3 step 7, the slope along $u$ is $\lVert \nabla f \rVert \cos\varphi$, positive for every direction within $90^\circ$ of the gradient, half of all directions. The gradient is the steepest of them (the L4 p.23 poll).
+
+</Pitfall>
+
+<Pitfall title="A zero gradient does not mean a minimum" misconception="zero-gradient-means-min">
+
+The belief: once $\nabla f(\theta) = 0$, training has found a minimum. The fix: <EqRef id="eq-2-3-5" /> is necessary, not sufficient. Maxima, saddles, and flat inflection points also have zero gradient, and in high dimensions saddles are common (L5 p.13). Check the Hessian (der-2-3-6, der-2-3-7) or use convexity. Gradient-descent code that stops on a small gradient norm cannot tell these apart.
+
+</Pitfall>
+
+<Pitfall title="Positive diagonal entries do not make a Hessian positive definite" misconception="diagonal-implies-pd">
+
+The belief: if every $\frac{\partial^2 f}{\partial \theta_j^2} > 0$, the critical point is a minimum. The fix: the diagonal only measures curvature along the coordinate axes. $H = \begin{bmatrix} 1 & 2 \\ 2 & 1 \end{bmatrix}$ has positive diagonal but eigenvalues 3 (along $(1,1)$) and $-1$ (along $(1,-1)$), so $f(\theta) = \tfrac12 \theta^\top H \theta$ has a saddle at 0: $f(t, -t) = -t^2$. Use the eigenvalues, or $v^\top H v$ for every $v$.
+
+</Pitfall>
+
+<Pitfall title="A zero second derivative does not identify an inflection point" misconception="singular-hessian-decides">
+
+The belief: at a critical point, $f'' = 0$ (or a singular Hessian) means an inflection point. The fix: if $H$ is positive or negative semidefinite but singular (in 1-D, $f''(\theta^\star) = 0$), the test says nothing. $\theta^4$, $-\theta^4$, and $\theta^3$ all have $f'(0) = f''(0) = 0$, yet 0 is a minimum, a maximum, and an inflection point respectively. L4 p.28 shows $f'' = 0$ at an inflection point; the converse does not hold.
+
+</Pitfall>
+
+<Pitfall title="The steepest-descent direction need not point at the minimum" misconception="gradient-points-to-optimum">
+
+The belief: $-\nabla f(\theta)$ points toward the minimizer, so one long enough step lands there. The fix: steepest is a statement about the slope at $\theta$, not about where the bottom is. In the companion's toy loss, $-\nabla \ell(-2, 3) = (5, -8)$ while the minimizer lies along $(5, -2)$, about $36^\circ$ away. Only when the level sets are circles (equal curvature in every direction) does $-\nabla f$ aim at the minimizer.
+
+</Pitfall>
+
+<Connections>
+
+- Previous: 2.2 True and empirical risk turned learning into minimizing $\hat R(\theta)$ over $\theta$, the function this lesson differentiates.
+- Next: 2.4 Gradient descent turns der-2-3-3 into an algorithm, $\theta^{(t+1)} = \theta^{(t)} - \eta\, \nabla \hat R(\theta^{(t)})$, derives the MSE gradient $\frac2n X^\top (X\theta - y)$, and adds stopping criteria and autograd.
+- Then: 2.5 Step size and conditioning uses the Hessian's eigenvalues to choose $\eta$ and explains the zigzag of the worked example.
+- Back to Unit 1: 1.4 Least squares solves $\nabla \hat R(\theta) = 0$ in closed form and checks the Hessian $\frac2n X^\top X$, using the first- and second-order conditions proven here.
+- Forward: Unit 3 shows that the logistic-regression gradient equation has no closed-form solution (L5 p.38 poll), which is why gradient descent is needed.
+- Notebook: <Notebook path="Code Companions/lecture4-code companion.ipynb" cells="3-11" /> Section 1 computes the gradient of the worked example with `.backward()`.
+- Graph neighbors: [[gradient]], [[hessian]], [[directional-derivative]], [[cauchy-schwarz-inequality]], [[level-set]], [[first-order-condition]], [[second-order-condition]].
+
+</Connections>
+
+{/* no-homework-bridge: HW1 (due Sep 16) and HW2 (due Oct 5) are past and src/content/homework/hw1.mdx does not exist; HW3 does not use this lesson. When hw1.mdx lands, add <HomeworkBridge hw="hw1" skills={["gradient", "local-linear-approximation"]} /> for the hand-verified gradients of HW1 Part I.3. */}
+
+<Summary>
+
+- **Derivative:** $f'(\theta) = \lim_{h \to 0} \frac{f(\theta + h) - f(\theta)}{h}$; locally $\Delta f \approx f'(\theta)\,\Delta\theta$.
+- **Gradient:** the $d \times 1$ column $\nabla f(\theta) = \big(\frac{\partial f}{\partial \theta_1}, \dots, \frac{\partial f}{\partial \theta_d}\big)^\top$; differentiable means $f(\theta + h) = f(\theta) + \nabla f(\theta)^\top h + o(\lVert h \rVert)$.
+- **Directional derivative:** $D_u f(\theta) = \nabla f(\theta)^\top u = \lVert \nabla f(\theta) \rVert \cos\varphi$ for unit $u$.
+- **Cauchy–Schwarz:** $\lvert a^\top b \rvert \le \lVert a \rVert \lVert b \rVert$, equality iff parallel.
+- **Steepest ascent / descent:** $\pm \nabla f(\theta)/\lVert \nabla f(\theta) \rVert$, at rates $\pm \lVert \nabla f(\theta) \rVert$; every direction within $90^\circ$ of the gradient increases $f$.
+- **Level sets:** for $f \in C^1$ with $\nabla f(\theta) \ne 0$, $\nabla f(\theta) \perp$ the level set $\{f = f(\theta)\}$, pointing to higher levels.
+- **Hessian:** $[\nabla^2 f]_{jk} = \frac{\partial^2 f}{\partial \theta_j \partial \theta_k}$, symmetric for continuous second partials.
+- **First-order condition:** a local extremum in the interior has $\nabla f(\theta^\star) = 0$ (necessary only).
+- **Second-order conditions:** at a critical point, $\nabla^2 f \succ 0$ gives a strict local min, $\prec 0$ a strict local max, mixed-sign eigenvalues a saddle. If $H$ is positive or negative semidefinite but singular (in 1-D, $f''(\theta^\star) = 0$), the test says nothing.
+
+</Summary>

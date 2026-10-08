@@ -1,0 +1,16 @@
+---
+id: taylor-expansion
+term: Taylor expansion
+aliases: [Taylor series, quadratic approximation, second-order Taylor expansion, linearization]
+field: calculus
+firstUsedIn: u2-risk-and-gradient-descent
+related: [derivative, gradient, hessian, quadratic-form]
+---
+
+**What it is.** A smooth function looks like a polynomial near a point. In one variable, $f(x + h) \approx f(x) + f'(x)\,h + \tfrac12 f''(x)\,h^2$. In $d$ variables, with gradient $\nabla f$ and Hessian $H$,
+
+$$f(\theta + h) \approx f(\theta) + \nabla f(\theta)^\top h + \tfrac12\, h^\top H(\theta)\, h.$$
+
+Keeping only the first two terms is the linear (first-order) approximation; adding the third gives the quadratic (second-order) one. The error shrinks faster than $\lVert h \rVert^2$ as $h \to 0$ when $f$ is twice continuously differentiable.
+
+**How ML uses it.** Near a minimum the gradient term vanishes, so every smooth loss looks like a quadratic bowl with curvature matrix $H$. That is why the step-size analysis done on quadratics carries over, with the eigenvalues of $H$ playing the role of the curvature.

@@ -1,0 +1,16 @@
+---
+id: stochastic-gradient-descent
+term: Stochastic gradient descent
+aliases: [SGD, online gradient descent, minibatch SGD]
+field: ml
+firstUsedIn: u2-risk-and-gradient-descent
+related: [minibatch, learning-rate, unbiased-estimator, empirical-risk]
+---
+
+**What it is.** Gradient descent with the full gradient of the empirical risk replaced by the gradient on a random sample of the data. With one example $I$ drawn uniformly from $\{1, \dots, n\}$,
+
+$$\theta^{(t+1)} = \theta^{(t)} - \eta_t\, \nabla_\theta \ell\big(f_\theta(x^{(I)}), y^{(I)}\big)\Big|_{\theta = \theta^{(t)}}.$$
+
+Because $I$ is uniform, the expected step equals the full-gradient step: the estimate is noisy but unbiased.
+
+**How ML uses it.** Each step costs one example (or one minibatch) instead of all $n$, so large datasets and data streams become tractable. The noise means a constant step size leaves the iterate jittering near the minimum; decaying the step size removes the jitter. PyTorch's `torch.optim.SGD` and its relatives (Adam, RMSprop) are built on this update.

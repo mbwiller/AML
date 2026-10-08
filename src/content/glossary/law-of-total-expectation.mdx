@@ -1,0 +1,12 @@
+---
+id: law-of-total-expectation
+term: Law of total expectation
+aliases: [tower rule, law of iterated expectations, Adam's law]
+field: probability
+firstUsedIn: u2-risk-and-gradient-descent
+related: [expectation, conditional-expectation, conditional-probability]
+---
+
+**What it is.** Averaging in two stages gives the same answer as averaging at once: $\E[Y] = \E\big[\E[Y \mid X]\big]$. First average $Y$ within each value of $X$; then average those conditional means, weighting each value of $X$ by how likely it is. For discrete $X$: $\E[Y] = \sum_x \E[Y \mid X = x]\, P(X = x)$.
+
+**How ML uses it.** It turns an expected loss over $(X, Y)$ into one small problem per input: minimize $\E[\ell(h(x), Y) \mid X = x]$ separately at each $x$. That is how the conditional mean is shown to be the best predictor under squared loss and the Bayes classifier the best under 0/1 loss.

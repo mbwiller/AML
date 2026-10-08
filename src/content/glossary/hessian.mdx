@@ -1,0 +1,12 @@
+---
+id: hessian
+term: Hessian
+aliases: [Hessian matrix, second-derivative matrix]
+field: calculus
+firstUsedIn: u2-risk-and-gradient-descent
+related: [gradient, positive-semidefinite, eigenvectors, second-order-condition, condition-number]
+---
+
+**What it is.** For $f : \mathbb{R}^d \to \mathbb{R}$, the Hessian $\nabla^2 f(\theta)$ is the $d \times d$ matrix of second partial derivatives, with entry $(j, k)$ equal to $\frac{\partial^2 f}{\partial \theta_j \partial \theta_k}$. When the second partials are continuous it is symmetric, so it has real eigenvalues and orthogonal eigenvectors. It is the curvature in the second-order approximation $f(\theta + v) \approx f(\theta) + \nabla f(\theta)^\top v + \tfrac12 v^\top \nabla^2 f(\theta)\, v$.
+
+**How ML uses it.** At a point with zero gradient, a positive definite Hessian certifies a strict local minimum, a negative definite one a maximum, and mixed-sign eigenvalues a saddle. A Hessian that is positive semi-definite everywhere means a convex loss: MSE has Hessian $\tfrac2n X^\top X$. Its eigenvalues also set the safe gradient-descent step size and the condition number.

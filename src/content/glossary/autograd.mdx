@@ -1,0 +1,12 @@
+---
+id: autograd
+term: Autograd
+aliases: [automatic differentiation, reverse-mode differentiation, backward pass]
+field: ml
+firstUsedIn: u2-risk-and-gradient-descent
+related: [chain-rule-calculus, gradient, learning-rate]
+---
+
+**What it is.** Software that computes exact derivatives of a program. As the program runs (the forward pass), it records each elementary operation; `.backward()` then walks the record from the output back to the inputs, multiplying local derivatives by the chain rule. The result is the true gradient up to rounding, not a finite-difference estimate.
+
+**How ML uses it.** In PyTorch, mark the parameters with `requires_grad=True`, compute a scalar loss, call `loss.backward()`, and read the gradient from `theta.grad`. Do the parameter update inside `torch.no_grad()` so that it is not recorded. Gradients accumulate: a second `.backward()` adds to `.grad` unless it is reset, which is why training loops call `optimizer.zero_grad()`.

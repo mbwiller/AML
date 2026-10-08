@@ -1,0 +1,669 @@
+---
+title: "True risk and empirical risk"
+unit: u2-risk-and-gradient-descent
+order: 2
+slug: true-and-empirical-risk
+summary: "The error we want (true risk) is an expectation under an unknown distribution; the error we can compute (empirical risk) is unbiased and consistent for a fixed θ, and optimistic at the θ we train."
+lectures:
+  - { lecture: 3, pages: "41-45" }
+  - { lecture: 4, pages: "4-11" }
+concepts:
+  - true-risk
+  - risk-noise-floor
+  - empirical-risk
+  - empirical-risk-minimization
+  - empirical-risk-unbiased
+  - empirical-risk-variance
+  - law-of-large-numbers
+  - empirical-risk-consistency
+  - selection-bias
+  - training-risk-optimism
+  - mean-predictor-optimism
+prerequisites:
+  - data-generating-distribution
+  - random-variable
+  - law-of-total-expectation
+  - expectation
+  - variance
+  - iid
+  - unbiased-estimator
+  - indicator-function
+  - argmax
+  - supervised-dataset
+  - model-class
+estimatedMinutes: 50
+status: review
+authors: [jide]
+---
+
+{/* no-case-frontmatter: the hook and the worked example use the placebo arm of the VASCO dose-finding trial (docs/reference/pedagogy-and-curriculum.md Part C, C1), but src/content/cases/vasco.mdx does not exist yet. Add `cases: [vasco]` when it does. Every number below is computed exactly from the C1 specification (E_0 = -3, baseline B ~ N(155, 12^2), coefficient 0.15 on B - 150, noise N(0, 8^2), 50 patients per arm); no dataset values are used. */}
+
+<Frame
+  data="a training set $\mathcal{D} = \{(x^{(i)}, y^{(i)})\}_{i=1}^{n}$ drawn i.i.d. from an unknown distribution $P$"
+  model="any model class $\mathcal{M} = \{f_\theta : \theta \in \Theta\}$; the running toy is the constant predictor $f_\theta(x) = \theta$"
+  objective="the empirical risk $\hat R(\theta)$, a computable stand-in for the true risk $R(\theta)$"
+  optimizer="$\hat\theta = \argmin_\theta \hat R(\theta)$; how to compute it is lessons 2.3 to 2.5"
+/>
+
+<Objectives>
+
+- Define the true risk $R(\theta)$ as an expected loss under the data-generating distribution, and explain why it cannot be computed.
+- Derive the true risk from the slides' "total error" picture, and show that squared-error risk splits into a model error plus a noise floor $\sigma_\varepsilon^2$ that no model can remove.
+- Prove that for a fixed $\theta$ the empirical risk is an unbiased estimate of $R(\theta)$ whose variance is $\sigma_\theta^2/n$.
+- Derive the weak law of large numbers for the empirical risk from Markov's and Chebyshev's inequalities, and compute how many examples Chebyshev's bound asks for.
+- Prove that the training risk of the trained model is biased low, and compute the bias exactly, $2\sigma^2/n$, for the constant predictor.
+
+</Objectives>
+
+<Hook>
+
+In the VASCO trial, 50 patients receive placebo. An analyst predicts each placebo patient's 8-week change in systolic blood pressure with one number, the average change in the arm, and reports its mean squared error on those 50 patients. A second analyst waits for the next 50 placebo patients and scores the same number on them.
+
+The two analysts report different errors, and the difference is not random luck: averaged over many trials, the first analyst's figure is always the smaller one. By how much, and why? By the end of this lesson you can answer both questions exactly: about $2.69\ \text{mmHg}^2$ for this arm, and because the number being scored was chosen using the patients it is scored on.
+
+{/* hook-figure: the true-vs-empirical-risk widget after the selection-bias derivation is the hook's explorable */}
+
+</Hook>
+
+## The error we would like to minimize
+
+Lesson 2.1 modeled each patient as a draw from a [[data-generating-distribution]] $P$: the input $X$ and the target $Y$ are [[random-variable|random variables]], and $Y = g(X) + \varepsilon$ for some unknown function $g$ and noise $\varepsilon$. L3 pp.41–43 then draw two curves over the input axis <SlideRef lecture={3} pages="41-43" />: the true mechanism $g(X)$, dotted, and a fitted model $f(X;\theta)$, dashed. The pointwise error is the vertical gap between them, and the slide's "total error" is the shaded area,
+
+$$\mathrm{totalerr}(\theta) = \int_{-\infty}^{\infty} \mathrm{error}\big(f(x;\theta), g(x)\big)\, dx, \qquad \hat\theta = \argmin_\theta \mathrm{totalerr}(\theta).$$
+
+This is the right question in the wrong form. Two repairs turn it into the definition the rest of the course uses. First, an input that patients rarely have should count less than a common one, so the error at $x$ is weighted by the density of $X$. Second, we never observe $g(x)$, only $y = g(x) + \varepsilon$, so the error is measured against the observed target.
+
+<Definition id="def-2-2-1" title="True risk" source="L4 p.5">
+
+Let $\ell(\hat y, y)$ be a per-example loss (lesson 1.3) and $P$ the data-generating distribution. The true risk of the parameter $\theta$ is the expected loss on a pair drawn from $P$:
+
+$$
+R(\theta) = \mathbb{E}_{(X, Y) \sim P}\big[\ell(f_\theta(X), Y)\big]. \tag{2.2.1} \htmlId{eq-2-2-1}{}
+$$
+
+It is a number for each $\theta$, not a random quantity: the expectation has already averaged over every possible patient. <SlideRef lecture={4} pages="5" />
+
+Also written as: $E_{(X,Y)\sim P}\,\mathrm{error}(f(X;\theta), g(X))$ (L4 p.5); expected risk, population risk, generalization error, test error.
+
+</Definition>
+
+The [[expectation]] in <EqRef id="eq-2-2-1" /> needs $P$, and $P$ is exactly what we do not know <SlideRef lecture={3} pages="44" />. For a 2-D input the slide's picture becomes a surface $g$ over a square, and computing the integral would require that whole surface. The next derivation makes the two repairs precise and shows what the observed target costs.
+
+<Derivation
+  id="der-2-2-1"
+  title="From the slides' total error to the true risk, and the noise floor"
+  goalTex="R(\theta) = \mathbb{E}\big[(f_\theta(X) - Y)^2\big] \text{ in terms of the unobservable gap } f_\theta(X) - g(X), \text{ assuming constant noise variance } \mathbb{E}[\varepsilon^2 \mid X] = \sigma_\varepsilon^2"
+  resultTex="R(\theta) = \mathbb{E}_X\big[(f_\theta(X) - g(X))^2\big] + \sigma_\varepsilon^2 \quad \text{when } \mathbb{E}[\varepsilon^2 \mid X] = \sigma_\varepsilon^2"
+  source="L3 p.43 (total error as an unweighted integral, stated); L4 p.5 (true risk named, stated); the noise decomposition is not on the slides"
+>
+
+<Chunk title="Weight the pointwise error by how often each input occurs">
+
+<Step justification="L3 p.43: the shaded area between the curves, where every input $x$ counts equally">
+$$\mathrm{totalerr}(\theta) = \int_{-\infty}^{\infty} \mathrm{error}\big(f_\theta(x), g(x)\big)\, dx$$
+</Step>
+
+<Step justification="weight the error at $x$ by $p_X(x)$, the density of the input under $P$, so that common inputs count more than rare ones">
+$$\int_{-\infty}^{\infty} \mathrm{error}\big(f_\theta(x), g(x)\big)\, p_X(x)\, dx$$
+</Step>
+
+<Step justification="an integral of a function of $x$ against the density of $X$ is the expectation of that function of $X$" sticky="expectation">
+$$\int_{-\infty}^{\infty} \mathrm{error}\big(f_\theta(x), g(x)\big)\, p_X(x)\, dx = \mathbb{E}_X\big[\mathrm{error}\big(f_\theta(X), g(X)\big)\big]$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Measure the error against the observed target instead of g">
+
+<Step justification="replace $g(X)$ by the observed $Y$ (repair 2), with the squared loss $\ell(\hat y, y) = (\hat y - y)^2$; this is a definition, def-2-2-1, not a consequence of step 3">
+$$R(\theta) = \mathbb{E}\big[(f_\theta(X) - Y)^2\big]$$
+</Step>
+
+<Step justification="the decomposition of lesson 2.1 (der-2-1-4): $Y = g(X) + \varepsilon$ with $\mathbb{E}[\varepsilon \mid X] = 0$" sticky="data-generating-distribution">
+$$R(\theta) = \mathbb{E}\big[\big((f_\theta(X) - g(X)) - \varepsilon\big)^2\big]$$
+</Step>
+
+<Step justification="expand $(a - b)^2 = a^2 - 2ab + b^2$ with $a = f_\theta(X) - g(X)$ and $b = \varepsilon$, then use linearity of expectation" fadeable>
+$$R(\theta) = \mathbb{E}\big[(f_\theta(X) - g(X))^2\big] - 2\,\mathbb{E}\big[(f_\theta(X) - g(X))\,\varepsilon\big] + \mathbb{E}[\varepsilon^2]$$
+</Step>
+
+</Chunk>
+
+<Chunk title="The cross term vanishes and the noise leaves a constant">
+
+<Step justification="law of total expectation: condition on $X$; given $X$, the factor $f_\theta(X) - g(X)$ is a constant and comes out of the inner expectation" sticky="law-of-total-expectation">
+$$\mathbb{E}\big[(f_\theta(X) - g(X))\,\varepsilon\big] = \mathbb{E}_X\big[(f_\theta(X) - g(X))\,\mathbb{E}[\varepsilon \mid X]\big]$$
+</Step>
+
+<Step justification="the noise has conditional mean zero, $\mathbb{E}[\varepsilon \mid X] = 0$" fadeable>
+$$\mathbb{E}\big[(f_\theta(X) - g(X))\,\varepsilon\big] = 0$$
+</Step>
+
+<Step justification="law of total expectation, $\mathbb{E}[\varepsilon^2] = \mathbb{E}_X\big[\mathbb{E}[\varepsilon^2 \mid X]\big]$, under the assumption of this derivation that the noise variance is the same at every input, $\mathbb{E}[\varepsilon^2 \mid X] = \sigma_\varepsilon^2$; without it the constant is $\mathbb{E}[\Var(Y \mid X)]$" sticky="law-of-total-expectation">
+$$\mathbb{E}[\varepsilon^2] = \sigma_\varepsilon^2$$
+</Step>
+
+<Step justification="substitute steps 8 and 9 into step 6" fadeable>
+$$R(\theta) = \mathbb{E}_X\big[(f_\theta(X) - g(X))^2\big] + \sigma_\varepsilon^2$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+R(\theta) = \underbrace{\mathbb{E}_X\big[(f_\theta(X) - g(X))^2\big]}_{\text{density-weighted total error}} + \underbrace{\sigma_\varepsilon^2}_{\text{noise floor}} \tag{2.2.2} \htmlId{eq-2-2-2}{}
+$$
+
+Read <EqRef id="eq-2-2-2" /> in two ways. First, the slides' corrected total error (step 3, with squared error) and the true risk differ by $\sigma_\varepsilon^2$, which does not depend on $\theta$; the two objectives have the same minimizer, so measuring against $Y$ instead of $g(X)$ changes the number but not the answer. Second, no model can do better than $\sigma_\varepsilon^2$: even $f_\theta = g$ leaves the noise. Lesson 2.1 did not assume that the noise variance is constant; if it varies with $x$, the same steps give $R(\theta) = \mathbb{E}_X[(f_\theta(X) - g(X))^2] + \mathbb{E}[\Var(Y \mid X)]$, with the same conclusions. Lesson 2.1 shows that $g(X) = \mathbb{E}[Y \mid X]$ is the best predictor under squared loss; <EqRef id="eq-2-2-2" /> says what that best predictor's risk is.
+
+<Callout type="slide">
+
+Three normalizations. L3 p.43 integrates the error with respect to $dX$, with no density; we weight by $p_X$ (step 2), which is what the expectation on L4 p.5 does. L4 p.5 writes $\mathrm{error}(f(X;\theta), g(\theta))$; the second argument should be $g(X)$, a function of the input, not of the parameters. And the slides measure the error against $g(X)$, which is unobservable; we measure it against $Y$, and <EqRef id="eq-2-2-2" /> shows the two differ only by the constant $\sigma_\varepsilon^2$ for squared loss.
+
+</Callout>
+
+<Check ids={["q-u2-l2-007", "q-u2-l2-008", "q-u2-l2-009", "q-u2-l2-016"]} />
+
+## The error we can compute
+
+The way out is on L3 p.45 and L4 p.6: sample the function <SlideRef lecture={4} pages="6" />. We cannot evaluate $g$ everywhere, but gathering training data gives its value, plus noise, at $n$ inputs. The expectation over $P$ becomes an average over those $n$ draws.
+
+<Definition id="def-2-2-2" title="Empirical risk" source="L4 pp.7-8, 10">
+
+The [[empirical-risk]] of $\theta$ on the training set $\mathcal{D} = \{(x^{(i)}, y^{(i)})\}_{i=1}^{n}$ is the average loss over the training examples:
+
+$$
+\hat R(\theta) = \frac{1}{n} \sum_{i=1}^{n} \ell\big(f_\theta(x^{(i)}), y^{(i)}\big). \tag{2.2.3} \htmlId{eq-2-2-3}{}
+$$
+
+<SlideRef lecture={4} pages="7-8" /> <SlideRef lecture={4} pages="10" />
+
+Also written as: $\mathrm{EmpiricalError}(\theta)$ (L4 p.7), $\mathrm{Loss}(\theta)$ (L4 pp.8, 10), $\hat R_n(\theta)$, training loss, training error.
+
+</Definition>
+
+<Definition id="def-2-2-3" title="Empirical risk minimization (the supervised learning problem)" source="L4 p.10">
+
+Given a training set, a model class $\{f_\theta : \theta \in \Theta\}$, and a per-example loss $\ell$, estimate the parameters by minimizing the empirical risk:
+
+$$\hat\theta = \argmin_{\theta \in \Theta} \hat R(\theta).$$
+
+For a fixed training set, $\hat R$ is a function of $\theta$ only, so learning is function minimization, which is the subject of lessons 2.3 to 2.5. <SlideRef lecture={4} pages="10-11" />
+
+Also written as: "minimize the empirical risk over the drawn samples" (L4 p.10); ERM.
+
+</Definition>
+
+<Callout type="slide">
+
+L4 p.8 overwrites "EmpiricalError" with a handwritten "LOSS": the professor's point is that the loss function we minimize *is* the empirical risk. We keep the two words apart: $\ell$ is the loss on one example, $\hat R$ the average over the training set, $R$ the expectation under $P$. L4 pp.7 and 10 also write the average as $\frac{1}{N}\sum_{i=1}^{n}$; the number of examples is $n$ throughout this course, and we always keep the $\frac1n$. The slides index examples as $X_i, Y_i$; we write $x^{(i)}, y^{(i)}$.
+
+</Callout>
+
+<Intuition>
+
+Return to the two curves of L4 p.4 <SlideRef lecture={4} pages="4" />. The true risk is the shaded area between $f(X;\theta)$ and $g(X)$, weighted by where patients actually are. The empirical risk is the average of the squared lengths of the five red bars at the sampled inputs $X_1, \dots, X_5$. Five bars cannot see the parts of the gap that fall between them.
+
+Now fix the dashed curve and redraw the five patients. The bars move, so $\hat R(\theta)$ is a random number: it depends on which patients happened to enroll. Two questions follow, and they are the rest of the lesson. Is that random number right on average? And does it settle down as the number of bars grows?
+
+Take the most extreme case, one patient, $n = 1$, and the constant model $f_\theta(x) = \theta$. If $\theta$ is fixed in advance, $(y^{(1)} - \theta)^2$ is a noisy but fair estimate of the risk. If instead we choose $\theta$ to fit, $\hat\theta = y^{(1)}$ and the training risk is exactly 0, while the true risk of that choice is not 0. The order of "choose $\theta$" and "look at the data" is what separates the two halves of this lesson.
+
+</Intuition>
+
+<Check ids={["q-u2-l2-001", "q-u2-l2-002", "q-u2-l2-003"]} />
+
+## For a fixed θ, the empirical risk is unbiased
+
+Fix $\theta$ before seeing the data. The training pairs are random, $(X^{(i)}, Y^{(i)}) \sim P$ [[iid|i.i.d.]], so $\hat R(\theta)$ is a random variable. Which number is it estimating, and how precisely?
+
+<Proposition id="prop-2-2-1" title="Mean and variance of the empirical risk at a fixed θ" source="L4 pp.5-10 (implied; not stated)">
+
+Let $\theta$ be fixed, not chosen using $\mathcal{D}$, and let $\sigma_\theta^2 = \Var\big(\ell(f_\theta(X), Y)\big)$ be finite. Then
+
+$$\mathbb{E}\big[\hat R(\theta)\big] = R(\theta), \qquad \Var\big(\hat R(\theta)\big) = \frac{\sigma_\theta^2}{n}.$$
+
+</Proposition>
+
+<Derivation
+  id="der-2-2-2"
+  title="The empirical risk at a fixed θ is unbiased, with variance σ²/n"
+  goalTex="\mathbb{E}\big[\hat R(\theta)\big] \text{ and } \Var\big(\hat R(\theta)\big) \text{ for a } \theta \text{ fixed before seeing } \mathcal{D}"
+  resultTex="\mathbb{E}\big[\hat R(\theta)\big] = R(\theta), \qquad \Var\big(\hat R(\theta)\big) = \frac{\sigma_\theta^2}{n}"
+  source="L4 pp.5-10 (true and empirical risk defined; their relation is not stated); course map L4 derivation gap 1"
+>
+
+<Chunk title="Write the empirical risk as an average of i.i.d. draws">
+
+<Step justification="def-2-2-2 with the training pairs written as random variables; $\theta$ is a fixed constant">
+$$\hat R(\theta) = \frac{1}{n} \sum_{i=1}^{n} \ell\big(f_\theta(X^{(i)}), Y^{(i)}\big)$$
+</Step>
+
+<Step justification="name the loss on example $i$: $Z_i = \ell\big(f_\theta(X^{(i)}), Y^{(i)}\big)$">
+$$\hat R(\theta) = \frac{1}{n} \sum_{i=1}^{n} Z_i$$
+</Step>
+
+<Step justification="each $Z_i$ is the same fixed function of the pair $(X^{(i)}, Y^{(i)})$, and the pairs are i.i.d.; this is where $\theta$ being fixed is used" sticky="iid">
+$$Z_1, \dots, Z_n \text{ are i.i.d., each distributed as } \ell\big(f_\theta(X), Y\big),\ (X, Y) \sim P$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Take expectations: linearity does the work">
+
+<Step justification="def-2-2-1: the expected loss on one pair drawn from $P$ is the true risk">
+$$\mathbb{E}[Z_i] = R(\theta) \quad \text{for every } i$$
+</Step>
+
+<Step justification="linearity of expectation" sticky="expectation" fadeable>
+$$\mathbb{E}\big[\hat R(\theta)\big] = \frac{1}{n} \sum_{i=1}^{n} \mathbb{E}[Z_i]$$
+</Step>
+
+<Step justification="substitute step 4 into each of the $n$ terms" fadeable>
+$$\mathbb{E}\big[\hat R(\theta)\big] = \frac{1}{n} \cdot n\, R(\theta) = R(\theta)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Independence makes the variance shrink like 1/n">
+
+<Step justification="$\Var(aW) = a^2\,\Var(W)$ with $a = \frac1n$" sticky="variance">
+$$\Var\big(\hat R(\theta)\big) = \frac{1}{n^2}\,\Var\Big(\sum_{i=1}^{n} Z_i\Big)$$
+</Step>
+
+<Step justification="independent variables have zero covariance, so the variance of the sum is the sum of the variances" sticky="iid">
+$$\Var\big(\hat R(\theta)\big) = \frac{1}{n^2} \sum_{i=1}^{n} \Var(Z_i)$$
+</Step>
+
+<Step justification="identically distributed: each $\Var(Z_i) = \sigma_\theta^2$, and $n$ copies divided by $n^2$ leave $\frac1n$" fadeable>
+$$\Var\big(\hat R(\theta)\big) = \frac{n\,\sigma_\theta^2}{n^2} = \frac{\sigma_\theta^2}{n}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Unbiasedness used only linearity (step 5) and the fact that every $Z_i$ has mean $R(\theta)$ (step 4); it would hold even for dependent examples. The variance needed independence (step 8). Its square root, $\sigma_\theta/\sqrt n$, is the typical size of the estimation error: four times as many patients halve it.
+
+Step 3 is the step to remember. It needs $\theta$ to be fixed before the data are drawn. When $\theta$ is chosen by looking at the same pairs, $Z_i$ is no longer "the loss of a fixed model on a fresh patient", and the argument breaks. That is the subject of the last section.
+
+<Check ids={["q-u2-l2-012", "q-u2-l2-017"]} />
+
+## The law of large numbers
+
+An unbiased estimate can still be far off on any one dataset. What makes the empirical risk useful is that its spread vanishes as $n$ grows: the [[law-of-large-numbers]]. The variance from der-2-2-2 is all we need to prove it.
+
+<Theorem id="thm-2-2-1" title="Weak law of large numbers for the empirical risk" source="L4 pp.7-10 (used implicitly; not stated)">
+
+Let $\theta$ be fixed and $\sigma_\theta^2 < \infty$. For every tolerance $\epsilon > 0$,
+
+$$
+P\big(\lvert \hat R(\theta) - R(\theta) \rvert \ge \epsilon\big) \le \frac{\sigma_\theta^2}{n\,\epsilon^2} \;\xrightarrow[n \to \infty]{}\; 0. \tag{2.2.4} \htmlId{eq-2-2-4}{}
+$$
+
+</Theorem>
+
+<Derivation
+  id="der-2-2-3"
+  title="Markov, then Chebyshev, then the law of large numbers"
+  goalTex="P\big(\lvert \hat R(\theta) - R(\theta) \rvert \ge \epsilon\big) \to 0 \text{ as } n \to \infty"
+  resultTex="P\big(\lvert \hat R(\theta) - R(\theta) \rvert \ge \epsilon\big) \le \frac{\sigma_\theta^2}{n\,\epsilon^2} \to 0"
+  source="L4 pp.7-10 (sample average as a surrogate for the expectation, implied); course map L4 derivation gap 1 and L3 derivation gap 9"
+>
+
+<Chunk title="Markov's inequality: a nonnegative variable is rarely far above its mean">
+
+<Step justification="for $W \ge 0$ and $a > 0$: if $W \ge a$ the left side is $a \le W$; otherwise it is $0 \le W$" sticky="indicator-function">
+$$a\,\mathbb{1}[W \ge a] \le W$$
+</Step>
+
+<Step justification="take expectations of both sides; expectation is monotone, and the expectation of an indicator is the probability of its event" sticky="expectation">
+$$a\,P(W \ge a) \le \mathbb{E}[W]$$
+</Step>
+
+<Step justification="divide by $a > 0$" fadeable>
+$$P(W \ge a) \le \frac{\mathbb{E}[W]}{a}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Chebyshev's inequality: apply Markov to the squared deviation">
+
+<Step justification="squaring is increasing on nonnegative numbers, so the two events are the same">
+$$\big\{\lvert \hat R(\theta) - R(\theta) \rvert \ge \epsilon\big\} = \big\{(\hat R(\theta) - R(\theta))^2 \ge \epsilon^2\big\}$$
+</Step>
+
+<Step justification="step 3 with $W = (\hat R(\theta) - R(\theta))^2 \ge 0$ and $a = \epsilon^2$" fadeable>
+$$P\big(\lvert \hat R(\theta) - R(\theta) \rvert \ge \epsilon\big) \le \frac{\mathbb{E}\big[(\hat R(\theta) - R(\theta))^2\big]}{\epsilon^2}$$
+</Step>
+
+<Step justification="$R(\theta) = \mathbb{E}[\hat R(\theta)]$ by der-2-2-2 step 6, so the numerator is the definition of the variance" sticky="variance">
+$$\mathbb{E}\big[(\hat R(\theta) - R(\theta))^2\big] = \Var\big(\hat R(\theta)\big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Plug in the 1/n variance and let n grow">
+
+<Step justification="substitute step 6 and der-2-2-2 step 9 into step 5" fadeable>
+$$P\big(\lvert \hat R(\theta) - R(\theta) \rvert \ge \epsilon\big) \le \frac{\sigma_\theta^2}{n\,\epsilon^2}$$
+</Step>
+
+<Step justification="$\sigma_\theta^2$ and $\epsilon$ are fixed numbers, so the bound tends to 0 as $n \to \infty$">
+$$\lim_{n \to \infty} P\big(\lvert \hat R(\theta) - R(\theta) \rvert \ge \epsilon\big) = 0$$
+</Step>
+
+<Step justification="complement: the probability of landing within $\epsilon$ is one minus step 7's probability">
+$$P\big(\lvert \hat R(\theta) - R(\theta) \rvert < \epsilon\big) \ge 1 - \frac{\sigma_\theta^2}{n\,\epsilon^2} \to 1$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Nothing here used the shape of the loss; any average of i.i.d. draws with finite variance concentrates at its mean the same way. That is the sense in which "the iid assumption gives algorithmic guarantees" (L3 p.37).
+
+The bound <EqRef id="eq-2-2-4" /> is honest but loose. It also tells you how many examples to ask for: to have $\lvert \hat R(\theta) - R(\theta) \rvert < \epsilon$ with probability at least $1 - \delta$, Chebyshev asks for $n \ge \sigma_\theta^2 / (\delta\,\epsilon^2)$. The worked example puts numbers on it.
+
+<Callout type="beyond">
+
+Two things the slides do not need, stated so that you do not over-read the theorem. The strong law of large numbers upgrades "the probability of a large error tends to 0" to "$\hat R(\theta) \to R(\theta)$ with probability 1"; its proof is longer and buys nothing for this course. More important: the theorem is about one $\theta$ fixed in advance. It does not say that $\hat R(\theta)$ is close to $R(\theta)$ for all $\theta$ at once, and the trained $\hat\theta$ is chosen from all of them. Results that hold uniformly over a model class are the subject of statistical learning theory; the next section shows, without that machinery, what goes wrong at $\hat\theta$.
+
+</Callout>
+
+<Check ids={["q-u2-l2-011"]} />
+
+## The selection-bias caveat
+
+Training does not use a fixed $\theta$. It uses $\hat\theta = \argmin_\theta \hat R(\theta)$, chosen because its empirical risk came out smallest on these particular patients. Some of that smallness is real fit; some is luck in the sample, which the minimization finds and keeps. This is [[selection-bias]].
+
+<Definition id="def-2-2-4" title="Training risk and true risk of the trained model" source="L4 p.9 (the question is posed: 'hope it generalizes'); definitions not on the slides">
+
+Let $\hat\theta = \hat\theta(\mathcal{D})$ minimize $\hat R$ over $\Theta$, and let $\theta^\star$ minimize $R$ over $\Theta$, the best parameter in the class. The training risk of the trained model is $\hat R(\hat\theta)$. Its true risk is $R(\hat\theta)$: the expected loss on a fresh pair $(X, Y) \sim P$, independent of $\mathcal{D}$, with $\hat\theta$ held at its trained value. Both are random, because $\hat\theta$ depends on $\mathcal{D}$.
+
+Also written as: training error and test (or generalization) error of the fitted model.
+
+</Definition>
+
+<Theorem id="thm-2-2-2" title="Training risk is optimistic" source="beyond the slides (previews L7-L8 overfitting); course map L4 derivation gap 1">
+
+If the minimizers $\hat\theta$ and $\theta^\star$ exist, then
+
+$$
+\mathbb{E}\big[\hat R(\hat\theta)\big] \;\le\; R(\theta^\star) \;\le\; \mathbb{E}\big[R(\hat\theta)\big]. \tag{2.2.5} \htmlId{eq-2-2-5}{}
+$$
+
+The expectations are over the random training set.
+
+</Theorem>
+
+<Derivation
+  id="der-2-2-4"
+  title="Training risk underestimates the true risk of the trained model"
+  goalTex="\mathbb{E}\big[\hat R(\hat\theta)\big] \text{ compared with } \mathbb{E}\big[R(\hat\theta)\big]"
+  resultTex="\mathbb{E}\big[\hat R(\hat\theta)\big] \le R(\theta^\star) \le \mathbb{E}\big[R(\hat\theta)\big]"
+  source="not on the slides; L4 p.9 asks whether the fit 'generalizes'; course map L4 derivation gap 1 ('Loss(θ̂) is biased downward')"
+>
+
+<Chunk title="On every dataset, the trained model wins on its own training data">
+
+<Step justification="$\hat\theta$ minimizes $\hat R$, so no parameter $\theta'$ has a smaller empirical risk on the same training set" sticky="argmax">
+$$\hat R(\hat\theta) \le \hat R(\theta') \quad \text{for every } \theta' \in \Theta \text{ and every } \mathcal{D}$$
+</Step>
+
+<Step justification="expectation is monotone: an inequality that holds on every dataset survives averaging over datasets" sticky="expectation">
+$$\mathbb{E}\big[\hat R(\hat\theta)\big] \le \mathbb{E}\big[\hat R(\theta')\big]$$
+</Step>
+
+<Step justification="$\theta'$ is fixed in advance, so der-2-2-2 applies on the right" fadeable>
+$$\mathbb{E}\big[\hat R(\hat\theta)\big] \le R(\theta')$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Compare with the best fixed parameter, then chain">
+
+<Step justification="step 3 holds for every fixed $\theta'$; take $\theta' = \theta^\star$">
+$$\mathbb{E}\big[\hat R(\hat\theta)\big] \le R(\theta^\star)$$
+</Step>
+
+<Step justification="$\theta^\star$ minimizes $R$ over $\Theta$ and $\hat\theta$ is in $\Theta$, whatever the dataset">
+$$R(\theta^\star) \le R(\hat\theta) \quad \text{for every } \mathcal{D}$$
+</Step>
+
+<Step justification="take expectations over $\mathcal{D}$; the left side is a constant" fadeable>
+$$R(\theta^\star) \le \mathbb{E}\big[R(\hat\theta)\big]$$
+</Step>
+
+<Step justification="chain steps 4 and 6" fadeable>
+$$\mathbb{E}\big[\hat R(\hat\theta)\big] \le R(\theta^\star) \le \mathbb{E}\big[R(\hat\theta)\big]$$
+</Step>
+
+<Step justification="subtract the left end from the right end: the expected gap between test and training risk is nonnegative">
+$$\mathbb{E}\big[R(\hat\theta)\big] - \mathbb{E}\big[\hat R(\hat\theta)\big] \ge 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Where did der-2-2-2 stop working? At step 3 we applied it to a fixed $\theta'$, which is allowed. We never applied it to $\hat\theta$, and we could not: plugging $\hat\theta$ into der-2-2-2 step 3 would claim that $\ell(f_{\hat\theta}(X^{(i)}), Y^{(i)})$ is the loss of a fixed model on a fresh patient, but patient $i$ helped choose $\hat\theta$. Both inequalities in <EqRef id="eq-2-2-5" /> can be strict, and the next derivation shows by how much in the simplest model there is.
+
+### An exact computation: the constant predictor
+
+Take the model class of constants, $f_\theta(x) = \theta$, with squared loss, and a target $Y$ with mean $\mu$ and variance $\sigma^2$. This is the hook's analyst, who predicts every placebo patient's change with one number.
+
+<Proposition id="prop-2-2-2" title="Optimism of the fitted mean" source="beyond the slides">
+
+With $f_\theta(x) = \theta$, squared loss, and $Y^{(1)}, \dots, Y^{(n)}$ i.i.d. with mean $\mu$ and variance $\sigma^2$: $\theta^\star = \mu$ with $R(\theta^\star) = \sigma^2$; $\hat\theta = \bar Y$; and
+
+$$
+\mathbb{E}\big[\hat R(\hat\theta)\big] = \frac{n-1}{n}\,\sigma^2, \qquad \mathbb{E}\big[R(\hat\theta)\big] = \frac{n+1}{n}\,\sigma^2, \qquad \text{gap} = \frac{2\sigma^2}{n}. \tag{2.2.6} \htmlId{eq-2-2-6}{}
+$$
+
+</Proposition>
+
+<Derivation
+  id="der-2-2-5"
+  title="The training risk of the fitted mean is optimistic by exactly 2σ²/n"
+  goalTex="\mathbb{E}\big[R(\hat\theta)\big] - \mathbb{E}\big[\hat R(\hat\theta)\big] \text{ for } f_\theta(x) = \theta \text{ and squared loss}"
+  resultTex="\mathbb{E}\big[R(\hat\theta)\big] - \mathbb{E}\big[\hat R(\hat\theta)\big] = \frac{n+1}{n}\sigma^2 - \frac{n-1}{n}\sigma^2 = \frac{2\sigma^2}{n}"
+  source="beyond the slides; instantiates the selection-bias caveat (course map L4 derivation gap 1)"
+>
+
+<Chunk title="The true risk of a constant prediction">
+
+<Step justification="def-2-2-1 with $f_\theta(x) = \theta$ and squared loss">
+$$R(\theta) = \mathbb{E}\big[(Y - \theta)^2\big]$$
+</Step>
+
+<Step justification="add and subtract $\mu = \mathbb{E}[Y]$ inside the square">
+$$R(\theta) = \mathbb{E}\big[\big((Y - \mu) + (\mu - \theta)\big)^2\big]$$
+</Step>
+
+<Step justification="expand the square and use linearity; $\mu - \theta$ is a constant" sticky="expectation">
+$$R(\theta) = \mathbb{E}\big[(Y - \mu)^2\big] + 2(\mu - \theta)\,\mathbb{E}[Y - \mu] + (\mu - \theta)^2$$
+</Step>
+
+<Step justification="$\mathbb{E}[Y - \mu] = 0$ and $\mathbb{E}[(Y - \mu)^2] = \sigma^2$" sticky="variance" fadeable>
+$$R(\theta) = \sigma^2 + (\theta - \mu)^2$$
+</Step>
+
+<Step justification="only $(\theta - \mu)^2$ depends on $\theta$, and it is smallest, 0, at $\theta = \mu$">
+$$\theta^\star = \mu, \qquad R(\theta^\star) = \sigma^2$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Fit on the sample: the training risk is the n-divisor sample variance">
+
+<Step justification="def-2-2-2, then add and subtract the sample mean $\bar Y = \frac1n\sum_i Y^{(i)}$ inside each square">
+$$\hat R(\theta) = \frac{1}{n} \sum_{i=1}^{n} \big((Y^{(i)} - \bar Y) + (\bar Y - \theta)\big)^2$$
+</Step>
+
+<Step justification="expand; the cross term is $\frac{2}{n}(\bar Y - \theta)\sum_i (Y^{(i)} - \bar Y)$, and deviations from the sample mean sum to 0" fadeable>
+$$\hat R(\theta) = \frac{1}{n} \sum_{i=1}^{n} (Y^{(i)} - \bar Y)^2 + (\theta - \bar Y)^2$$
+</Step>
+
+<Step justification="only the second term depends on $\theta$, and it is smallest, 0, at $\theta = \bar Y$">
+$$\hat\theta = \bar Y, \qquad \hat R(\hat\theta) = \frac{1}{n} \sum_{i=1}^{n} (Y^{(i)} - \bar Y)^2$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Compare the fit with the best constant on the same sample">
+
+<Step justification="step 7 at $\theta = \mu$, with step 8's $\hat R(\hat\theta)$ in place of the first term">
+$$\hat R(\mu) = \hat R(\hat\theta) + (\bar Y - \mu)^2$$
+</Step>
+
+<Step justification="take expectations over the training set; expectation is linear" sticky="expectation">
+$$\mathbb{E}\big[\hat R(\mu)\big] = \mathbb{E}\big[\hat R(\hat\theta)\big] + \mathbb{E}\big[(\bar Y - \mu)^2\big]$$
+</Step>
+
+<Step justification="$\mu$ is fixed in advance, so $\mathbb{E}[\hat R(\mu)] = R(\mu) = \sigma^2$ by der-2-2-2 and step 5; and $\mathbb{E}[(\bar Y - \mu)^2] = \Var(\bar Y) = \sigma^2/n$ by der-2-2-2 with $Z_i = Y^{(i)}$, an average of $n$ i.i.d. draws" sticky="variance" fadeable>
+$$\sigma^2 = \mathbb{E}\big[\hat R(\hat\theta)\big] + \frac{\sigma^2}{n}$$
+</Step>
+
+<Step justification="subtract $\sigma^2/n$ from both sides" fadeable>
+$$\mathbb{E}\big[\hat R(\hat\theta)\big] = \sigma^2 - \frac{\sigma^2}{n} = \frac{n-1}{n}\,\sigma^2$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Score the fitted constant on new patients">
+
+<Step justification="step 4 at $\theta = \bar Y$, with the training sample (and so $\bar Y$) held fixed while the new patient varies">
+$$R(\hat\theta) = \sigma^2 + (\bar Y - \mu)^2$$
+</Step>
+
+<Step justification="take expectations over the training set; $\mathbb{E}[(\bar Y - \mu)^2] = \sigma^2/n$ as in step 11" fadeable>
+$$\mathbb{E}\big[R(\hat\theta)\big] = \sigma^2 + \frac{\sigma^2}{n} = \frac{n+1}{n}\,\sigma^2$$
+</Step>
+
+<Step justification="subtract step 12 from step 14">
+$$\mathbb{E}\big[R(\hat\theta)\big] - \mathbb{E}\big[\hat R(\hat\theta)\big] = \frac{n+1}{n}\sigma^2 - \frac{n-1}{n}\sigma^2 = \frac{2\sigma^2}{n}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The gap has two equal halves. Fitting pulls the training risk $\sigma^2/n$ below the floor $\sigma^2$, because $\bar Y$ sits closer to the training points than $\mu$ does (steps 9 to 12). The same estimation error pushes the true risk $\sigma^2/n$ above the floor, because $\bar Y$ misses $\mu$ (step 14). The best constant, $\theta^\star = \mu$, sits between them at exactly $\sigma^2$, as <EqRef id="eq-2-2-5" /> requires. Both halves shrink like $1/n$; neither depends on how the data were collected beyond $n$ and $\sigma^2$.
+
+One parameter fitted to $n$ points already produces a measurable bias. A model with many parameters has many more ways to fit the sample's luck, and its gap is typically larger; Unit 5 measures it with held-out data and controls it with regularization.
+
+<Widget
+  name="true-vs-empirical-risk"
+  dataset="vasco"
+  arm="placebo"
+  model="constant"
+  n={50}
+  showTrueRisk={true}
+  showTrainingRisk={true}
+  resample={true}
+  challenge="Resample the 50 placebo patients many times with θ fixed at the true mean, and watch the training risk scatter evenly around the true risk. Then switch to the fitted mean θ̂ = ȳ and resample again: which side of the true risk does the training risk now land on, and how far on average? Finally drop n to 5."
+/>
+
+There is a cheap repair, and it is the reason for a [[train-test-split]]. Score $\hat\theta$ on $n_{\text{test}}$ fresh pairs that played no part in training. Conditional on the training set, $\hat\theta$ is a fixed parameter and the fresh pairs are i.i.d. from $P$, so der-2-2-2 applies verbatim: the test-set average is an unbiased estimate of $R(\hat\theta)$, with variance $\sigma_{\hat\theta}^2/n_{\text{test}}$. The test set stays unbiased only while nothing, including the choice of model, is tuned on it.
+
+<Check ids={["q-u2-l2-010", "q-u2-l2-013", "q-u2-l2-014", "q-u2-l2-015"]} />
+
+<Example title="The VASCO placebo arm, by the numbers">
+
+In the C1 specification, a placebo patient's 8-week change in systolic blood pressure is $Y = E_0 + 0.15\,(B - 150) + \varepsilon$, with placebo effect $E_0 = -3$ mmHg, baseline $B \sim \mathcal{N}(155, 12^2)$, and noise $\varepsilon \sim \mathcal{N}(0, 8^2)$ independent of $B$; there are $n = 50$ placebo patients. (Both second arguments are [[gaussian|variances]], as everywhere in this course.)
+
+**Mean and variance.** $\mu = -3 + 0.15 \times (155 - 150) = -2.25$ mmHg. $\sigma^2 = 0.15^2 \times 144 + 64 = 3.24 + 64 = 67.24\ \text{mmHg}^2$, so $\sigma = 8.2$ mmHg.
+
+**The best constant.** By der-2-2-5 step 5, $\theta^\star = -2.25$ mmHg and $R(\theta^\star) = 67.24\ \text{mmHg}^2$. No constant prediction does better.
+
+**The hook's two analysts.** By <EqRef id="eq-2-2-6" /> with $n = 50$, the first analyst's training risk averages $\frac{49}{50} \times 67.24 = 65.90\ \text{mmHg}^2$; the second analyst's score on fresh patients averages $\frac{51}{50} \times 67.24 = 68.58\ \text{mmHg}^2$. The gap is $2 \times 67.24 / 50 = 2.69\ \text{mmHg}^2$.
+
+**How noisy is one trial's estimate?** $Y$ is a sum of independent Gaussians, so it is Gaussian, and for the fixed prediction $\theta = \mu$ the per-patient loss $(Y - \mu)^2$ has variance $2\sigma^4$. By der-2-2-2, $\Var(\hat R(\mu)) = 2\sigma^4/n$, a standard deviation of $\sigma^2\sqrt{2/50} = 67.24 \times 0.2 = 13.45\ \text{mmHg}^2$. A single trial's training risk scatters by about five times the size of the selection bias: the bias is systematic, the scatter is not, and the bias shows up only when you average over trials.
+
+**How many patients would Chebyshev ask for?** To be within 20% of the risk, $\epsilon = 0.2\,\sigma^2$, with probability at least 0.9, <EqRef id="eq-2-2-4" /> asks for
+
+$$\frac{2\sigma^4}{n\,(0.2\,\sigma^2)^2} \le 0.1 \iff n \ge \frac{2}{0.04 \times 0.1} = 500.$$
+
+At $n = 50$ the bound equals 1 and says nothing. The scale $\sigma^2$ cancels, so the answer is the same for any Gaussian outcome.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u2-l2-004", "q-u2-l2-005", "q-u2-l2-006"]} />
+
+## Pitfalls
+
+<Pitfall title="Spot the error: the total-error integral weights every input equally" misconception="unweighted-total-error">
+
+L3 p.43 writes the total error as $\int_{-\infty}^{\infty} \mathrm{error}(f(X;\theta), g(X))\,dX$. Read literally, an input no patient ever has counts as much as the most common one, and for many errors the integral over the whole line is infinite. The fix is to weight by the input density, $\int \mathrm{error}\,p_X(x)\,dx = \mathbb{E}_X[\mathrm{error}]$ (der-2-2-1 steps 2 and 3). This is what the expectation on L4 p.5 does.
+
+</Pitfall>
+
+<Pitfall title="Spot the error: g(θ) on L4 p.5 should be g(X)" misconception="g-theta-typo">
+
+L4 p.5 writes the true risk as $E_{(X,Y)\sim P}\,\mathrm{error}(f(X;\theta), g(\theta))$. The true function $g$ maps inputs to targets; it does not depend on the parameters of our model. The second argument should be $g(X)$, or, since $g$ is unobservable, the target $Y$, as in <EqRef id="eq-2-2-1" />. For squared loss the two versions differ only by the constant $\sigma_\varepsilon^2$ (<EqRef id="eq-2-2-2" />).
+
+</Pitfall>
+
+<Pitfall title="The empirical risk is not the per-example error" misconception="per-example-error-is-risk">
+
+The belief: $\mathrm{error}(f, g)$, the error on one example, is "the empirical risk" (L4 p.11 poll, statement 2). The fix: three objects, three names. $\ell(f_\theta(x^{(i)}), y^{(i)})$ is the loss on one example; $\hat R(\theta)$ is its average over the training set (def-2-2-2); $R(\theta)$ is its expectation under $P$ (def-2-2-1). Only the average estimates the risk.
+
+</Pitfall>
+
+<Pitfall title="The error must be zero when the model is right, not when it is wrong" misconception="error-zero-when-wrong">
+
+L4 p.11's last poll statement asks for $\mathrm{error} > 0$ when $f(X_i;\theta) = g(X_i)$ and $\mathrm{error} = 0$ when they differ. That is reversed. A loss is 0 on a correct prediction and positive on a wrong one, as squared, absolute, and 0-1 loss all are; minimizing the reversed version would reward wrong answers.
+
+</Pitfall>
+
+<Pitfall title="Unbiased for every fixed θ does not mean unbiased at the trained θ̂" misconception="unbiased-at-trained-theta">
+
+The belief: der-2-2-2 holds for every $\theta$, so it holds for $\hat\theta$. The fix: der-2-2-2 step 3 needs $\theta$ to be chosen before the data. $\hat\theta$ is chosen by the data, so its training risk is biased low (<EqRef id="eq-2-2-5" />), by exactly $2\sigma^2/n$ for the fitted mean (<EqRef id="eq-2-2-6" />).
+
+</Pitfall>
+
+<Pitfall title="Low training risk does not mean low risk" misconception="training-loss-is-risk">
+
+The belief: the model with the smallest training loss will have the smallest error on new patients. The fix: training risk is optimistic (thm-2-2-2), and the optimism tends to grow with the number of parameters fitted. An estimate of $R(\hat\theta)$ needs data that played no part in choosing $\hat\theta$.
+
+</Pitfall>
+
+<Pitfall title="The right model does not reach zero true risk" misconception="risk-can-reach-zero">
+
+The belief: if the model class contains the true function $g$, the true risk of the best model is 0. The fix: by <EqRef id="eq-2-2-2" />, $R(\theta) \ge \sigma_\varepsilon^2$ for every $\theta$, with equality when $f_\theta = g$. The noise is in the targets, not in the model, and no model can predict it.
+
+</Pitfall>
+
+<Pitfall title="The law of large numbers is a limit, not a guarantee at your n" misconception="lln-at-finite-n">
+
+The belief: by the law of large numbers, the training risk of a fixed model is close to its true risk. The fix: the law says the probability of a large error tends to 0 as $n \to \infty$. At a given $n$ the error is of order $\sigma_\theta/\sqrt n$, and Chebyshev's bound can be useless; at $n = 50$ in the worked example it is 1.
+
+</Pitfall>
+
+<Connections>
+
+- Previous: 2.1 Data-generating distributions supplies $P$, $Y = g(X) + \varepsilon$, and the fact that $\mathbb{E}[Y \mid X]$ is the best predictor under squared loss.
+- Next: 2.3 Gradients and optimality starts from def-2-2-3: for a fixed dataset, $\hat R$ is a function of $\theta$ only, and minimizing it is calculus (L4 p.12).
+- Then: 2.4 Gradient descent minimizes $\hat R$ iteratively; 2.5 Step size and conditioning reuses der-2-2-2 to show that a minibatch gradient is an unbiased estimate of the full gradient ([[stochastic-gradient-descent]]).
+- Back: 1.3 Loss functions defines the per-example losses $\ell$ averaged here.
+- Later: Unit 5 turns the selection-bias caveat into overfitting, train/validation/test splits, and cross-validation.
+- Graph neighbors: [[expectation]], [[iid]], [[unbiased-estimator]], [[empirical-risk]], [[law-of-large-numbers]], [[selection-bias]], [[train-test-split]].
+
+</Connections>
+
+{/* no-homework-bridge: HW1 and HW2 are past and no hw1/hw2 bridge files exist; HW3 (live) does not use this lesson. */}
+
+<Summary>
+
+- **True risk:** $R(\theta) = \mathbb{E}_{(X,Y)\sim P}[\ell(f_\theta(X), Y)]$; a number per $\theta$; needs the unknown $P$.
+- **Noise floor:** for squared loss and $Y = g(X) + \varepsilon$ with constant noise variance $\mathbb{E}[\varepsilon^2 \mid X] = \sigma_\varepsilon^2$, $R(\theta) = \mathbb{E}_X[(f_\theta(X) - g(X))^2] + \sigma_\varepsilon^2$; no model beats $\sigma_\varepsilon^2$.
+- **Empirical risk:** $\hat R(\theta) = \frac1n\sum_i \ell(f_\theta(x^{(i)}), y^{(i)})$; **ERM:** $\hat\theta = \argmin_\theta \hat R(\theta)$.
+- **Fixed θ:** $\mathbb{E}[\hat R(\theta)] = R(\theta)$ and $\Var(\hat R(\theta)) = \sigma_\theta^2/n$.
+- **Weak LLN (Chebyshev):** $P(\lvert \hat R(\theta) - R(\theta)\rvert \ge \epsilon) \le \sigma_\theta^2/(n\epsilon^2) \to 0$.
+- **Selection bias:** $\mathbb{E}[\hat R(\hat\theta)] \le R(\theta^\star) \le \mathbb{E}[R(\hat\theta)]$; for the fitted mean the gap is $2\sigma^2/n$.
+- **Repair:** a held-out set, untouched by training and tuning, gives an unbiased estimate of $R(\hat\theta)$.
+
+</Summary>

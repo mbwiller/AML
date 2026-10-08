@@ -1,0 +1,12 @@
+---
+id: selection-bias
+term: Selection bias (optimism of training error)
+aliases: [optimism, optimistic training error, winner's curse, overfitting bias]
+field: statistics
+firstUsedIn: u2-risk-and-gradient-descent
+related: [empirical-risk, unbiased-estimator, train-test-split, law-of-large-numbers]
+---
+
+**What it is.** An estimate becomes biased when the thing being estimated is chosen using the same data. The empirical risk is unbiased for any fixed model, but the trained model $\hat\theta$ is the one whose empirical risk came out smallest, partly by fitting noise. In expectation, $\E[\hat R(\hat\theta)] \le \min_\theta R(\theta) \le \E[R(\hat\theta)]$: training error is optimistic.
+
+**How ML uses it.** It is the first form of overfitting. For the constant predictor fit by least squares, the gap is exactly $2\sigma^2/n$. It is why we report error on a held-out test set that played no part in choosing $\hat\theta$, and why the test set must not be used to tune anything.

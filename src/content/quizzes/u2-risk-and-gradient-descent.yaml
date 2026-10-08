@@ -1,0 +1,1431 @@
+# Quiz bank: Unit 2, Risk and gradient descent.
+# Format: docs/CONTENT_AUTHORING.md §7. Poll items carry source "L<n> p.<k> poll" and the
+# course map's suggested key (docs/course-map/01-lectures-L1-L3.md, 02-lectures-L4-L5.md).
+
+# ---------- Lesson 2.1: data-generating-distributions ----------
+# Poll items carry source "L3 p.<k> poll" (docs/course-map/01-lectures-L1-L3.md, L3 poll section).
+# The L3 p.39 "select all that are true" poll is split into one true/false item per statement,
+# as in the Unit 6 bank. The L3 p.40 open question (HW2, past) is item 005.
+
+- id: q-u2-l1-001
+  lesson: data-generating-distributions
+  concepts: [linear-dgp-well-specified]
+  type: mc
+  difficulty: 1
+  source: "L3 p.39 poll"
+  prompt: |
+    True or false: to run linear regression, we would require the underlying data-generating distribution to be linear.
+  options:
+    - { text: "True", misconception: linreg-needs-linear-dgp }
+    - { text: "False", correct: true }
+  explanation: |
+    False (the course map's key). Least squares runs on any dataset and returns the best line. Linearity of $f^\star = \mathbb{E}[Y \mid X]$ is what makes that line the best predictor overall (der-2-1-6 step 4); without it, the line pays the extra term $\mathbb{E}[(f^\star(X) - h(X))^2]$ of equation 2.1.3.
+  discriminates: [linear-dgp-well-specified, conditional-mean-optimality]
+
+- id: q-u2-l1-002
+  lesson: data-generating-distributions
+  concepts: [dgp-sampling-model]
+  type: mc
+  difficulty: 1
+  source: "L3 p.39 poll"
+  prompt: |
+    True or false: oftentimes the data-generating distribution is unknown, but it is easy to guess which family it comes from.
+  options:
+    - { text: "True", misconception: dgp-family-easy-to-guess }
+    - { text: "False", correct: true }
+  explanation: |
+    False (the course map's key). The first half is right: $P$ is unknown (def-2-1-5). The second half is not: real data carry no label naming their family, and choosing a model class is a bet about $f^\star$ that has to be checked, for example with residual plots and held-out error.
+
+- id: q-u2-l1-003
+  lesson: data-generating-distributions
+  concepts: [linear-dgp-well-specified]
+  type: mc
+  difficulty: 1
+  source: "L3 p.39 poll"
+  prompt: |
+    True or false: in general, we expect linear regression to work well if the data-generating distribution of the observed variables is linear.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True (the course map's key). If $Y = \alpha + \beta X + \varepsilon$ with noise independent of $X$, then $\mathbb{E}[Y \mid X] = \alpha + \beta X$ is a member of the linear class (der-2-1-6 steps 3–4), so the best line is the best predictor of all, and its only error is the noise variance $\sigma_\varepsilon^2$ (step 5).
+  discriminates: [linear-dgp-well-specified, conditional-mean-optimality]
+
+- id: q-u2-l1-004
+  lesson: data-generating-distributions
+  concepts: [conditional-mean-optimality]
+  type: mc
+  difficulty: 2
+  source: "L3 p.39 poll"
+  prompt: |
+    True or false: deep learning methods often achieve superior performance in practice, as their model classes are more expressive.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The course map keys this as largely true as stated. In the language of equation 2.1.3: a more expressive class can come closer to $f^\star$, shrinking $\mathbb{E}[(f^\star(X) - h(X))^2]$, which a line cannot do when $f^\star$ is curved. "Often" matters: with few examples a flexible class also fits noise, the overfitting that lesson 2.2 previews and Unit 5 treats.
+
+- id: q-u2-l1-005
+  lesson: data-generating-distributions
+  concepts: [linear-dgp-well-specified, irreducible-error]
+  type: numeric
+  difficulty: 2
+  source: "L3 p.40 poll"
+  prompt: |
+    Data come from $Y = \alpha + \beta X + \varepsilon$ with $\beta = 2$, $\Var(X) = \sigma_X^2$ for $\sigma_X = 1$, and noise independent of $X$ with standard deviation $\sigma_\varepsilon = 1$. What fraction of $\Var(Y)$ does the best predictor $\mathbb{E}[Y \mid X]$ explain? (This is the population value the sample $R^2$ of linear regression converges to, the question L3 p.40 poses.) Give three decimal places.
+  answer: 0.8
+  tolerance: 0.0005
+  seeded: { beta: [0.5, 1, 2, 3], sx: [1, 2, 3], se: [1, 2, 4] }
+  formula: "beta * beta * sx * sx / (beta * beta * sx * sx + se * se)"
+  explanation: |
+    The explained part is $\Var(f^\star(X)) = \Var(\alpha + \beta X) = \beta^2 \sigma_X^2$, and the total is $\Var(Y) = \beta^2 \sigma_X^2 + \sigma_\varepsilon^2$ (der-2-1-6 steps 6–7). The share is $\beta^2\sigma_X^2 / (\beta^2\sigma_X^2 + \sigma_\varepsilon^2)$. It does not depend on $\alpha$, and it moves toward 1 as the noise shrinks relative to the signal. HW2, which posed this on the slide's parameters, is past.
+
+- id: q-u2-l1-006
+  lesson: data-generating-distributions
+  concepts: [rv-induced-distribution]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Two fair coins are tossed, $\Omega = \{HH, HT, TH, TT\}$. Let $X$ be the number of heads and $W = 1$ if any head appeared, else 0. Which statement is true?
+  options:
+    - { text: "$X$ and $W$ are different random variables on the same sample space, with $P(X = 1) = \\tfrac12$ and $P(W = 1) = \\tfrac34$", correct: true }
+    - { text: "$X$ and $W$ are the same random variable, because they are defined on the same $\\Omega$" }
+    - { text: "$P(X = 1) = \\tfrac13$, because $X$ takes three values" }
+    - { text: "$W$ is not a random variable, because it does not count anything" }
+  explanation: |
+    A random variable is a function on $\Omega$ (def-2-1-2), and $X$ and $W$ are different functions. Their distributions come from preimages (der-2-1-2): $X^{-1}(\{1\}) = \{HT, TH\}$ has probability $\tfrac12$, and $W^{-1}(\{1\}) = \{HH, HT, TH\}$ has probability $\tfrac34$. Three possible values do not make them equally likely.
+
+- id: q-u2-l1-007
+  lesson: data-generating-distributions
+  concepts: [probability-axioms]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A fair coin is tossed $n = 3$ times independently. What is the probability of at least one head?
+  answer: 0.875
+  tolerance: 0.001
+  seeded: { n: [2, 3, 4, 5, 6] }
+  formula: "1 - 0.5 ** n"
+  explanation: |
+    "At least one head" is the complement of "no heads", so by the complement rule (der-2-1-1 step 8) its probability is $1 - P(\text{no heads})$. Independence makes $P(\text{no heads})$ the product of $n$ factors of $\tfrac12$, so the answer is $1 - (1/2)^n$.
+
+- id: q-u2-l1-008
+  lesson: data-generating-distributions
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-2-1-1
+  corrupt: { step: 8, replaceTex: 'P(A^c) = P(A) - 1', explanation: 'Step 7 says $P(A) + P(A^c) = 1$; subtracting $P(A)$ gives $1 - P(A)$, not $P(A) - 1$. The corrupted version would make every complement negative unless $P(A) = 1$, which breaks axiom 1.' }
+
+- id: q-u2-l1-009
+  lesson: data-generating-distributions
+  concepts: [dgp-sampling-model, iid-joint-factorization]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A dataset has one row per clinic visit, and many patients visit several times. Which part of the iid assumption is most clearly at risk?
+  options:
+    - { text: "Independence: two visits by the same patient share causes the features do not record, so one outcome is informative about the other", correct: true }
+    - { text: "Neither: each row is a separate measurement, so rows are independent by construction", misconception: iid-always-holds }
+    - { text: "Identical distribution only: independence concerns features within a row, not rows" }
+    - { text: "Neither, as long as the visits are listed in random order", misconception: iid-always-holds }
+  explanation: |
+    Independence (def-2-1-4) is about rows: knowing one draw must not change what you expect of another. Repeat visits by one patient violate it, and the product in equation 2.1.1 (der-2-1-3 step 1) no longer holds. Shuffling the rows changes nothing about how they were generated. Independence of features within a row is a different idea (conditional independence, Unit 6).
+  discriminates: [iid-joint-factorization]
+
+- id: q-u2-l1-010
+  lesson: data-generating-distributions
+  concepts: [conditional-mean-optimality]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Among all functions $h$ of the input, which minimizes the expected squared error $\mathbb{E}[(Y - h(X))^2]$?
+  options:
+    - { text: "The conditional mean $\\mathbb{E}[Y \\mid X]$", correct: true }
+    - { text: "The conditional median of $Y$ given $X$", misconception: median-is-mse-optimal }
+    - { text: "The most likely value of $Y$ given $X$", misconception: median-is-mse-optimal }
+    - { text: "Any function with zero error on the training set", misconception: optimal-predictor-zero-error }
+  explanation: |
+    der-2-1-5 gives $\mathbb{E}[(Y - h(X))^2] = \mathbb{E}[\Var(Y \mid X)] + \mathbb{E}[(f^\star(X) - h(X))^2]$, minimized exactly when $h = f^\star = \mathbb{E}[Y \mid X]$. The median is optimal for absolute error and the most likely value for 0/1 loss. Zero training error says nothing about expected error on new draws from $P$.
+  discriminates: [conditional-mean-optimality, irreducible-error]
+
+- id: q-u2-l1-011
+  lesson: data-generating-distributions
+  concepts: [signal-plus-noise, conditional-mean-optimality]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    In the VASCO case specification, $\Delta\mathrm{SBP} = -3 - \dfrac{22\,D}{6 + D} + 0.15\,(B - 150) + \varepsilon$ with $\mathbb{E}[\varepsilon \mid D, B] = 0$. What is the MSE-optimal prediction, in mmHg, for a patient with dose $D = 10$ mg and baseline $B = 150$ mmHg?
+  answer: -16.75
+  tolerance: 0.01
+  seeded: { D: [2.5, 5, 10, 20, 40], B: [140, 150, 160, 170] }
+  formula: "-3 - 22 * D / (6 + D) + 0.15 * (B - 150)"
+  explanation: |
+    The best predictor is the conditional mean (der-2-1-5). Taking $\mathbb{E}[\cdot \mid D, B]$ of the equation keeps the known terms and replaces the noise by its conditional mean, 0 (der-2-1-6 steps 1–3), so the answer is $-3 - 22D/(6 + D) + 0.15(B - 150)$ at the given dose and baseline. The noise is what no prediction can capture.
+
+- id: q-u2-l1-012
+  lesson: data-generating-distributions
+  concepts: [irreducible-error]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Outcomes follow $Y = f^\star(X) + \varepsilon$ with $\varepsilon$ independent of $X$, mean 0, and standard deviation $s = 8$. What is the smallest expected squared error any predictor of $Y$ from $X$ can achieve?
+  answer: 64
+  tolerance: 0
+  seeded: { s: [4, 6, 8, 10, 12] }
+  formula: "s * s"
+  explanation: |
+    The floor is $\mathbb{E}[\Var(Y \mid X)]$ (der-2-1-5 steps 8–9). With noise independent of $X$, $\Var(Y \mid X) = \Var(\varepsilon) = s^2$ at every input, so the floor is the variance, the square of the standard deviation. Even the true $f^\star$ achieves no less.
+
+- id: q-u2-l1-013
+  lesson: data-generating-distributions
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-2-1-5
+  corrupt: { step: 9, replaceTex: '\mathbb{E}[\varepsilon^2] = \Var(Y)', explanation: 'The noise is measured from the conditional mean $\mathbb{E}[Y \mid X]$, not from the overall mean $\mathbb{E}[Y]$. Its mean square is the average within-input spread $\mathbb{E}[\Var(Y \mid X)]$, which is smaller than $\Var(Y)$ whenever $X$ explains part of $Y$.' }
+
+- id: q-u2-l1-014
+  lesson: data-generating-distributions
+  concepts: [dgp-sampling-model]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    L3 p.37 writes $X \sim N(168, 30)$. Under this course's convention $\mathcal{N}(\mu, \sigma^2)$, what is the standard deviation of $X$?
+  options:
+    - { text: "$\\sqrt{30} \\approx 5.48$", correct: true }
+    - { text: "$30$", misconception: gaussian-second-arg-ambiguous }
+    - { text: "$900$", misconception: gaussian-second-arg-ambiguous }
+    - { text: "$168 / 30 = 5.6$" }
+  explanation: |
+    The course's second argument is a variance, so $\sigma^2 = 30$ and $\sigma = \sqrt{30} \approx 5.48$. The slide does not state its convention: if 30 were a standard deviation, the variance would be 900. Say which reading you use whenever a source is ambiguous.
+
+- id: q-u2-l1-015
+  lesson: data-generating-distributions
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of der-2-1-5 (the conditional mean minimizes the expected squared error) in order.
+  items:
+    - 'Add and subtract $f^\star(X)$: $Y - h(X) = \varepsilon + (f^\star(X) - h(X))$.'
+    - 'Square and take expectations, giving three terms.'
+    - 'Kill the cross term: the noise is uncorrelated with every function of $X$.'
+    - 'Drop the non-negative term $\mathbb{E}[(f^\star(X) - h(X))^2]$ to get the lower bound, attained at $h = f^\star$.'
+    - 'Identify the floor $\mathbb{E}[\varepsilon^2]$ as $\mathbb{E}[\Var(Y \mid X)]$ by the law of total expectation.'
+  explanation: |
+    Decompose, expand, cancel, bound, then name what is left. The cancellation is the only step that uses a property of $f^\star$, and that property comes from der-2-1-4.
+
+- id: q-u2-l1-016
+  lesson: data-generating-distributions
+  concepts: [signal-plus-noise]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Which joint distributions of $(X, Y)$, with $\mathbb{E}[Y^2]$ finite, can be written as $Y = f(X) + \varepsilon$ with $\mathbb{E}[\varepsilon \mid X] = 0$?
+  options:
+    - { text: "All of them, with $f = \\mathbb{E}[Y \\mid X]$", correct: true }
+    - { text: "Only those where $\\mathbb{E}[Y \\mid X]$ is linear in $X$", misconception: noise-form-is-assumption }
+    - { text: "Only those with Gaussian noise", misconception: noise-form-is-assumption }
+    - { text: "Only those where the noise is independent of $X$", misconception: noise-form-is-assumption }
+  explanation: |
+    der-2-1-4 defines $\varepsilon = Y - \mathbb{E}[Y \mid X]$ and proves $\mathbb{E}[\varepsilon \mid X] = 0$ with no further assumption. Linearity, Gaussian noise, and independence are extra assumptions a model may add; the decomposition itself is always available.
+  discriminates: [signal-plus-noise, linear-dgp-well-specified]
+
+- id: q-u2-l1-017
+  lesson: data-generating-distributions
+  concepts: [dgp-sampling-model]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    The 20-patient BMI table of Unit 1 is, in the language of this lesson,
+  options:
+    - { text: "one realization of 20 draws from the data-generating distribution", correct: true }
+    - { text: "the data-generating distribution itself", misconception: dataset-is-distribution }
+    - { text: "the regression function $f^\\star$", misconception: dataset-is-distribution }
+    - { text: "a random variable" }
+  explanation: |
+    def-2-1-5: the random variables are $(X^{(i)}, Y^{(i)})$; the table holds their observed values $(x^{(i)}, y^{(i)})$. A second study would produce a different table from the same $P$, which is why quantities computed from the table, such as training error, are random while $P$ and $f^\star$ are fixed.
+
+- id: q-u2-l1-018
+  lesson: data-generating-distributions
+  concepts: [probability-axioms]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    L3 p.31 lists $P(\emptyset) = 0$ among the axioms. Using only non-negativity, $P(\Omega) = 1$, and countable additivity, which is true?
+  options:
+    - { text: "$P(\\emptyset) = 0$ can be proved, so it need not be assumed", correct: true }
+    - { text: "$P(\\emptyset) = 0$ must be assumed separately; nothing else forces it" }
+    - { text: "$P(\\emptyset)$ could be any number in $[0, 1]$" }
+    - { text: "$P(\\emptyset) = 0$ follows only for finite sample spaces" }
+  explanation: |
+    der-2-1-1 steps 1–4: write $\Omega = \Omega \cup \emptyset \cup \emptyset \cup \cdots$, apply countable additivity, subtract $P(\Omega) = 1$, and note that infinitely many copies of a non-negative number sum to 0 only if the number is 0. The argument works on any sample space.
+
+- id: q-u2-l1-019
+  lesson: data-generating-distributions
+  type: which-step
+  difficulty: 3
+  source: "original"
+  derivation: der-2-1-4
+  corrupt: { step: 8, replaceTex: '\mathbb{E}[h(X)\,\varepsilon] = \mathbb{E}[h(X)]\,\mathbb{E}[\varepsilon]', explanation: 'Splitting the expectation of a product into a product of expectations needs $h(X)$ and $\varepsilon$ to be uncorrelated, which is exactly what steps 7 to 9 are proving, so the move assumes its own conclusion. The valid move conditions on $X$ and pulls out the known factor, $\mathbb{E}[h(X)\,\mathbb{E}[\varepsilon \mid X]]$, which needs only $\mathbb{E}[\varepsilon \mid X] = 0$.' }
+
+- id: q-u2-l1-020
+  lesson: data-generating-distributions
+  concepts: [irreducible-error, linear-dgp-well-specified]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Under the linear DGP $Y = \alpha + \beta X + \varepsilon$ ($\varepsilon$ independent of $X$, $\Var(X) = \sigma_X^2$, $\Var(\varepsilon) = \sigma_\varepsilon^2$, $\beta \ne 0$), the smallest expected squared error of any predictor of $Y$ from $X$ is
+  options:
+    - { text: "$\\sigma_\\varepsilon^2$", correct: true }
+    - { text: "$\\beta^2\\sigma_X^2 + \\sigma_\\varepsilon^2$", misconception: irreducible-is-total-variance }
+    - { text: "$0$, attained by the true line", misconception: optimal-predictor-zero-error }
+    - { text: "$\\beta^2\\sigma_X^2$" }
+  explanation: |
+    der-2-1-6 step 5: the best predictor is the line $\alpha + \beta X$, and what it leaves is the noise, with mean square $\sigma_\varepsilon^2$. $\beta^2\sigma_X^2 + \sigma_\varepsilon^2 = \Var(Y)$ is the error of the best constant, which ignores $X$; $\beta^2\sigma_X^2$ is the part of $\Var(Y)$ that $X$ explains.
+  discriminates: [irreducible-error, linear-dgp-well-specified]
+
+# ---------- Lesson 2.2: true-and-empirical-risk ----------
+# Poll items: L4 p.11 "Select all correct statements" (docs/course-map/02-lectures-L4-L5.md, L4 poll section),
+# split into one true/false item per statement with the course map's key.
+
+- id: q-u2-l2-001
+  lesson: true-and-empirical-risk
+  concepts: [empirical-risk-minimization]
+  type: mc
+  difficulty: 1
+  source: "L4 p.11 poll"
+  prompt: |
+    True or false: to optimize the loss function, we want $\mathrm{error}(f, g)$ to be differentiable with respect to $f$.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The course map's key is True. Gradient descent (lessons 2.3 and 2.4) needs the derivative of $\hat R(\theta)$ with respect to $\theta$, and by the chain rule that runs through the derivative of the per-example error with respect to the model's output. Squared error is differentiable; 0-1 loss is not, which is one reason classifiers are trained on a surrogate.
+  discriminates: [empirical-risk-minimization, empirical-risk]
+
+- id: q-u2-l2-002
+  lesson: true-and-empirical-risk
+  concepts: [empirical-risk]
+  type: mc
+  difficulty: 1
+  source: "L4 p.11 poll"
+  prompt: |
+    True or false: we call $\mathrm{error}(f, g)$ the empirical risk because it is only an empirical approximation to the true risk (the shaded area between $f$ and $g$).
+  options:
+    - { text: "True", misconception: per-example-error-is-risk }
+    - { text: "False", correct: true }
+  explanation: |
+    The course map's key is False. $\mathrm{error}(f, g)$ is the error on one example. The empirical risk is its average over the training set, $\hat R(\theta) = \frac1n\sum_i \ell(f_\theta(x^{(i)}), y^{(i)})$ (def-2-2-2), and only that average estimates the true risk (der-2-2-2).
+  discriminates: [empirical-risk, true-risk]
+
+- id: q-u2-l2-003
+  lesson: true-and-empirical-risk
+  concepts: [empirical-risk-minimization]
+  type: mc
+  difficulty: 1
+  source: "L4 p.11 poll"
+  prompt: |
+    True or false: for a given training set, the loss is only a function of $\theta$.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The course map's key is True. Once the pairs $(x^{(i)}, y^{(i)})$ are fixed numbers, every term of $\hat R(\theta)$ depends only on $\theta$ (def-2-2-3). Before the data are drawn, $\hat R(\theta)$ is also a random variable, which is how der-2-2-2 studies it; both views are used in this lesson.
+  discriminates: [empirical-risk-minimization, empirical-risk-unbiased]
+
+- id: q-u2-l2-004
+  lesson: true-and-empirical-risk
+  concepts: [empirical-risk-minimization]
+  type: mc
+  difficulty: 1
+  source: "L4 p.11 poll"
+  prompt: |
+    True or false: minimizing the loss function $\mathrm{loss}(\theta)$ with respect to $\theta$ is a problem of function minimization, which is an instance of optimization and can be solved using gradient descent.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The course map's key is True. Empirical risk minimization, $\hat\theta = \argmin_\theta \hat R(\theta)$, is minimization of a function of $\theta$ (def-2-2-3). Gradient descent applies when $\hat R$ is differentiable; it finds the global minimum for convex losses with a suitable step size (lessons 2.4 and 2.5).
+  discriminates: [empirical-risk-minimization]
+
+- id: q-u2-l2-005
+  lesson: true-and-empirical-risk
+  concepts: [empirical-risk, true-risk]
+  type: mc
+  difficulty: 1
+  source: "L4 p.11 poll"
+  prompt: |
+    True or false: the loss function quantifies the mismatch between the model output and the target function.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The course map's key is True, which is the professor's framing. One refinement from der-2-2-1: we never see the target function $g$, only the targets $y = g(x) + \varepsilon$, so the loss measures the mismatch with the observed targets. For squared loss the two versions differ by the constant $\sigma_\varepsilon^2$, so they have the same minimizer.
+  discriminates: [true-risk, risk-noise-floor]
+
+- id: q-u2-l2-006
+  lesson: true-and-empirical-risk
+  concepts: [empirical-risk]
+  type: mc
+  difficulty: 1
+  source: "L4 p.11 poll"
+  prompt: |
+    True or false: the error function should satisfy (1) $\mathrm{error}(f(X_i;\theta), g(X_i)) > 0$ if $f(X_i;\theta) = g(X_i)$, and (2) $\mathrm{error}(f(X_i;\theta), g(X_i)) = 0$ if $f(X_i;\theta) \ne g(X_i)$.
+  options:
+    - { text: "True", misconception: error-zero-when-wrong }
+    - { text: "False", correct: true }
+  explanation: |
+    The course map's key is False: the two conditions are reversed. An error is 0 when the prediction equals the target and positive when it does not, as squared, absolute, and 0-1 loss all are. Minimizing the reversed error would reward wrong predictions.
+  discriminates: [empirical-risk]
+
+- id: q-u2-l2-007
+  lesson: true-and-empirical-risk
+  concepts: [true-risk, empirical-risk]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A parameter $\theta$ is fixed before any patient is enrolled. Which statement about $R(\theta)$ and $\hat R(\theta)$ is correct?
+  options:
+    - { text: '$R(\theta)$ is a fixed number; $\hat R(\theta)$ is random because it depends on which patients enroll', correct: true }
+    - { text: 'Both are random, because both depend on the data' }
+    - { text: '$\hat R(\theta) = R(\theta)$ once $n$ is large, by the law of large numbers', misconception: lln-at-finite-n }
+    - { text: '$R(\theta)$ is random because $P$ is unknown; $\hat R(\theta)$ is fixed because it can be computed' }
+  explanation: |
+    $R(\theta)$ is an expectation under $P$ (def-2-2-1): unknown, but one number per $\theta$. $\hat R(\theta)$ is an average over the drawn sample, so it varies with the sample, with variance $\sigma_\theta^2/n$ (der-2-2-2). The law of large numbers makes large deviations unlikely as $n$ grows; it never makes them impossible at a finite $n$ (thm-2-2-1).
+  discriminates: [true-risk, empirical-risk, law-of-large-numbers]
+
+- id: q-u2-l2-008
+  lesson: true-and-empirical-risk
+  concepts: [true-risk]
+  type: mc
+  difficulty: 1
+  source: "L4 p.5 (slide notation)"
+  prompt: |
+    L4 p.5 writes the true risk as $R(\theta) = E_{(X,Y)\sim P}\,\mathrm{error}\big(f(X;\theta), g(\theta)\big)$. What is wrong?
+  options:
+    - { text: 'The second argument should be $g(X)$ (or the target $Y$): the true function depends on the input, not on the model''s parameters', correct: true }
+    - { text: 'Nothing: $g(\theta)$ is the true function evaluated at the best parameters', misconception: g-theta-typo }
+    - { text: 'The expectation should be over $\theta$, not over $(X, Y)$' }
+    - { text: 'The first argument should be $f(\theta)$' }
+  explanation: |
+    $g$ maps inputs to targets and knows nothing about our model's $\theta$. With $g(X)$ the expression is the density-weighted total error of der-2-2-1 step 3; with $Y$ it is def-2-2-1. For squared loss they differ by $\sigma_\varepsilon^2$ (eq-2-2-2).
+  discriminates: [true-risk]
+
+- id: q-u2-l2-009
+  lesson: true-and-empirical-risk
+  concepts: [true-risk]
+  type: mc
+  difficulty: 2
+  source: "L3 p.43 (slide notation)"
+  prompt: |
+    L3 p.43 defines the total error as $\int_{-\infty}^{\infty} \mathrm{error}\big(f(X;\theta), g(X)\big)\,dX$. Why does the true risk weight the integrand by the input density $p_X(x)$?
+  options:
+    - { text: 'So that inputs that patients actually have count more than inputs that almost never occur', correct: true }
+    - { text: 'It does not need to: every input should count equally, as on the slide', misconception: unweighted-total-error }
+    - { text: 'To make the integral equal to the empirical risk' }
+    - { text: 'Because the density cancels the noise $\varepsilon$' }
+  explanation: |
+    The quantity we care about is the error on the next patient, who is drawn from $P$. Weighting by $p_X$ turns the integral into $\mathbb{E}_X[\mathrm{error}]$ (der-2-2-1 steps 2 and 3). Unweighted, a BMI no patient has counts as much as a typical one, and for most errors the integral over the whole line diverges.
+  discriminates: [true-risk]
+
+- id: q-u2-l2-010
+  lesson: true-and-empirical-risk
+  concepts: [mean-predictor-optimism, training-risk-optimism]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    An outcome has variance $\sigma^2 = 64\ \text{mmHg}^2$. We predict it with a constant fitted by least squares on $n = 20$ patients, $\hat\theta = \bar y$. Averaged over many training sets, by how much does the true risk of $\hat\theta$ exceed its training risk, in $\text{mmHg}^2$?
+  answer: 6.4
+  tolerance: 0.01
+  seeded: { sigma2: [16, 36, 64, 100], n: [10, 20, 25, 50] }
+  formula: "2 * sigma2 / n"
+  explanation: |
+    By der-2-2-5, $\mathbb{E}[\hat R(\hat\theta)] = \frac{n-1}{n}\sigma^2$ and $\mathbb{E}[R(\hat\theta)] = \frac{n+1}{n}\sigma^2$, so the gap is $\frac{2\sigma^2}{n}$: half from the training risk falling below $\sigma^2$, half from the true risk rising above it.
+
+- id: q-u2-l2-011
+  lesson: true-and-empirical-risk
+  concepts: [law-of-large-numbers, empirical-risk-consistency]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The outcome is Gaussian and the prediction $\theta = \mu$ is fixed, so the per-patient squared loss has variance $2\sigma^4$. Using Chebyshev's bound (eq-2-2-4), what is the smallest $n$ that guarantees $\lvert \hat R(\mu) - R(\mu) \rvert < r\,\sigma^2$ with probability at least $1 - \delta$, for $r = 0.2$ and $\delta = 0.1$?
+  answer: 500
+  tolerance: 0.5
+  seeded: { r: [0.1, 0.2, 0.5], delta: [0.05, 0.1, 0.2] }
+  formula: "2 / (r * r * delta)"
+  explanation: |
+    Chebyshev with $\sigma_\theta^2 = 2\sigma^4$ and $\epsilon = r\sigma^2$ bounds the failure probability by $\frac{2\sigma^4}{n\,r^2\sigma^4} = \frac{2}{n r^2}$. Setting this at most $\delta$ gives $n \ge \frac{2}{r^2\delta}$. The scale $\sigma^2$ cancels, so the answer is the same for every Gaussian outcome.
+
+- id: q-u2-l2-012
+  lesson: true-and-empirical-risk
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-2-2-2
+  corrupt: { step: 9, replaceTex: '\Var\big(\hat R(\theta)\big) = \frac{n\,\sigma_\theta^2}{n^2} = \sigma_\theta^2', explanation: 'The sum of $n$ equal variances is $n\sigma_\theta^2$, and dividing by $n^2$ leaves $\sigma_\theta^2/n$, not $\sigma_\theta^2$. The corrupted step would say that averaging more examples never makes the estimate more precise, and the law of large numbers (der-2-2-3) would fail.' }
+
+- id: q-u2-l2-013
+  lesson: true-and-empirical-risk
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-2-2-5
+  corrupt: { step: 12, replaceTex: '\mathbb{E}\big[\hat R(\hat\theta)\big] = \sigma^2', explanation: 'The training risk at $\hat\theta = \bar Y$ is the sample variance that divides by $n$, measured around $\bar Y$, which sits closer to the data than $\mu$ does. Its expectation is $\frac{n-1}{n}\sigma^2$. Using $\sigma^2$ assumes the empirical risk is unbiased at the trained parameter, which is exactly what selection bias denies.' }
+
+- id: q-u2-l2-014
+  lesson: true-and-empirical-risk
+  concepts: [training-risk-optimism]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of der-2-2-4 (training risk is optimistic) in order.
+  items:
+    - 'On every dataset, $\hat R(\hat\theta) \le \hat R(\theta'')$ for every fixed $\theta''$, because $\hat\theta$ minimizes $\hat R$.'
+    - 'Take expectations and use unbiasedness at the fixed $\theta''$: $\mathbb{E}[\hat R(\hat\theta)] \le R(\theta'')$.'
+    - 'Choose $\theta'' = \theta^\star$: $\mathbb{E}[\hat R(\hat\theta)] \le R(\theta^\star)$.'
+    - 'On every dataset, $R(\theta^\star) \le R(\hat\theta)$, because $\theta^\star$ minimizes $R$.'
+    - 'Take expectations and chain: $\mathbb{E}[\hat R(\hat\theta)] \le R(\theta^\star) \le \mathbb{E}[R(\hat\theta)]$.'
+  explanation: |
+    Unbiasedness is applied only at a fixed parameter, never at $\hat\theta$; the best fixed parameter $\theta^\star$ is the bridge between the training risk and the true risk of the trained model.
+
+- id: q-u2-l2-015
+  lesson: true-and-empirical-risk
+  concepts: [mean-predictor-optimism, training-risk-optimism]
+  type: predict
+  difficulty: 2
+  source: "original"
+  prompt: |
+    In the true-vs-empirical-risk widget, the fitted mean $\hat\theta = \bar y$ is retrained on many resampled training sets of size $n$. Predict what happens to the average training risk and the average true risk as $n$ goes from 5 to 500.
+  options:
+    - { text: 'The average training risk rises toward $\sigma^2$ and the average true risk falls toward $\sigma^2$', correct: true }
+    - { text: 'Both stay at $\sigma^2$ for every $n$, because the empirical risk is unbiased', misconception: unbiased-at-trained-theta }
+    - { text: 'The average training risk falls toward 0 and the average true risk stays at $\sigma^2$', misconception: training-loss-is-risk }
+    - { text: 'Both fall toward 0' , misconception: risk-can-reach-zero }
+  explanation: |
+    By eq-2-2-6 the averages are $\frac{n-1}{n}\sigma^2$ and $\frac{n+1}{n}\sigma^2$: they approach the noise floor $\sigma^2$ from below and from above, and the gap $2\sigma^2/n$ closes. Unbiasedness holds only at a parameter fixed before the data (der-2-2-2 step 3), and no constant predicts the noise, so neither average reaches 0.
+  discriminates: [training-risk-optimism, empirical-risk-unbiased]
+
+- id: q-u2-l2-016
+  lesson: true-and-empirical-risk
+  concepts: [risk-noise-floor]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Data follow $Y = g(X) + \varepsilon$ with $\mathbb{E}[\varepsilon \mid X] = 0$ and $\Var(\varepsilon \mid X) = \sigma_\varepsilon^2 > 0$, and the model class happens to contain $g$. What is the smallest true risk under squared loss that any model in the class can achieve?
+  options:
+    - { text: '$\sigma_\varepsilon^2$, attained by $f_\theta = g$', correct: true }
+    - { text: '0, attained by $f_\theta = g$', misconception: risk-can-reach-zero }
+    - { text: '0, but only in the limit $n \to \infty$', misconception: risk-can-reach-zero }
+    - { text: '$\sigma_\varepsilon^2 / n$' }
+  explanation: |
+    By eq-2-2-2, $R(\theta) = \mathbb{E}_X[(f_\theta(X) - g(X))^2] + \sigma_\varepsilon^2$. The first term is zero at $f_\theta = g$; the second does not depend on $\theta$ or on $n$. The true risk is a property of the model and $P$, not of the training set size.
+  discriminates: [risk-noise-floor, true-risk]
+
+- id: q-u2-l2-017
+  lesson: true-and-empirical-risk
+  concepts: [empirical-risk-unbiased, training-risk-optimism]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    You fit $\hat\theta$ by minimizing the empirical risk on a training set. Which of these is an unbiased estimate of $R(\hat\theta)$?
+  options:
+    - { text: 'The average loss of $\hat\theta$ on fresh examples that played no part in training or model choice', correct: true }
+    - { text: 'The training risk $\hat R(\hat\theta)$, because the empirical risk is unbiased for every $\theta$', misconception: unbiased-at-trained-theta }
+    - { text: 'The training risk, as long as it is small', misconception: training-loss-is-risk }
+    - { text: 'The training risk averaged over the $n$ examples, which is the same as the true risk by the law of large numbers', misconception: lln-at-finite-n }
+  explanation: |
+    Conditional on the training set, $\hat\theta$ is a fixed parameter, and fresh i.i.d. pairs make der-2-2-2 apply verbatim. On the training pairs der-2-2-2 step 3 fails, because those pairs chose $\hat\theta$; thm-2-2-2 shows the training risk is biased low.
+  discriminates: [empirical-risk-unbiased, training-risk-optimism, selection-bias]
+
+# ---------- Lesson 2.3: gradients-and-optimality ----------
+# Poll items (L4 pp.23, 24, 42) use the course map's suggested keys
+# (docs/course-map/02-lectures-L4-L5.md, L4 poll section). The p.23 poll is "select all
+# that are true"; each statement is a separate true/false item. Numbers in original items
+# are toy values or the L4 companion's printed outputs. No live homework is involved.
+
+- id: q-u2-l3-001
+  lesson: gradients-and-optimality
+  concepts: [gradient-steepest-ascent, directional-derivative]
+  type: mc
+  difficulty: 1
+  source: "L4 p.23 poll"
+  prompt: |
+    $f(\theta)$ is a scalar function of a vector $\theta$. True or false: at any location $\theta$, there may be many directions in which we can step such that $f$ increases.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False: only a step along the gradient increases $f$", misconception: only-gradient-increases }
+  explanation: |
+    The slope along a unit direction $u$ is $\nabla f(\theta)^\top u = \lVert \nabla f(\theta) \rVert \cos\varphi$ (der-2-3-3 step 7). It is positive for every $u$ within $90^\circ$ of the gradient, half of all directions. The gradient is only the steepest of them.
+  discriminates: [gradient-steepest-ascent, directional-derivative]
+
+- id: q-u2-l3-002
+  lesson: gradients-and-optimality
+  concepts: [gradient-steepest-ascent]
+  type: mc
+  difficulty: 1
+  source: "L4 p.23 poll"
+  prompt: |
+    $f(\theta)$ is a scalar function of a vector $\theta$. True or false: the direction of the gradient is the direction in which the function increases the fastest.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    By Cauchy–Schwarz, $\nabla f(\theta)^\top u \le \lVert \nabla f(\theta) \rVert$ for every unit $u$, with equality only at $u = \nabla f(\theta)/\lVert \nabla f(\theta) \rVert$ (der-2-3-3 steps 2 to 5). The statement assumes $\nabla f(\theta) \ne 0$; at a critical point every direction has slope 0.
+
+- id: q-u2-l3-003
+  lesson: gradients-and-optimality
+  concepts: [gradient]
+  type: mc
+  difficulty: 1
+  source: "L4 p.24 poll"
+  prompt: |
+    $y = f(X)$ is a scalar function of an $N \times 1$ column vector variable $X$. What is the shape of the gradient of $y$ with respect to $X$?
+  options:
+    - { text: "Scalar" }
+    - { text: "$N \\times 1$ column vector", correct: true }
+    - { text: "$1 \\times N$ row vector", misconception: gradient-row-vector }
+  explanation: |
+    The course defines the gradient as the column of partial derivatives, the same shape as the variable (L4 p.15, def-2-3-2). That is what makes $\theta - \eta \nabla f(\theta)$ a valid update and $\nabla f^\top \Delta\theta$ a scalar. The poll writes $N$ for the dimension; we write $d$.
+  discriminates: [gradient, derivative]
+
+- id: q-u2-l3-004
+  lesson: gradients-and-optimality
+  concepts: [steepest-descent-direction]
+  type: mc
+  difficulty: 1
+  source: "L4 p.42 poll"
+  prompt: |
+    $y = f(X)$ is a scalar function of an $N \times 1$ column vector $X$. Starting from $X = X^0$, in which direction must we move in the space of $X$ to achieve the maximum decrease in $f$?
+  options:
+    - { text: "Exactly in the direction of the gradient at $X^0$" }
+    - { text: "Exactly perpendicular to the gradient at $X^0$" }
+    - { text: "Exactly opposite to the gradient at $X^0$", correct: true }
+  explanation: |
+    The slope along a unit $u$ is at least $-\lVert \nabla f(X^0) \rVert$, with equality only at $u = -\nabla f(X^0)/\lVert \nabla f(X^0) \rVert$ (der-2-3-3 step 6). The gradient direction is the maximum increase, and perpendicular directions run along the level set, where the first-order change is 0 (der-2-3-4).
+
+- id: q-u2-l3-005
+  lesson: gradients-and-optimality
+  concepts: [gradient-steepest-ascent]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    At a point $\theta$, $\nabla f(\theta) = (6, 8)^\top$. Over all unit vectors $u$, what is the largest possible directional derivative $D_u f(\theta)$?
+  answer: 10
+  tolerance: 0.01
+  seeded: { a: [3, 5, 6, 8], b: [4, 8, 12, 15] }
+  formula: "(a**2 + b**2) ** 0.5"
+  explanation: |
+    The maximum of $\nabla f(\theta)^\top u$ over unit $u$ is $\lVert \nabla f(\theta) \rVert = \sqrt{a^2 + b^2}$, reached at $u = \nabla f(\theta)/\lVert \nabla f(\theta) \rVert$ (der-2-3-3 steps 3 and 4), where $(a, b)$ are the two entries of the gradient.
+
+- id: q-u2-l3-006
+  lesson: gradients-and-optimality
+  concepts: [directional-derivative, local-linear-approximation]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    At a point $\theta$, $\nabla f(\theta) = (2, -3)^\top$. What is the directional derivative of $f$ at $\theta$ along the unit vector $u = (0.6, 0.8)^\top$?
+  answer: -1.2
+  tolerance: 0.001
+  seeded: { a: [-5, 2, 4, 10], b: [-3, 1, 5, 6] }
+  formula: "0.6 * a + 0.8 * b"
+  explanation: |
+    $u$ has length 1, since $0.6^2 + 0.8^2 = 1$. By der-2-3-1, $D_u f(\theta) = \nabla f(\theta)^\top u = 0.6a + 0.8b$, where $(a, b)$ are the gradient's entries. A negative value means $f$ decreases to first order along $u$.
+
+- id: q-u2-l3-007
+  lesson: gradients-and-optimality
+  concepts: [hessian-test-local-extrema, saddle-point]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    At a point $\theta^\star$, $\nabla f(\theta^\star) = 0$ and $\nabla^2 f(\theta^\star) = \begin{bmatrix} 1 & 2 \\ 2 & 1 \end{bmatrix}$. What is $\theta^\star$?
+  options:
+    - { text: "A saddle point", correct: true }
+    - { text: "A strict local minimum, because both diagonal entries are positive", misconception: diagonal-implies-pd }
+    - { text: "A local minimum, because the gradient is zero", misconception: zero-gradient-means-min }
+    - { text: "A strict local maximum" }
+  explanation: |
+    The eigenvalues are $1 + 2 = 3$ along $(1, 1)$ and $1 - 2 = -1$ along $(1, -1)$. Eigenvalues of both signs give a saddle (der-2-3-7 steps 3 to 6): $f$ rises along $(1, 1)$ and falls along $(1, -1)$. The diagonal only measures curvature along the coordinate axes.
+  discriminates: [hessian-test-local-extrema, saddle-point]
+
+- id: q-u2-l3-008
+  lesson: gradients-and-optimality
+  concepts: [hessian-test-local-extrema, critical-point]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    For $f(\theta) = \theta^4$ we have $f'(0) = 0$ and $f''(0) = 0$. What can you conclude about $\theta = 0$?
+  options:
+    - { text: "The second-order test is silent; checking $f$ directly shows a strict global minimum", correct: true }
+    - { text: "It is an inflection point, because $f''(0) = 0$", misconception: singular-hessian-decides }
+    - { text: "It is a local maximum, because $f''(0)$ is not positive" }
+    - { text: "It is not a critical point" }
+  explanation: |
+    With a zero second derivative the quadratic term of the expansion vanishes and the remainder decides (der-2-3-6 step 2). $\theta^4 > 0$ for $\theta \ne 0$, so 0 is a strict global minimum; $-\theta^4$ and $\theta^3$ have the same $f'(0)$ and $f''(0)$ but a maximum and an inflection point.
+  discriminates: [hessian-test-local-extrema, critical-point]
+
+- id: q-u2-l3-009
+  lesson: gradients-and-optimality
+  concepts: [gradient-orthogonal-level-sets, level-set]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    $f(\theta) = \theta_1^2 + \theta_2^2$. The point $(3, 4)$ lies on the level set $f = 25$. Which vector is tangent to that level set at $(3, 4)$?
+  options:
+    - { text: "$(-4, 3)$", correct: true }
+    - { text: "$(3, 4)$" }
+    - { text: "$(4, 3)$" }
+    - { text: "$(1, 1)$" }
+  explanation: |
+    $\nabla f(3, 4) = (6, 8)^\top$, and tangent vectors are perpendicular to the gradient (der-2-3-4). $(6)(-4) + (8)(3) = 0$, while the other options have nonzero inner product with $(6, 8)$. $(3, 4)$ is the gradient's own direction, the steepest way off the circle.
+
+- id: q-u2-l3-010
+  lesson: gradients-and-optimality
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-2-3-2
+  corrupt: { step: 3, replaceTex: '0 \le \lVert a \rVert^2 - \lambda\, a^\top b + \lambda^2 \lVert b \rVert^2', explanation: 'Expanding $(a - \lambda b)^\top (a - \lambda b)$ produces two cross terms, $-\lambda a^\top b$ and $-\lambda b^\top a$, which are equal. Keeping only one cross term loses the factor 2. With $\lambda^\star = a^\top b/\lVert b \rVert^2$ the bound collapses to $0 \le \lVert a \rVert^2$, which says nothing about $a^\top b$.' }
+
+- id: q-u2-l3-011
+  lesson: gradients-and-optimality
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-2-3-5
+  corrupt: { step: 5, replaceTex: '\frac{g(t) - g(0)}{t} \ge 0', explanation: 'For $t < 0$ the numerator is still nonnegative but the denominator is negative, so the quotient is $\le 0$. Without that sign flip the proof only gives $g''(0) \ge 0$ from both sides and never reaches $g''(0) = 0$.' }
+
+- id: q-u2-l3-012
+  lesson: gradients-and-optimality
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-2-3-6
+  corrupt: { step: 4, replaceTex: '\sum_{k=1}^{d} \lambda_k z_k^2 \ge \lambda_{\max} \sum_{k=1}^{d} z_k^2', explanation: 'Each $\lambda_k$ is at most $\lambda_{\max}$, so replacing every eigenvalue by $\lambda_{\max}$ gives an upper bound, not a lower bound. The lower bound uses the smallest eigenvalue, which is why positive definiteness, $\lambda_{\min} > 0$, is exactly what the proof needs.' }
+
+- id: q-u2-l3-014
+  lesson: gradients-and-optimality
+  concepts: [steepest-descent-direction]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The L4 companion's toy loss $\ell(\theta) = \tfrac12 (2\theta_1 - 2)^2 + \tfrac12 (\theta_0 - 3)^2$ has its minimum at $\theta^\star = (3, 1)$, and autograd reports $\nabla \ell(-2, 3) = (-5, 8)$. Does the steepest-descent direction at $(-2, 3)$ point at $\theta^\star$?
+  options:
+    - { text: "No: $-\\nabla \\ell = (5, -8)$, while $\\theta^\\star - \\theta = (5, -2)$; they are about $36^\\circ$ apart", correct: true }
+    - { text: "Yes: the negative gradient always points at the minimizer", misconception: gradient-points-to-optimum }
+    - { text: "Yes, but only if the step size is small enough" }
+    - { text: "No: the steepest-descent direction is $(-5, 8)$" }
+  explanation: |
+    Steepest descent is a statement about the slope at $\theta$ (der-2-3-3), not about where the bottom is. The curvature is 4 along $\theta_1$ and 1 along $\theta_0$, so the gradient overweights $\theta_1$. The step size changes how far you move, not the direction. Only for circular level sets does $-\nabla \ell$ aim at the minimizer.
+  discriminates: [steepest-descent-direction, gradient-steepest-ascent]
+
+# ---------- Lesson 2.4: gradient-descent ----------
+# Poll items carry source "L4 p.<k> poll" and the course map's key (docs/course-map/02-lectures-L4-L5.md, L4 poll section).
+# The L4 p.42 poll is q-u2-l3-004 in lesson 2.3's bank; this lesson's <Check> reuses it. The L4 p.37 discussion prompt is item 003 (source "original", key is our reading).
+
+- id: q-u2-l4-002
+  lesson: gradient-descent
+  concepts: [gradient-descent]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    To minimize $\hat R$, a learner codes the update $\theta^{(t+1)} = \theta^{(t)} + \eta\,\nabla_\theta \hat R(\theta^{(t)})$ with $\eta > 0$. For a small $\eta$ and a nonzero gradient, what does each step do?
+  options:
+    - { text: "It increases $\\hat R$: this is gradient ascent", correct: true }
+    - { text: "It decreases $\\hat R$ faster than the minus sign would", misconception: gd-sign-error }
+    - { text: "It decreases $\\hat R$ at the same rate; the sign only flips the path", misconception: gd-sign-error }
+    - { text: "It leaves $\\hat R$ unchanged to first order" }
+  explanation: |
+    To first order, $\hat R(\theta + \eta\nabla\hat R) \approx \hat R(\theta) + \eta\lVert\nabla\hat R\rVert^2$ (der-2-4-2 step 4 with the sign of the step reversed), which is larger than $\hat R(\theta)$ whenever the gradient is not zero. Descent needs the minus sign (def-2-4-1).
+
+- id: q-u2-l4-003
+  lesson: gradient-descent
+  concepts: [gradient-descent]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    L4 p.37 asks: "Why do we want to yield the largest change in the objective function?" Which statement about descent directions is correct?
+  options:
+    - { text: "Any direction $d$ with $\\nabla \\hat R(\\theta)^\\top d < 0$ lowers $\\hat R$ for a short enough step; $-\\nabla \\hat R$ gives the largest first-order decrease per unit of step length, so it is the greedy local choice", correct: true }
+    - { text: "Only $-\\nabla \\hat R$ lowers $\\hat R$; every other direction raises it" }
+    - { text: "Stepping along $-\\nabla \\hat R$ guarantees the fewest iterations to reach the minimum" }
+    - { text: "The largest change is wanted because it makes every step land exactly on the minimum" }
+  explanation: |
+    The slide poses this as a discussion question; the key is our reading. A small step $\Delta$ changes $\hat R$ by about $\nabla\hat R^\top\Delta$, so every direction at an angle of more than 90° to the gradient helps (compare the L4 p.23 poll: many directions increase $f$). Steepest descent is best only locally. Over many steps it can zigzag across a narrow valley and need more iterations than a better-scaled direction, which lesson 2.5 shows.
+
+- id: q-u2-l4-004
+  lesson: gradient-descent
+  concepts: [gd-fixed-points]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Gradient descent with a fixed $\eta > 0$ on a loss with a continuous gradient converges: $\theta^{(t)} \to \bar\theta$. What can you conclude about $\bar\theta$ without further assumptions?
+  options:
+    - { text: "$\\nabla \\hat R(\\bar\\theta) = 0$: it is a critical point", correct: true }
+    - { text: "It is the global minimizer of $\\hat R$", misconception: gd-fixed-point-is-minimum }
+    - { text: "It is a local minimizer of $\\hat R$", misconception: gd-fixed-point-is-minimum }
+    - { text: "Nothing: the limit of the iterates can have any gradient" }
+  explanation: |
+    Take $t \to \infty$ in the update: $\bar\theta = \bar\theta - \eta\nabla\hat R(\bar\theta)$, so $\nabla\hat R(\bar\theta) = 0$ (der-2-4-1 steps 5–9). Saddle points and maxima are critical points too (thm-2-3-4), so "minimum" needs more, such as convexity.
+  discriminates: [gd-fixed-points]
+
+- id: q-u2-l4-005
+  lesson: gradient-descent
+  concepts: [gd-stopping-rules]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A gradient-descent run uses $\eta = 0.1$. At iteration $t$ the gradient has norm $\lVert\nabla \hat R(\theta^{(t)})\rVert = 0.002$. What is the length of the next step, $\lVert\theta^{(t+1)} - \theta^{(t)}\rVert$?
+  answer: 0.0002
+  tolerance: 0.0000001
+  seeded: { eta: [0.01, 0.05, 0.1, 0.5], g: [0.002, 0.004, 0.02] }
+  formula: "eta * g"
+  explanation: |
+    The step is $-\eta\nabla\hat R(\theta^{(t)})$, and the norm of a scalar multiple is the absolute value of the scalar times the norm, so $\lVert\theta^{(t+1)} - \theta^{(t)}\rVert = \eta\,\lVert\nabla\hat R(\theta^{(t)})\rVert$ (der-2-4-2 step 2). The step length is the gradient norm scaled by the learning rate.
+
+- id: q-u2-l4-006
+  lesson: gradient-descent
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-2-4-2
+  corrupt: { step: 2, replaceTex: '\lVert\theta^{(t+1)} - \theta^{(t)}\rVert = \eta\,\lVert\nabla F(\theta^{(t)})\rVert^2', explanation: 'Taking the norm of $-\eta\,\nabla F$ gives $\lvert -\eta\rvert\,\lVert\nabla F\rVert$: a scalar multiple scales the norm, it does not square it. The squared norm belongs to the loss change (step 7), not the parameter change.' }
+
+- id: q-u2-l4-007
+  lesson: gradient-descent
+  concepts: [gd-stopping-rules, autograd-gd-loop]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The L4 companion loops `while torch.linalg.norm(theta - theta_prev) > 1e-5` with `step_size = 0.1`. In terms of the gradient at the last iterate, the loop stops once
+  options:
+    - { text: "$\\lVert\\nabla \\hat R\\rVert \\le 10^{-4}$", correct: true }
+    - { text: "$\\lVert\\nabla \\hat R\\rVert \\le 10^{-5}$", misconception: stopping-rule-confusion }
+    - { text: "$\\lVert\\nabla \\hat R\\rVert \\le 10^{-6}$", misconception: stopping-rule-confusion }
+    - { text: "$\\lvert \\hat R(\\theta^{(t+1)}) - \\hat R(\\theta^{(t)})\\rvert \\le 10^{-5}$", misconception: stopping-rule-confusion }
+  explanation: |
+    The parameter change is $\eta\lVert\nabla\hat R\rVert$ (der-2-4-2 step 2), so $\eta\lVert\nabla\hat R\rVert \le 10^{-5}$ with $\eta = 0.1$ means $\lVert\nabla\hat R\rVert \le 10^{-4}$ (step 3). The loss-change rule is a different test, roughly $\eta\lVert\nabla\hat R\rVert^2$ (step 7); the slide's pseudocode on p.45 uses it, the real code on p.46 does not.
+
+- id: q-u2-l4-008
+  lesson: gradient-descent
+  concepts: [gd-convergence-behavior]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Which statement about gradient descent with a fixed learning rate is true?
+  options:
+    - { text: "On a differentiable convex loss with an appropriate step size it reaches the minimum; on a non-convex loss it may settle at a local minimum or another critical point", correct: true }
+    - { text: "It converges for every $\\eta > 0$; a poor $\\eta$ only makes it slower", misconception: gd-always-converges }
+    - { text: "Run long enough, it always reaches the global minimum", misconception: gd-always-converges }
+    - { text: "Whenever it stops, the point it stops at is a local minimum", misconception: gd-fixed-point-is-minimum }
+  explanation: |
+    L4 p.41 states the convex/non-convex guarantee, and der-2-4-1 shows why a limit must be a critical point, which on a non-convex loss need not be a minimum. L4 p.47 shows the step size can also make the iterates jitter or diverge on a bowl; lesson 2.5 derives the threshold.
+
+- id: q-u2-l4-009
+  lesson: gradient-descent
+  concepts: [mse-gradient]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    With $X \in \mathbb{R}^{n \times (d+1)}$, $\theta \in \mathbb{R}^{d+1}$, and $\hat R(\theta) = \frac{1}{n}\lVert X\theta - y\rVert^2$, which expression is $\nabla_\theta \hat R(\theta)$, written with the right shape?
+  options:
+    - { text: "$\\frac{2}{n}X^\\top(X\\theta - y)$, a $(d+1) \\times 1$ column", correct: true }
+    - { text: "$\\frac{2}{n}(X\\theta - y)^\\top X$, a $1 \\times (d+1)$ row", misconception: mse-gradient-transpose }
+    - { text: "$\\frac{2}{n}X(X\\theta - y)$", misconception: mse-gradient-transpose }
+    - { text: "$\\frac{2}{n}(X\\theta - y)$, an $n \\times 1$ column" }
+  explanation: |
+    der-2-4-3 gives $\frac{2}{n}X^\top(X\theta - y)$: $(d+1)\times n$ times $n \times 1$, one entry per parameter. The row version has the right numbers but the wrong shape for $\theta - \eta\nabla\hat R$; $X(X\theta - y)$ does not multiply ($n \times (d+1)$ times $n \times 1$); $\frac{2}{n}(X\theta - y)$ has one entry per example, not per parameter.
+
+- id: q-u2-l4-010
+  lesson: gradient-descent
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-2-4-3
+  corrupt: { step: 7, replaceTex: '\nabla_\theta\, (X^\top y)^\top\theta = y^\top X', explanation: 'With $b = X^\top y$, $\nabla_\theta\, b^\top\theta = b = X^\top y$, a column with one entry per parameter. $y^\top X$ is its transpose, a row, and subtracting it from the column $2X^\top X\theta$ in step 9 would not be defined.' }
+
+- id: q-u2-l4-011
+  lesson: gradient-descent
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-2-4-4
+  corrupt: { step: 4, replaceTex: '\frac{\partial\, \theta^\top x^{(i)}}{\partial \theta_j} = \theta_j', explanation: 'We differentiate with respect to the parameter $\theta_j$, so its coefficient $x^{(i)}_j$ remains. $\theta_j$ is the derivative with respect to the feature $x_j$ (the slope of der-1-2-2), the wrong variable here.' }
+
+- id: q-u2-l4-012
+  lesson: gradient-descent
+  concepts: [mse-gradient, lms-update]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Toy numbers: one training example $(x, y) = (2, 4)$, the model $f_\theta(x) = \theta x$ with no intercept, and $\hat R(\theta) = (\theta x - y)^2$. Starting from $\theta^{(0)} = 0$ with $\eta = 0.1$, compute $\theta^{(1)}$.
+  answer: 1.6
+  tolerance: 0.0001
+  seeded: { eta: [0.05, 0.1, 0.2], x: [1, 2, 3], y: [1, 2, 4] }
+  formula: "2 * eta * x * y"
+  explanation: |
+    der-2-4-4 step 5 with one parameter gives $\hat R'(\theta) = 2(\theta x - y)\,x$. At $\theta = 0$ this is $-2xy$, so $\theta^{(1)} = 0 - \eta(-2xy) = 2\eta x y$. The step moves $\theta$ up from 0, in the direction of the exact fit $y/x$; whether it stops short of $y/x$ or passes it depends on $\eta x^2$, which lesson 2.5 analyzes.
+
+- id: q-u2-l4-013
+  lesson: gradient-descent
+  concepts: [gd-on-empirical-risk, learning-rate]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    In the companion's loop on $n = 20$ patients you replace `mse_loss` (the mean of the squared residuals) by their sum and keep `step_size = 0.1`. What changes?
+  options:
+    - { text: "The minimizer is the same, but every gradient is 20 times larger, so the run behaves like the mean with $\\eta = 2$", correct: true }
+    - { text: "Nothing: $\\eta = 0.1$ produces the same steps for either loss", misconception: scale-free-learning-rate }
+    - { text: "The minimizer moves, because the loss function changed" }
+    - { text: "Every step becomes 20 times shorter" }
+  explanation: |
+    The sum is $n\hat R(\theta)$: multiplying by a positive constant does not move the minimizer, but it multiplies the gradient by $n$. The step $\eta\,\nabla(n\hat R) = (n\eta)\,\nabla\hat R$ is the mean's step with learning rate $n\eta = 2$. A rate that converges for the mean can diverge for the sum.
+
+- id: q-u2-l4-014
+  lesson: gradient-descent
+  concepts: [autograd, chain-rule-calculus]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    For the companion's toy loss $\ell(\theta) = 0.5\,(2\theta_1 - 2)^2 + 0.5\,(\theta_0 - 3)^2$, autograd at $\theta = (-2, 3)$ returns $\partial\ell/\partial\theta_1 = 8$. What does it return for $\partial\ell/\partial\theta_1$ at $\theta = (\theta_0, \theta_1) = (-2, 5)$?
+  answer: 16
+  tolerance: 0
+  seeded: { t1: [-1, 0, 2, 5, 7] }
+  formula: "4 * t1 - 4"
+  explanation: |
+    By the chain rule, $\partial\ell/\partial\theta_1 = (2\theta_1 - 2)\cdot 2 = 4\theta_1 - 4$ (der-2-4-6 step 4). It does not involve $\theta_0$, because $\theta_1$ reaches $\ell$ only through $u = 2\theta_1 - 2$.
+
+- id: q-u2-l4-015
+  lesson: gradient-descent
+  concepts: [autograd]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    After the companion's cells 8 and 10, `theta_tensor.grad` is `tensor([-5., 8.])`. You recompute `f` from the same `theta_tensor` and call `f.backward()` again, without resetting the gradient. What does `theta_tensor.grad` hold now?
+  options:
+    - { text: "`tensor([-10., 16.])`", correct: true }
+    - { text: "`tensor([-5., 8.])`", misconception: grad-accumulates }
+    - { text: "`tensor([0., 0.])`" }
+    - { text: "An error: `.backward()` can be called only once per tensor" }
+  explanation: |
+    `.backward()` adds the new gradient to `.grad`, so the same gradient twice gives twice the gradient. Recomputing `f` builds a new graph, so the second call is allowed. In-place training loops call `optimizer.zero_grad()` before each backward pass; the companion's loop avoids the issue by creating a new `theta` tensor every iteration.
+
+- id: q-u2-l4-016
+  lesson: gradient-descent
+  concepts: [autograd-gd-loop]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put one iteration of the L4 p.46 gradient-descent loop in order.
+  items:
+    - 'Save the current parameters: `theta_prev = theta`.'
+    - 'Forward pass: `prediction = f(X_train, theta)` and `loss = mse_loss(prediction, y_train)`.'
+    - 'Backward pass: `loss.backward()` fills `theta.grad` with $\nabla\hat R(\theta^{(t)})$.'
+    - 'Inside `torch.no_grad()`: `theta = theta_prev - step_size * theta.grad`.'
+    - 'Mark the new tensor for the next forward pass: `theta.requires_grad_()`.'
+    - 'Test the stopping rule: `torch.linalg.norm(theta - theta_prev) > threshold`.'
+  explanation: |
+    The gradient must exist before the update uses it, and the update must not be recorded, so it runs inside `no_grad()`. The new tensor then needs `requires_grad` again, and the loop test compares it with the saved parameters (the parameter-change criterion, def-2-4-4).
+
+- id: q-u2-l4-017
+  lesson: gradient-descent
+  concepts: [lsq-gradient-hessian-form, gd-stopping-rules]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    The companion's run on 20 diabetes patients stops at slope 3.714, while least squares gives 3.738; the intercepts agree (0.458). At the stop, $\lVert\nabla \hat R\rVert \le 10^{-4}$. Why did it stop with the slope still off by 0.024?
+  options:
+    - { text: "The bowl is very flat along the slope, so by $\\nabla\\hat R = H(\\theta - \\theta^\\star)$ the gradient is tiny there even 0.024 away", correct: true }
+    - { text: "It did not stop short: a gradient below $10^{-4}$ means $\\theta$ is within about $10^{-4}$ of $\\theta^\\star$", misconception: small-gradient-near-optimum }
+    - { text: "It converged to a different local minimum of the MSE" }
+    - { text: "Float64 rounding error dominates at this scale" }
+  explanation: |
+    der-2-4-5 gives $\nabla\hat R(\theta) = H(\theta - \theta^\star)$ with $H = \frac{2}{n}X^\top X$. The raw `bmi` feature is small, so the curvature along the slope, $\frac{2}{n}\sum_i (x^{(i)}_{\text{bmi}})^2$, is small: a slope-entry gradient of at most $10^{-4}$ at a slope error of 0.0237 bounds it at about $10^{-4}/0.0237 \approx 0.0042$, against 2 along the intercept. The MSE is convex, so there is no other local minimum, and the gap is far above rounding error.
+
+- id: q-u2-l4-018
+  lesson: gradient-descent
+  concepts: [lms-update]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    For $\hat R(\theta) = \frac{1}{n}\sum_i (\theta^\top x^{(i)} - y^{(i)})^2$, what does example $i$ contribute to $\nabla_\theta\hat R(\theta)$?
+  options:
+    - { text: "$\\frac{2}{n}\\big(\\theta^\\top x^{(i)} - y^{(i)}\\big)\\, x^{(i)}$", correct: true }
+    - { text: "$\\frac{2}{n}\\big(\\theta^\\top x^{(i)} - y^{(i)}\\big)\\, \\theta$" }
+    - { text: "$\\frac{2}{n}\\big(\\theta^\\top x^{(i)} - y^{(i)}\\big)$" }
+    - { text: "$\\frac{1}{n}\\big(\\theta^\\top x^{(i)} - y^{(i)}\\big)^2 x^{(i)}$" }
+  explanation: |
+    Chain rule (der-2-4-4 steps 3–5): the outer square contributes $2\times$ the residual, the inner linear function contributes $x^{(i)}$, and the average contributes $\frac1n$. Each example pulls $\theta$ along its own feature vector, weighted by its residual (eq. 2.4.4).
+
+- id: q-u2-l4-019
+  lesson: gradient-descent
+  concepts: [gradient-descent]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Spot the error. L4 p.34 writes: if $f'(X^k) > 0$, $X^{k+1} = X^k - \Delta X$; else $X^{k+1} = X^k + \Delta X$; with $\Delta X = \eta^k f'(X^k)$ and $\eta^k > 0$. At a point where $f'(X^k) < 0$, what does this rule do?
+  options:
+    - { text: "It moves left, which is uphill because the function falls to the right", correct: true }
+    - { text: "It moves right, downhill, as intended", misconception: sign-case-step }
+    - { text: "It does not move, because the else branch cancels the sign" }
+    - { text: "It moves right, but by $2\\Delta X$" }
+  explanation: |
+    With $f'(X^k) < 0$, $\Delta X = \eta^k f'(X^k)$ is negative, so $X^k + \Delta X < X^k$: a step left, against the descent direction. The fix is $\Delta X = \eta^k\lvert f'(X^k)\rvert$, which makes both branches equal to $X^{k+1} = X^k - \eta^k f'(X^k)$, the update handwritten on the same slide.
+
+# ---------- Lesson 2.5: step-size-and-conditioning ----------
+# Poll: L5 p.12 (the only Poll Everywhere question on L4 pp.48-53 and L5 pp.3-16), item q-u2-l5-001,
+# keyed as in docs/course-map/02-lectures-L4-L5.md.
+
+- id: q-u2-l5-001
+  lesson: step-size-and-conditioning
+  concepts: [step-size-regimes, large-step-basin-escape, learning-rate-decay-schedules]
+  type: mc
+  difficulty: 2
+  source: "L5 p.12 poll"
+  prompt: |
+    Select all correct statements.
+  options:
+    - { text: 'Step sizes greater than twice the inverse of the second derivative can cause gradient descent to diverge.', correct: true }
+    - { text: 'Diverging gradient is always a bad thing.', misconception: divergence-always-bad }
+    - { text: 'Gradient descent will not converge without decaying learning rates.', misconception: needs-decay-to-converge }
+    - { text: 'When the dataset size is large, we always want to start with a relatively small learning rate so that gradient descent will not explode.', misconception: eta-depends-on-n-or-d }
+    - { text: 'When the dimension of the dataset is large, we always want to start with a relatively small learning rate so that gradient descent will not explode.', misconception: eta-depends-on-n-or-d }
+    - { text: 'When the dimension of the model is large, we always want to start with a relatively small learning rate so that gradient descent will not explode.', misconception: eta-depends-on-n-or-d }
+  explanation: |
+    Only the first statement is true (the course map's key). On a parabola the error is multiplied by $1 - \eta a$ each step, and $a = E''$, so $\eta > 2/E'' = 2\eta_{opt}$ makes $\lvert 1 - \eta a \rvert > 1$ (der-2-5-2 step 8). A large step can help leave a sharp basin (L5 p.10, der-2-5-6 step 6), so divergence is not always bad. A fixed $\eta < 2/\lambda_{\max}$ converges with exact gradients (der-2-5-4), so decay is not required. The stability bound is set by the Hessian's largest eigenvalue, which depends on feature scales and correlations, not on $n$, the number of features, or the number of parameters; with the $\frac1n$ kept, the Hessian is an average and does not grow with $n$.
+  discriminates: [step-size-regimes, large-step-basin-escape]
+
+- id: q-u2-l5-002
+  lesson: step-size-and-conditioning
+  concepts: [robbins-monro-conditions, learning-rate-decay-schedules]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Which schedule satisfies both Robbins–Monro conditions $\sum_t \eta_t = \infty$ and $\sum_t \eta_t^2 < \infty$?
+  options:
+    - { text: '$\eta_t = \eta_0/(t+1)$', correct: true }
+    - { text: '$\eta_t = \eta_0/(t+1)^2$', misconception: any-decay-converges }
+    - { text: '$\eta_t = \eta_0 e^{-\beta t}$ with $\beta > 0$', misconception: any-decay-converges }
+    - { text: 'A constant $\eta_t = \eta_0$', misconception: sgd-constant-step-converges }
+  explanation: |
+    The harmonic series diverges and $\sum 1/(t+1)^2 = \pi^2/6$ is finite, so $\eta_0/(t+1)$ passes both (der-2-5-8 steps 4 and 7). Inverse-square and exponential decay have finite sums (steps 5 and 6), so the iterates can travel only a bounded distance. A constant step has $\sum \eta_t^2 = \infty$: with noisy gradients it never stops jittering.
+  discriminates: [robbins-monro-conditions]
+
+- id: q-u2-l5-003
+  lesson: step-size-and-conditioning
+  concepts: [learning-rate-decay-schedules]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A geometric schedule $\eta_t = \eta_0\, r^t$ uses $\eta_0 = 0.5$ and $r = 0.9$. What is the total step length $\sum_{t=0}^{\infty} \eta_t$? (If every gradient along the path has norm at most 1, this bounds how far the iterates can ever move.)
+  answer: 5
+  tolerance: 0.01
+  seeded: { eta0: [0.1, 0.2, 0.5, 1], r: [0.5, 0.8, 0.9, 0.95] }
+  formula: "eta0 / (1 - r)"
+  explanation: |
+    A geometric series with ratio $r < 1$ sums to $\eta_0/(1 - r)$ (der-2-5-8 step 6, with $r = e^{-\beta}$). With gradient norms at most $G = 1$, step 2 of der-2-5-8 says the iterates never get farther than this total from where they started, so a minimum farther away than that is never reached.
+  discriminates: [learning-rate-decay-schedules]
+
+- id: q-u2-l5-004
+  lesson: step-size-and-conditioning
+  concepts: [single-rate-stability-bound]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A least-squares model is trained by gradient descent on $\hat R(\theta) = \frac1n\lVert X\theta - y\rVert_2^2$ with a step size just below the stability limit. You collect four times as many patients from the same population and retrain. What happens to the largest stable step size?
+  options:
+    - { text: 'It stays about the same: the Hessian $\frac2n X^\top X$ is an average, so its largest eigenvalue does not grow with $n$', correct: true }
+    - { text: 'It shrinks by about a factor of 4, because the loss sums four times as many terms', misconception: eta-depends-on-n-or-d }
+    - { text: 'It grows by about a factor of 4, because the gradient is averaged over more examples', misconception: eta-depends-on-n-or-d }
+    - { text: 'It shrinks by about a factor of 2, like a standard error' }
+  explanation: |
+    The bound is $2/\lambda_{\max}(H)$ (eq. 2.5.2). With the $\frac1n$ kept, $H = \frac2n X^\top X$ has entries that are twice the mean products of columns, which settle to population values as $n$ grows. Only if you drop the $\frac1n$ and minimize the sum does the Hessian, and the needed shrinkage of $\eta$, scale with $n$.
+  discriminates: [single-rate-stability-bound]
+
+- id: q-u2-l5-005
+  lesson: step-size-and-conditioning
+  concepts: [best-fixed-step-size, condition-number]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A convex quadratic has $\lambda_{\max} = 1000$ and $\lambda_{\min} = 1$. To be safe you use $\eta = 10^{-5}$ instead of the best fixed step $\eta^\star = 2/1001$. What happens?
+  options:
+    - { text: 'It converges, but the flat direction shrinks by $10^{-5}$ of its error per step instead of about $2 \times 10^{-3}$, so it needs roughly 200 times as many steps', correct: true }
+    - { text: 'Nothing is lost: a smaller step is always safer, and the extra cost is negligible', misconception: too-small-eta-safe }
+    - { text: 'It converges in about the same number of steps, because the stiff direction sets the pace', misconception: too-small-eta-safe }
+    - { text: 'It diverges, because the step is far from $\eta^\star$' }
+  explanation: |
+    Every $\eta$ in $(0, 2/\lambda_{\max})$ converges (der-2-5-4 step 8), but the flat mode's factor is $1 - \eta\lambda_{\min}$ (step 6). At $\eta = 10^{-5}$ it is $1 - 10^{-5}$; at $\eta^\star$ it is $1 - 2/1001 \approx 1 - 2 \times 10^{-3}$. The number of steps scales like $1/(\eta\lambda_{\min})$, so about 200 times as many.
+  discriminates: [best-fixed-step-size]
+
+- id: q-u2-l5-006
+  lesson: step-size-and-conditioning
+  concepts: [feature-scaling-conditioning]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Before running gradient descent on least squares, you replace each non-constant feature by its z-score. Which statement is correct?
+  options:
+    - { text: 'The set of achievable predictions and the minimum loss are unchanged, but the Hessian, its condition number, and the number of GD steps change', correct: true }
+    - { text: 'Nothing changes for gradient descent; the coefficients are just rescaled versions of the old ones', misconception: scaling-irrelevant-to-gd }
+    - { text: 'The minimum training loss decreases, which is why GD converges faster' }
+    - { text: 'The model class becomes nonlinear in the original features' }
+  explanation: |
+    Standardizing is an invertible affine change of the features, so with an intercept the same predictions are reachable and the minimum loss is the same. The Hessian $\frac2n X^\top X$ is not invariant: in the VASCO example it goes from $\kappa \approx 4 \times 10^6$ ($3$–$5 \times 10^6$ across samples) to $(1 + \lvert r \rvert)/(1 - \lvert r \rvert)$, and by der-2-5-5 step 7 the steps needed scale with $\kappa$.
+  discriminates: [feature-scaling-conditioning, condition-number]
+
+- id: q-u2-l5-007
+  lesson: step-size-and-conditioning
+  concepts: [optimal-step-size]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Gradient descent minimizes $E(\theta) = \tfrac12 \cdot 4\,\theta^2 - 3\theta + 7$. Which fixed step size reaches the minimizer in one step from any start?
+  answer: 0.25
+  tolerance: 0.001
+  seeded: { a: [0.5, 2, 4, 5, 8] }
+  formula: "1 / a"
+  explanation: |
+    Each step multiplies the error by $1 - \eta a$ (der-2-5-1 step 7), which is zero at $\eta_{opt} = 1/a$, the inverse of the second derivative. The linear and constant terms move the minimizer but not the curvature, so they do not affect $\eta_{opt}$.
+  discriminates: [optimal-step-size]
+
+- id: q-u2-l5-008
+  lesson: step-size-and-conditioning
+  concepts: [step-size-regimes]
+  type: predict
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Gradient descent on $E(\theta) = \theta^2$ (so $a = 2$) starts at $\theta^{(0)} = 4$ with $\eta = 0.75$. Predict the behavior of the iterates.
+  options:
+    - { text: 'They alternate sides of the minimum with shrinking size: 4, −2, 1, −0.5, …', correct: true }
+    - { text: 'They decrease monotonically toward 0 from the right' }
+    - { text: 'They jump between 4 and −4 forever' }
+    - { text: 'They alternate sides with growing size and diverge' }
+  explanation: |
+    The factor is $1 - \eta a = 1 - 1.5 = -0.5$: negative, so the error flips sign each step, and larger than $-1$, so it shrinks (der-2-5-2 step 6). Here $\eta_{opt} = 0.5 < \eta < 1 = 2\eta_{opt}$, the oscillating-convergence regime.
+  discriminates: [step-size-regimes]
+
+- id: q-u2-l5-009
+  lesson: step-size-and-conditioning
+  concepts: [gd-quadratic-contraction]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    On $E(\theta) = \tfrac12 a\theta^2 + b\theta + c$ with $a = 2$, gradient descent with $\eta = 0.25$ starts at distance $\theta^{(0)} - \theta^\star = 4$ from the minimizer. What is $\theta^{(1)} - \theta^\star$?
+  answer: 2
+  tolerance: 0.001
+  seeded: { a: [1, 2, 3], eta: [0.1, 0.2, 0.25], e0: [2, 4, 10] }
+  formula: "(1 - eta * a) * e0"
+  explanation: |
+    By der-2-5-1 step 7, $e^{(1)} = (1 - \eta a)\,e^{(0)}$. The values of $b$ and $c$ do not matter: they only set where $\theta^\star$ is.
+  discriminates: [gd-quadratic-contraction]
+
+- id: q-u2-l5-010
+  lesson: step-size-and-conditioning
+  concepts: [best-fixed-step-size]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A quadratic objective has Hessian eigenvalues $\lambda_{\min} = 1$ and $\lambda_{\max} = 3$. Which single fixed step size minimizes the worst per-step contraction factor $\max_i \lvert 1 - \eta\lambda_i \rvert$?
+  answer: 0.5
+  tolerance: 0.001
+  seeded: { lmin: [1, 2], lmax: [3, 5, 10, 20] }
+  formula: "2 / (lmin + lmax)"
+  explanation: |
+    The worst factor is $\max(1 - \eta\lambda_{\min},\ \eta\lambda_{\max} - 1)$ (der-2-5-5 step 3). The first decreases and the second increases in $\eta$, so the best $\eta$ makes them equal: $\eta^\star = 2/(\lambda_{\min} + \lambda_{\max})$ (step 4). It is neither stiff mode's $\eta_{opt} = 1/\lambda_{\max}$ nor the flat mode's.
+  discriminates: [best-fixed-step-size]
+
+- id: q-u2-l5-011
+  lesson: step-size-and-conditioning
+  concepts: [condition-number, best-fixed-step-size]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A quadratic has condition number $\kappa = 9$. With the best fixed step size, by what factor does the worst-case error shrink per step?
+  answer: 0.8
+  tolerance: 0.001
+  seeded: { kappa: [3, 9, 19, 99] }
+  formula: "(kappa - 1) / (kappa + 1)"
+  explanation: |
+    der-2-5-5 step 6: $\rho(\eta^\star) = (\kappa - 1)/(\kappa + 1)$. It approaches 1 as $\kappa$ grows, and the number of steps for a fixed accuracy grows roughly in proportion to $\kappa$ (step 7).
+  discriminates: [condition-number]
+
+- id: q-u2-l5-012
+  lesson: step-size-and-conditioning
+  concepts: [step-size-regimes]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-2-5-2
+  corrupt: { step: 3, replaceTex: '0 < \eta < \frac{1}{a} = \eta_{opt}', explanation: 'Solving $-1 < 1 - \eta a < 1$ gives $0 < \eta < 2/a$. The value $1/a$ separates monotone from oscillating convergence (steps 4 to 6); it is not the stability limit, and steps between $1/a$ and $2/a$ still converge.' }
+
+- id: q-u2-l5-013
+  lesson: step-size-and-conditioning
+  concepts: [minibatch-gradient-unbiased]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A minibatch gradient is an unbiased estimate of $\nabla\hat R(\theta)$. Which statement follows?
+  options:
+    - { text: 'Averaged over the random choice of minibatch, the step points along $-\nabla \hat R(\theta)$; a single step can still increase $\hat R$', correct: true }
+    - { text: 'Every SGD step decreases the training loss, as long as $\eta$ is small', misconception: sgd-each-step-descends }
+    - { text: 'Every minibatch gradient equals the full gradient up to a positive scale factor', misconception: sgd-each-step-descends }
+    - { text: 'The minibatch gradient has zero variance' }
+  explanation: |
+    Unbiasedness, $\mathbb{E}[g_B] = \nabla\hat R$ (eq. 2.5.6), is a statement about the average over minibatches. One minibatch can disagree with the full gradient, even point uphill for $\hat R$, so SGD's training loss is jagged; its variance is $\Sigma_1/b$, not zero (der-2-5-9 step 7).
+  discriminates: [minibatch-gradient-unbiased]
+
+- id: q-u2-l5-014
+  lesson: step-size-and-conditioning
+  concepts: [single-rate-stability-bound, eigenbasis-gd-modes]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A quadratic has Hessian eigenvalues $\lambda_{\min} = 1$ and $\lambda_{\max} = 10$. To speed up the slow direction you set $\eta = 1/\lambda_{\min} = 1$. What happens?
+  options:
+    - { text: 'The stiff mode is multiplied by $1 - 10 = -9$ each step, so gradient descent diverges', correct: true }
+    - { text: 'The flat mode converges in one step and the stiff mode follows shortly after', misconception: set-eta-by-flat-direction }
+    - { text: 'Both modes converge, oscillating', misconception: set-eta-by-flat-direction }
+    - { text: 'Both modes converge monotonically, just faster' }
+  explanation: |
+    Each eigen-direction contracts by $1 - \eta\lambda_i$ (der-2-5-4 step 6). The stiff mode needs $\eta < 2/\lambda_{\max} = 0.2$ (step 8). The flat mode is exact at $\eta = 1$, but the stiff mode's error grows ninefold per step, so the whole run diverges. One step size must satisfy every direction at once.
+  discriminates: [single-rate-stability-bound]
+
+- id: q-u2-l5-015
+  lesson: step-size-and-conditioning
+  concepts: [uncoupled-descents]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Spot the error: L4 p.51 writes the coordinate update with $\dfrac{\partial E}{d\partial \mathrm{w}}$. What is the intended quantity?
+  options:
+    - { text: 'The partial derivative $\partial E / \partial w_i$ with respect to one coordinate, the others held fixed', correct: true }
+    - { text: 'The total derivative $dE/dw$ of $E$ with respect to the whole vector, as written', misconception: partial-derivative-notation }
+    - { text: 'A second derivative, because two $\partial$ symbols appear', misconception: partial-derivative-notation }
+    - { text: 'The derivative of the step size $\eta$ with respect to $w$' }
+  explanation: |
+    The symbol mixes a partial and a total derivative and drops the index. The coordinate update $w_i^{(k+1)} = w_i^{(k)} - \eta\,\partial E/\partial w_i$ uses the $i$-th component of the gradient; on a diagonal quadratic that is $a_{ii}w_i + b_i$ (der-2-5-3 step 2).
+  discriminates: [uncoupled-descents]
+
+- id: q-u2-l5-016
+  lesson: step-size-and-conditioning
+  concepts: [eigenbasis-gd-modes]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-2-5-4
+  corrupt: { step: 8, replaceTex: '\theta^{(t)} \to \theta^\star \text{ from every start} \iff 0 < \eta < \frac{2}{\lambda_{\min}}', explanation: 'Every mode must satisfy $\eta < 2/\lambda_i$, and the binding bound is the smallest, $2/\lambda_{\max}$. With $\eta$ just below $2/\lambda_{\min}$, the stiffest mode has factor $1 - \eta\lambda_{\max} < -1$ and diverges whenever $\kappa > 1$.' }
+
+- id: q-u2-l5-017
+  lesson: step-size-and-conditioning
+  concepts: [eigenbasis-gd-modes]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of der-2-5-4 (gradient descent on a general quadratic) in order.
+  items:
+    - 'Differentiate: $\nabla E(\theta) = A\theta + b$.'
+    - 'Solve the first-order condition: $\theta^\star = -A^{-1}b$, so $b = -A\theta^\star$.'
+    - 'Write one step for the error: $e^{(t+1)} = (I - \eta A)\,e^{(t)}$.'
+    - 'Diagonalize: $A = Q\Lambda Q^\top$ with orthonormal eigenvectors.'
+    - 'Rotate the error, $v = Q^\top e$, so that $v^{(t+1)} = (I - \eta\Lambda)\,v^{(t)}$.'
+    - 'Require $\lvert 1 - \eta\lambda_i \rvert < 1$ for every $i$: $0 < \eta < 2/\lambda_{\max}$.'
+  explanation: |
+    Locate the minimizer, express the step in terms of the error, rotate into the eigenbasis where the coordinates uncouple, and apply the 1-D analysis mode by mode.
+
+- id: q-u2-l5-018
+  lesson: step-size-and-conditioning
+  concepts: [learning-rate-decay-schedules]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The schedule $\eta_t = \eta_0/(t+1)^2$ goes to zero. Does gradient descent with this schedule reach the minimizer from every start?
+  options:
+    - { text: 'No: the total step length is $\eta_0\pi^2/6$, so with bounded gradients the iterates travel only a bounded distance', correct: true }
+    - { text: 'Yes: any step size that goes to zero eventually reaches the minimum', misconception: any-decay-converges }
+    - { text: 'Yes, because $\eta_t^2$ is summable, which is the only Robbins–Monro requirement', misconception: any-decay-converges }
+    - { text: 'No, because its first step is larger than $2\eta_{opt}$' }
+  explanation: |
+    der-2-5-8: the displacement after any number of steps is at most $G\sum_t \eta_t$ (step 2), and $\sum_t \eta_0/(t+1)^2 = \eta_0\pi^2/6$ (step 5). A minimizer farther than $G\eta_0\pi^2/6$ away is never reached. Robbins–Monro needs $\sum\eta_t = \infty$ as well.
+  discriminates: [robbins-monro-conditions]
+
+- id: q-u2-l5-019
+  lesson: step-size-and-conditioning
+  concepts: [minibatch-gradient-variance]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    At some $\theta$, the single-example gradient has $\operatorname{tr}\Sigma_1(\theta) = 8$. With a minibatch of $b = 4$ indices drawn independently and uniformly, what is $\mathbb{E}\lVert g_B(\theta) - \nabla \hat R(\theta)\rVert^2$?
+  answer: 2
+  tolerance: 0.001
+  seeded: { s: [2, 4, 8, 12], b: [1, 2, 4, 8, 16] }
+  formula: "s / b"
+  explanation: |
+    By der-2-5-9 steps 7 and 8, $\operatorname{Cov}(g_B) = \Sigma_1/b$, and the expected squared error of an unbiased estimate is the trace of its covariance: $\operatorname{tr}\Sigma_1/b$. Doubling the batch halves it.
+  discriminates: [minibatch-gradient-variance]
+
+- id: q-u2-l5-020
+  lesson: step-size-and-conditioning
+  concepts: [sgd-noise-floor]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    SGD with batch size 1 and a constant step size $\eta$ is started exactly at the minimizer $\theta^\star$ of $\hat R$. What happens?
+  options:
+    - { text: 'It generally moves away, because the per-example gradients at $\theta^\star$ are not all zero; it hovers in a region whose size grows with $\eta$', correct: true }
+    - { text: 'It stays at $\theta^\star$, because the full gradient there is zero', misconception: sgd-constant-step-converges }
+    - { text: 'It stays at $\theta^\star$ if $\eta < 2/\lambda_{\max}$', misconception: sgd-constant-step-converges }
+    - { text: 'It diverges, because SGD is unstable at any constant step size' }
+  explanation: |
+    $\nabla\hat R(\theta^\star) = \frac1n\sum_i \nabla\ell_i(\theta^\star) = 0$ only on average: individual examples disagree. So $\theta^\star - \eta\nabla\ell_I(\theta^\star) \ne \theta^\star$ for most $I$, and $\theta^\star$ is not a fixed point of constant-step SGD. A schedule with $\sum\eta_t^2 < \infty$ shrinks the hovering region.
+  discriminates: [sgd-noise-floor]
+
+- id: q-u2-l5-021
+  lesson: step-size-and-conditioning
+  concepts: [large-step-basin-escape, local-quadratic-model]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    On a non-convex loss, gradient descent with a fixed $\eta$ sits near a local minimum whose Hessian has $\lambda_{\max} > 2/\eta$. Which statement is correct?
+  options:
+    - { text: 'The iterate is pushed out of that basin along its top eigenvector; this can be useful, but if $\eta$ stays above $2/\lambda_{\max}$ of every basin it never settles', correct: true }
+    - { text: 'The run is broken: an iterate moving away from a minimum is always a failure', misconception: divergence-always-bad }
+    - { text: 'The iterate settles at that minimum anyway, because the gradient there is zero' }
+    - { text: 'The iterate settles, but oscillating' }
+  explanation: |
+    Near the minimizer, $e^{(t+1)} \approx (I - \eta H)e^{(t)}$, and the top mode's factor $1 - \eta\lambda_{\max}$ is below $-1$ (der-2-5-6 step 6). The iterate leaves sharp basins and can settle only where $\lambda_{\max} < 2/\eta$ (step 7). L5 p.10 and p.11: start large, then decay.
+  discriminates: [large-step-basin-escape]
+
+- id: q-u2-l5-022
+  lesson: step-size-and-conditioning
+  concepts: [descent-lemma, l-smooth]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    $f$ is $L$-smooth with $L = 4$. For which fixed step sizes does the descent lemma guarantee $f(\theta^{(t+1)}) < f(\theta^{(t)})$ whenever $\nabla f(\theta^{(t)}) \ne 0$?
+  options:
+    - { text: 'Every $\eta$ with $0 < \eta < 0.5$', correct: true }
+    - { text: 'Only $\eta \le 0.25$' }
+    - { text: 'Every $\eta$ with $0 < \eta < 1$' }
+    - { text: 'Every $\eta > 0$: stepping against the gradient always lowers $f$' }
+  explanation: |
+    der-2-5-7 step 4: the guaranteed decrease is $\eta(1 - L\eta/2)\lVert\nabla f\rVert^2$, positive exactly for $0 < \eta < 2/L = 0.5$ (step 5). $\eta = 1/L = 0.25$ maximizes the guaranteed decrease (step 6) but is not the only safe choice.
+  discriminates: [descent-lemma]
+
+- id: q-u2-l5-023
+  lesson: step-size-and-conditioning
+  concepts: [minibatch-gradient-variance]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-2-5-9
+  corrupt: { step: 6, replaceTex: '\operatorname{Cov}\big(g_B(\theta)\big) = \frac{1}{b}\sum_{k=1}^{b} \operatorname{Cov}\big(\nabla \ell_{I_k}(\theta)\big)', explanation: 'Scaling a random vector by $1/b$ scales its covariance by $1/b^2$, not $1/b$. With $1/b$ the batch covariance would come out as $\Sigma_1$, independent of $b$, and averaging would not reduce the noise at all.' }
+
+- id: q-u2-l5-024
+  lesson: step-size-and-conditioning
+  concepts: [minibatch-gradient-unbiased, stochastic-gradient-descent]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    In the STEPS trial, a minibatch is formed from 16 consecutive decision points of a single participant. Why does this weaken der-2-5-9's guarantee?
+  options:
+    - { text: 'The 16 points are not independent draws: they share the participant''s offset $u_i$ and a time trend, so the covariance is larger than $\Sigma_1/16$; and if blocks are processed in arrival order, each step''s gradient is biased toward that participant and period.', correct: true }
+    - { text: 'It does not: any 16 examples give an unbiased estimate' }
+    - { text: 'Minibatches of 16 are too large for SGD to be unbiased' }
+    - { text: 'Unbiasedness requires the batch size to divide $n$' }
+  explanation: |
+    Independence of the indices is used in der-2-5-9 step 6 (the covariance of a sum is the sum of covariances); step 7 uses identical distribution. Sixteen correlated points carry less information than sixteen independent ones, so the covariance exceeds $\Sigma_1/16$. Unbiasedness itself needs only step 2's marginal $P(I = i) = 1/n$: a block chosen at random is still unbiased, because each index has marginal probability $1/n$. The bias comes from taking blocks in arrival order, so that each step sees one participant and one period (the offset $u_i$, early versus late weeks). Shuffling across participants and times restores both properties.
+  discriminates: [minibatch-gradient-unbiased]
+
+- id: q-u2-l5-025
+  lesson: step-size-and-conditioning
+  concepts: [feature-scaling-conditioning, condition-number]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    VASCO features are $(1, D, B)$: an intercept, dose in mg (0 to 40), and baseline systolic pressure in mmHg (about $155 \pm 12$). Roughly how large is the condition number of the least-squares Hessian $\frac2n X^\top X$?
+  options:
+    - { text: 'At least a few million', correct: true }
+    - { text: 'About 1, since the model is linear in $\theta$', misconception: scaling-irrelevant-to-gd }
+    - { text: 'About 40, the largest dose' }
+    - { text: 'About 155, the mean baseline' }
+  explanation: |
+    $H_{33} \approx 2\,\mathbb{E}[B^2] \approx 48{,}338$ bounds $\lambda_{\max}$ from below. The intercept–baseline block $2\begin{bmatrix} 1 & 155 \\ 155 & 24{,}169\end{bmatrix}$ has determinant 576 and trace 48,340, so its small eigenvalue is about 0.012, which bounds $\lambda_{\min}$ from above. So $\kappa \gtrsim 4 \times 10^6$; all three eigenvalues of the population Hessian (raw mg and mmHg, balanced arms) give $\kappa \approx 4 \times 10^6$, and $3$–$5 \times 10^6$ across samples of 300. Linearity in $\theta$ makes the loss quadratic; it says nothing about how round the bowl is.
+  discriminates: [feature-scaling-conditioning]
+
+- id: q-u2-l5-026
+  lesson: step-size-and-conditioning
+  concepts: [gd-convex-smooth-rate]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    For convex $L$-smooth $f$ and $\eta = 1/L$, the bound $f(\theta^{(t)}) - f^\star \le L\lVert\theta^{(0)} - \theta^\star\rVert^2/(2t)$ holds. If you run 4 times as many steps, the bound
+  options:
+    - { text: 'shrinks by a factor of 4', correct: true }
+    - { text: 'shrinks by a factor of 16' }
+    - { text: 'shrinks by a factor of 2' }
+    - { text: 'shrinks geometrically, by a factor of $(1 - 1/L)^{3t}$' }
+  explanation: |
+    The bound is proportional to $1/t$ (Theorem 2.5.1). Geometric decrease needs curvature from below as well, as for a positive definite quadratic, where der-2-5-5 gives the factor $(\kappa - 1)/(\kappa + 1)$ per step.
+  discriminates: [gd-convex-smooth-rate]

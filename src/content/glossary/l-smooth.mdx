@@ -1,0 +1,12 @@
+---
+id: l-smooth
+term: L-smooth function
+aliases: [L-smoothness, Lipschitz gradient, smoothness constant]
+field: calculus
+firstUsedIn: u2-risk-and-gradient-descent
+related: [gradient, hessian, convex-function, condition-number]
+---
+
+**What it is.** A differentiable $f$ is $L$-smooth when its gradient cannot change faster than $L$ times the distance moved: $\lVert \nabla f(x) - \nabla f(y) \rVert \le L \lVert x - y \rVert$ for all $x, y$. For twice differentiable $f$ this holds exactly when every eigenvalue of the Hessian lies in $[-L, L]$. For the quadratic $\tfrac12 \theta^\top A \theta + b^\top\theta$ with $A$ positive semi-definite, the smallest such $L$ is $\lambda_{\max}(A)$.
+
+**How ML uses it.** $L$ is a bound on curvature, the multivariate stand-in for $a$ in $\tfrac12 a w^2$. It gives the quadratic upper bound $f(y) \le f(x) + \nabla f(x)^\top (y - x) + \tfrac{L}{2}\lVert y - x \rVert^2$, from which the descent lemma follows: any step size $\eta < 2/L$ decreases $f$.

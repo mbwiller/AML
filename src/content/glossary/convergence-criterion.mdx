@@ -1,0 +1,12 @@
+---
+id: convergence-criterion
+term: Convergence criterion
+aliases: [stopping rule, stopping criterion, convergence test, tolerance]
+field: ml
+firstUsedIn: u2-risk-and-gradient-descent
+related: [learning-rate, gradient, first-order-condition]
+---
+
+**What it is.** The test that ends an iterative optimizer. Three are common, each with a small tolerance $\epsilon$: the objective stops changing, $\lvert \hat R(\theta^{(t+1)}) - \hat R(\theta^{(t)})\rvert < \epsilon_1$; the gradient is nearly zero, $\lVert\nabla \hat R(\theta^{(t)})\rVert < \epsilon_2$; or the parameters stop moving, $\lVert\theta^{(t+1)} - \theta^{(t)}\rVert < \epsilon_3$. For gradient descent the last is the second in disguise: $\lVert\theta^{(t+1)} - \theta^{(t)}\rVert = \eta\,\lVert\nabla \hat R(\theta^{(t)})\rVert$.
+
+**How ML uses it.** Every training loop needs one, usually with a cap on the number of iterations as a backstop. Passing the test means the iterates have nearly stopped, not that they are near the minimizer: in a flat direction the gradient is small while the error is still large.

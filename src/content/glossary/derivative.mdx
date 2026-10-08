@@ -1,0 +1,12 @@
+---
+id: derivative
+term: Derivative
+aliases: [slope, rate of change, f prime, partial derivative]
+field: calculus
+firstUsedIn: u2-risk-and-gradient-descent
+related: [gradient, directional-derivative, taylor-expansion, chain-rule-calculus]
+---
+
+**What it is.** The derivative of $f : \mathbb{R} \to \mathbb{R}$ at $\theta$ is the limit $f'(\theta) = \lim_{h \to 0} \frac{f(\theta + h) - f(\theta)}{h}$, the slope of the tangent line. It makes $f$ locally linear: $f(\theta + \Delta\theta) \approx f(\theta) + f'(\theta)\,\Delta\theta$ for small $\Delta\theta$. Positive means increasing, negative decreasing, zero flat. For $f$ of several variables, the partial derivative $\partial f / \partial \theta_j$ is the same limit with every coordinate except $\theta_j$ held fixed.
+
+**How ML uses it.** A loss on a fixed dataset is a function of the parameters alone. Its derivative says which way to move a parameter to lower the loss, which is the whole idea of gradient descent, and setting it to zero gives every closed-form estimator in the course.

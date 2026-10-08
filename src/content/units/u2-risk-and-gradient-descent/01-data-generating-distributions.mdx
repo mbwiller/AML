@@ -1,0 +1,718 @@
+---
+title: "Data-generating distributions"
+unit: u2-risk-and-gradient-descent
+order: 1
+slug: data-generating-distributions
+summary: "Random variables and the probability axioms, iid sampling, and the data-generating distribution P; why any target can be written Y = f*(X) + ε; and a proof that the conditional mean E[Y | X] is the MSE-optimal predictor."
+lectures:
+  - { lecture: 3, pages: "26-41" }
+  - { lecture: 4, pages: "3" }
+concepts:
+  - probability-axioms
+  - rv-induced-distribution
+  - dgp-sampling-model
+  - iid-joint-factorization
+  - signal-plus-noise
+  - conditional-mean-optimality
+  - irreducible-error
+  - linear-dgp-well-specified
+prerequisites:
+  - supervised-dataset
+  - model-class
+  - linear-model
+  - random-variable
+  - expectation
+  - variance
+  - covariance
+  - conditional-probability
+  - conditional-expectation
+  - law-of-total-expectation
+  - iid
+  - gaussian
+  - log-rules
+estimatedMinutes: 50
+status: review
+authors: [jide]
+---
+
+{/* no-case-frontmatter: the hook and the worked example use the VASCO dose-finding trial (docs/reference/pedagogy-and-curriculum.md Part C, C1), but src/content/cases/vasco.mdx does not exist yet. Add `cases: [vasco]` when it does. Every VASCO number below is computed from the C1 specification (E0 = -3, Emax = -22 mmHg, ED50 = 6 mg, baseline coefficient 0.15, B ~ N(155, 12^2), noise SD 8 mmHg, 50 patients per arm), not from a generated dataset. */}
+
+{/* no-companion: no code companion covers L3 pp. 26-41; the Lecture 4 companion starts at gradient descent (lesson 2.4). */}
+
+<Frame
+  data="$n$ pairs $(x^{(i)}, y^{(i)})$, modeled as iid draws from an unknown distribution $P$ over $(X, Y)$"
+  model="any predictor $h$ of $Y$ from $X$; the target of learning is $f^\star(x) = \mathbb{E}[Y \mid X = x]$"
+  objective="the expected squared error $\mathbb{E}[(Y - h(X))^2]$ under $P$ (named true risk in lesson 2.2)"
+  optimizer="none yet: this lesson finds the best predictor on paper; lessons 2.4 and 2.5 search for it with gradient descent"
+/>
+
+<Objectives>
+
+- Define a random variable as a function on a sample space, and derive its distribution and the basic probability rules from the three axioms.
+- State the iid assumption, explain its two halves, and show that it makes the density of a dataset a product.
+- Describe a dataset as $n$ realizations from a data-generating distribution $P$, and distinguish a realization from the random variable that produced it.
+- Prove that every target can be written $Y = f^\star(X) + \varepsilon$ with $f^\star(X) = \mathbb{E}[Y \mid X]$ and noise that has mean zero given $X$.
+- Prove that $\mathbb{E}[Y \mid X]$ minimizes the expected squared error, and identify the part of the error no predictor can remove.
+- Compute the conditional mean, the irreducible error, and the variance split for a linear data-generating distribution.
+
+</Objectives>
+
+<Hook>
+
+Two VASCO patients each take 10 mg, and both started at a systolic pressure of 150 mmHg. After 8 weeks their changes in blood pressure differ by several mmHg. Same dose, same baseline, different outcomes.
+
+So what should a model predict for the next patient at 10 mg? Not either patient's number: each includes luck that will not repeat. In this lesson we model patients as random draws from a distribution, name the part of the outcome a model could ever predict, and prove which single number is the best guess under squared error. We also find out how far off even that best guess must be on average.
+
+{/* hook-figure: the dgp-sampler widget in the Explorable section is the hook's explorable; the two patients are a generic illustration, not records from a generated dataset */}
+
+</Hook>
+
+## From a table of numbers to random variables
+
+Unit 1 treated the dataset as fixed numbers and asked which line fits them best. L3 p.26 changes the question <SlideRef lecture={3} pages="26" />. The BMI of the *next* patient is not known in advance; it is random. To say anything about patients we have not yet seen, we need a model of where the numbers come from. Its basic building block is the [[random-variable]].
+
+<Definition id="def-2-1-1" title="Sample space, events, and probability" source="L3 pp.27, 31">
+
+The **sample space** $\Omega$ is the set of all possible outcomes $\omega$ of a random experiment. An **event** is a subset $A \subseteq \Omega$. A **probability** assigns a number $P(A)$ to every event, subject to three axioms <SlideRef lecture={3} pages="31" />:
+
+1. **Non-negativity:** $P(A) \ge 0$ for every event $A$.
+2. **Normalization:** $P(\Omega) = 1$.
+3. **Countable additivity:** if $A_1, A_2, \dots$ are pairwise disjoint events, then $P\big(\bigcup_{k} A_k\big) = \sum_{k} P(A_k)$.
+
+Also written as: $\Pr$, $\mathbb{P}$; the slide writes events as $\omega \subseteq \Omega$.
+
+</Definition>
+
+<Definition id="def-2-1-2" title="Random variable" source="L3 p.28">
+
+A random variable is a function $X : \Omega \to E$ from the sample space to a set of values $E$ (for us, $\mathbb{R}$, $\mathbb{R}^d$, or a finite set) <SlideRef lecture={3} pages="28" />. For the two-toss sample space $\Omega = \{HH, HT, TH, TT\}$, the number of heads is the random variable with $X(HH) = 2$, $X(HT) = X(TH) = 1$, $X(TT) = 0$ <SlideRef lecture={3} pages="29-30" />.
+
+Also written as: RV; a random vector when $E = \mathbb{R}^d$.
+
+</Definition>
+
+L3 pp.29–30 make a point that is easy to skip: a random variable is something you construct <SlideRef lecture={3} pages="29-30" />. On the same four outcomes, "number of heads" and "whether any head appeared" ($W(HH) = W(HT) = W(TH) = 1$, $W(TT) = 0$) are two different functions, so two different random variables. The probability on $\Omega$ is shared; what each variable reports is not.
+
+<Definition id="def-2-1-3" title="Distribution of a random variable" source="L3 pp.27, 31">
+
+The distribution of $X$ assigns to each set of values $B \subseteq E$ the probability that $X$ lands in it:
+
+$$P_X(B) = P(X \in B) = P\big(\{\omega \in \Omega : X(\omega) \in B\}\big) = P\big(X^{-1}(B)\big).$$
+
+For a discrete $X$ it is described by the probability mass function $p(x) = P(X = x)$; for a continuous one, by a density $p(x)$ with $P(X \in B) = \int_B p(x)\,dx$ <SlideRef lecture={3} pages="27" />.
+
+</Definition>
+
+<Callout type="slide">
+
+L3 p.31 lists the axioms as "$P(\Omega) = 1$, $P(\emptyset) = 0$; $0 \le P(\omega) \le 1$ for all $\omega \subseteq \Omega$; countable additivity". We keep the letter $\omega$ for single outcomes and write events as $A$. Two items on the slide's list are not needed as axioms: der-2-1-1 derives $P(\emptyset) = 0$ and $P(A) \le 1$ from the three in def-2-1-1. The slide's "$P(\text{observes nothing}) = 0$" for a coin (L3 p.32) is the statement $P(\emptyset) = 0$.
+
+</Callout>
+
+The slide states the axioms and moves on. Every rule you use for probabilities in this course (complements, adding disjoint cases, probabilities never above 1) follows from them in a few lines.
+
+<Derivation
+  id="der-2-1-1"
+  title="The empty event, finite additivity, and the complement rule follow from the axioms"
+  goalTex="P(\emptyset), \quad P(A \cup B) \text{ for disjoint } A, B, \quad P(A^c) \text{ from the three axioms}"
+  resultTex="P(\emptyset) = 0, \qquad P(A \cup B) = P(A) + P(B) \text{ for disjoint } A, B, \qquad P(A^c) = 1 - P(A), \qquad 0 \le P(A) \le 1"
+  source="L3 p.31 (axioms stated, with P(∅) = 0 and P ≤ 1 listed as axioms; no consequences derived)"
+>
+
+<Chunk title="The empty event has probability zero">
+
+<Step justification="write $\Omega$ as a countable union of pairwise disjoint events: $A_1 = \Omega$ and $A_k = \emptyset$ for $k \ge 2$; the empty set is disjoint from every set">
+$$\Omega = \Omega \cup \emptyset \cup \emptyset \cup \cdots$$
+</Step>
+
+<Step justification="countable additivity (axiom 3) applied to that union">
+$$P(\Omega) = P(\Omega) + \sum_{k=2}^{\infty} P(\emptyset)$$
+</Step>
+
+<Step justification="subtract $P(\Omega)$ from both sides; it equals 1 by axiom 2, so it is finite and the subtraction is allowed">
+$$\sum_{k=2}^{\infty} P(\emptyset) = 0$$
+</Step>
+
+<Step justification="a sum of copies of $c \ge 0$ (axiom 1) equals 0 only if $c = 0$" fadeable>
+$$P(\emptyset) = 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Finite additivity, then split the whole space into an event and its complement">
+
+<Step justification="countable additivity with $A_1 = A$, $A_2 = B$ disjoint, and $A_k = \emptyset$ for $k \ge 3$">
+$$P(A \cup B) = P(A) + P(B) + \sum_{k=3}^{\infty} P(\emptyset)$$
+</Step>
+
+<Step justification="step 4: every term of the remaining sum is zero">
+$$P(A \cup B) = P(A) + P(B)$$
+</Step>
+
+<Step justification="$A$ and its complement $A^c = \Omega \setminus A$ are disjoint and their union is $\Omega$; apply axiom 2, then step 6">
+$$1 = P(\Omega) = P(A) + P(A^c)$$
+</Step>
+
+<Step justification="subtract $P(A)$ from both sides" fadeable>
+$$P(A^c) = 1 - P(A)$$
+</Step>
+
+<Step justification="rearrange step 8 and use axiom 1 on the complement, $P(A^c) \ge 0$" fadeable>
+$$P(A) = 1 - P(A^c) \le 1$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 8 is the rule you reach for whenever "at least one" appears. The probability that at least one of $n$ independent fair tosses shows heads is $1 - P(\text{no heads}) = 1 - (1/2)^n$.
+
+The next derivation checks that the distribution of a random variable (def-2-1-3) is itself a probability, so everything just derived applies to statements like $P(X \in B)$ as well. It then computes one distribution from the slides' coin example.
+
+<Derivation
+  id="der-2-1-2"
+  title="A random variable carries its own probability distribution"
+  goalTex="P_X(B) = P(X^{-1}(B)) \text{ satisfies the three axioms on } E"
+  resultTex="P_X(B) \ge 0, \qquad P_X(E) = 1, \qquad P_X\Big(\bigcup_k B_k\Big) = \sum_k P_X(B_k) \text{ for disjoint } B_k; \qquad \text{two fair tosses: } P_X(\{0\}, \{1\}, \{2\}) = \big(\tfrac14, \tfrac12, \tfrac14\big)"
+  source="L3 pp.27-32 (RV as a map X: Ω → E and 'the distribution of RVs defines a probability distribution' stated; no argument)"
+>
+
+<Chunk title="Define the distribution through preimages">
+
+<Step justification="def-2-1-3: the outcomes that $X$ sends into $B$ form an event, and $P_X(B)$ is its probability" sticky="random-variable">
+$$P_X(B) = P\big(\{\omega \in \Omega : X(\omega) \in B\}\big) = P\big(X^{-1}(B)\big)$$
+</Step>
+
+<Step justification="axiom 1 applied to the event $X^{-1}(B)$">
+$$P_X(B) \ge 0$$
+</Step>
+
+<Step justification="$X$ sends every outcome somewhere in $E$, so $X^{-1}(E) = \Omega$; then axiom 2" fadeable>
+$$P_X(E) = P(\Omega) = 1$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Countable additivity passes through the preimage">
+
+<Step justification="for $j \ne k$ with $B_j \cap B_k = \emptyset$: an outcome in both preimages would have $X(\omega) \in B_j \cap B_k$, which is empty">
+$$X^{-1}(B_j) \cap X^{-1}(B_k) = \emptyset$$
+</Step>
+
+<Step justification="$X(\omega)$ lies in the union of the $B_k$ exactly when it lies in at least one of them">
+$$X^{-1}\Big(\bigcup_k B_k\Big) = \bigcup_k X^{-1}(B_k)$$
+</Step>
+
+<Step justification="step 1 for the set $\bigcup_k B_k$, then step 5's preimage identity">
+$$P_X\Big(\bigcup_k B_k\Big) = P\Big(\bigcup_k X^{-1}(B_k)\Big)$$
+</Step>
+
+<Step justification="countable additivity of $P$ on the preimages, which are pairwise disjoint by step 4" fadeable>
+$$P_X\Big(\bigcup_k B_k\Big) = \sum_k P\big(X^{-1}(B_k)\big)$$
+</Step>
+
+<Step justification="step 1 in each term" fadeable>
+$$P_X\Big(\bigcup_k B_k\Big) = \sum_k P_X(B_k)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Compute one distribution: heads in two fair tosses">
+
+<Step justification="$X$ counts heads; exactly two of the four outcomes have one head">
+$$X^{-1}(\{1\}) = \{HT,\ TH\}$$
+</Step>
+
+<Step justification="finite additivity (der-2-1-1 step 6), with probability $\tfrac14$ for each outcome of two independent fair tosses" fadeable>
+$$P_X(\{1\}) = P(\{HT\}) + P(\{TH\}) = \tfrac14 + \tfrac14 = \tfrac12$$
+</Step>
+
+<Step justification="the same two moves for the other values: $X^{-1}(\{0\}) = \{TT\}$ and $X^{-1}(\{2\}) = \{HH\}$, one outcome each">
+$$P_X(\{0\}) = P(\{TT\}) = \tfrac14, \qquad P_X(\{2\}) = P(\{HH\}) = \tfrac14$$
+</Step>
+
+<Step justification="check against step 3: the values $0, 1, 2$ exhaust $E$, so by step 8 their probabilities must add to $P_X(E) = 1$">
+$$P_X(\{0\}) + P_X(\{1\}) + P_X(\{2\}) = \tfrac14 + \tfrac12 + \tfrac14 = 1$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+For the number of heads the distribution is $(\tfrac14, \tfrac12, \tfrac14)$ on $\{0, 1, 2\}$, while "any head" has $P(W = 1) = P(\{HH, HT, TH\}) = \tfrac34$. One sample space, one probability, two random variables, two distributions.
+
+<Callout type="beyond">
+
+L3 p.28 calls $E$ a "measurable space". The word matters for one reason: step 1 of der-2-1-2 needs $X^{-1}(B)$ to be an event, so that $P$ can be applied to it. A random variable is required to be *measurable*, which means exactly that the preimage of every set $B$ we care about is an event. Every function you will meet in this course (sums, products, continuous functions, indicators of intervals) is measurable, so the condition never bites here. It is what makes the definitions consistent on continuous spaces such as $\mathbb{R}$.
+
+</Callout>
+
+<Check ids={["q-u2-l1-006", "q-u2-l1-007", "q-u2-l1-008", "q-u2-l1-018"]} />
+
+## Datasets as draws from a distribution
+
+L3 pp.33–34 bring random variables to the data <SlideRef lecture={3} pages="33-34" />. Across the whole population, BMI has some distribution. Each patient in a study is one draw from it. The table of 20 patients from Unit 1 is a list of numbers that one particular round of sampling happened to produce.
+
+<Definition id="def-2-1-4" title="Independent and identically distributed (iid)" source="L3 pp.34-35">
+
+Random variables $Z^{(1)}, \dots, Z^{(n)}$ are iid when
+
+1. **independent:** the value of one tells you nothing about the others, so that for all sets $B_1, \dots, B_n$, $P(Z^{(1)} \in B_1, \dots, Z^{(n)} \in B_n) = \prod_{i=1}^{n} P(Z^{(i)} \in B_i)$; and
+2. **identically distributed:** every $Z^{(i)}$ has the same distribution. <SlideRef lecture={3} pages="35" />
+
+Also written as: i.i.d.; $Z^{(i)} \overset{\text{iid}}{\sim} P$.
+
+</Definition>
+
+<Definition id="def-2-1-5" title="Data-generating distribution" source="L3 pp.36-38">
+
+The [[data-generating-distribution]] $P$ is the joint distribution of an input and its target. A dataset is modeled as $n$ iid draws from it:
+
+$$(X^{(i)}, Y^{(i)}) \overset{\text{iid}}{\sim} P, \qquad i = 1, \dots, n.$$
+
+The observed dataset $\mathcal{D} = \{(x^{(i)}, y^{(i)})\}_{i=1}^{n}$ is one realization of these random variables <SlideRef lecture={3} pages="36" />. $P$ is fixed and unknown.
+
+Also written as: DGP (data-generating process); $\mathcal{D} \sim P^n$.
+
+</Definition>
+
+<Callout type="slide">
+
+L3 p.36 writes $(X^{(i)}, y^{(i)}) \sim P$, with a capital $X$ and a lowercase $y$. We use capitals for random variables, $(X^{(i)}, Y^{(i)})$, and lowercase for the numbers that were observed, $(x^{(i)}, y^{(i)})$. The difference matters as soon as we take expectations: $\mathbb{E}[Y^{(i)}]$ is a population quantity; $y^{(i)}$ is a single number in a table.
+
+</Callout>
+
+Why bother? L3 p.38 gives the reason <SlideRef lecture={3} pages="38" />: once the data are draws from $P$, we can ask how a learning algorithm behaves on *new* draws from the same $P$. That question is what generalization error, true risk, and empirical risk make precise in lesson 2.2. The slide's own summary: "the iid assumption → algorithmic guarantees" <SlideRef lecture={3} pages="37" />.
+
+Of the two halves, independence is the one that does the algebra. It turns the probability of an entire dataset into a product of per-example terms, which Unit 3 will turn into a sum with a logarithm.
+
+<Derivation
+  id="der-2-1-3"
+  title="The density of an iid dataset is a product over examples"
+  goalTex="p\big(z^{(1)}, \dots, z^{(n)}\big) \text{ for } Z^{(i)} = (X^{(i)}, Y^{(i)}) \overset{\text{iid}}{\sim} P"
+  resultTex="p\big(z^{(1)}, \dots, z^{(n)}\big) = \prod_{i=1}^{n} p\big(x^{(i)}, y^{(i)}\big), \qquad \log p(\mathcal{D}) = \sum_{i=1}^{n} \log p\big(y^{(i)} \mid x^{(i)}\big) + \sum_{i=1}^{n} \log p\big(x^{(i)}\big)"
+  source="L3 pp.34-37 (iid assumption stated; the factorization is not shown; used in L5's likelihood)"
+>
+
+<Chunk title="Factor the joint density">
+
+<Step justification="independence: the joint density of independent random vectors is the product of their own (marginal) densities" sticky="iid">
+$$p_{Z^{(1)}, \dots, Z^{(n)}}\big(z^{(1)}, \dots, z^{(n)}\big) = \prod_{i=1}^{n} p_{Z^{(i)}}\big(z^{(i)}\big)$$
+</Step>
+
+<Step justification="identically distributed: every draw has the density $p$ of the data-generating distribution">
+$$p_{Z^{(i)}} = p \quad \text{for every } i$$
+</Step>
+
+<Step justification="substitute step 2 into step 1 and write $z^{(i)} = (x^{(i)}, y^{(i)})$" fadeable>
+$$p\big(z^{(1)}, \dots, z^{(n)}\big) = \prod_{i=1}^{n} p\big(x^{(i)}, y^{(i)}\big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Take logs and split each factor">
+
+<Step justification="the log of a product is the sum of the logs" sticky="log-rules" fadeable>
+$$\log p(\mathcal{D}) = \sum_{i=1}^{n} \log p\big(x^{(i)}, y^{(i)}\big)$$
+</Step>
+
+<Step justification="product rule inside each term: $p(x, y) = p(y \mid x)\,p(x)$" sticky="conditional-probability">
+$$\log p(\mathcal{D}) = \sum_{i=1}^{n} \log \Big(p\big(y^{(i)} \mid x^{(i)}\big)\, p\big(x^{(i)}\big)\Big)$$
+</Step>
+
+<Step justification="the log of a product is the sum of the logs, then split the sum into two sums" sticky="log-rules">
+$$\log p(\mathcal{D}) = \sum_{i=1}^{n} \log p\big(y^{(i)} \mid x^{(i)}\big) + \sum_{i=1}^{n} \log p\big(x^{(i)}\big)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+p\big(z^{(1)}, \dots, z^{(n)}\big) = \prod_{i=1}^{n} p\big(x^{(i)}, y^{(i)}\big) \tag{2.1.1} \htmlId{eq-2-1-1}{}
+$$
+
+Step 6 previews Unit 3. A model of $p_\theta(y \mid x)$ touches only the first sum, so maximizing the likelihood can drop the second sum, the $P(X_i)$ terms L5 drops. Without independence, step 1 fails and none of this follows.
+
+L3 p.35 adds "my BMI has no effect on your BMI — Really?" and "IID is not always assumed by ML methods" <SlideRef lecture={3} pages="35" />. Clinical data break independence routinely: two visits by the same patient, siblings, or patients treated in the same hospital share causes that the features do not record. Identical distribution fails when the population drifts, for example when a trial enrolls sicker patients in its second year.
+
+<Check ids={["q-u2-l1-009", "q-u2-l1-017", "q-u2-l1-014"]} />
+
+## Signal plus noise: $Y = f^\star(X) + \varepsilon$
+
+L3 p.38 and L4 p.3 describe the data as generated "by some unknown function $f$" plus noise <SlideRef lecture={3} pages="38" /> <SlideRef lecture={4} pages="3" />. L3 p.41 draws the picture: a true curve, five inputs $X_1, \dots, X_5$, and the observed targets scattered around the curve at those inputs <SlideRef lecture={3} pages="41" />. To make "the true function" precise we need one more object, the mean of $Y$ among the cases with a given input.
+
+<Definition id="def-2-1-6" title="Conditional expectation and the regression function" source="L3 p.38 (Y = f(X) + ε stated); definition beyond the slides">
+
+The [[conditional-expectation]] of $Y$ given $X = x$ is the mean of the conditional distribution,
+
+$$f^\star(x) = \mathbb{E}[Y \mid X = x] = \int y\; p(y \mid x)\, dy$$
+
+(a sum for discrete $Y$). The function $f^\star$ is the **regression function**. Plugging in the random input gives the random variable $\mathbb{E}[Y \mid X] = f^\star(X)$. We use two rules: conditional expectation is linear, and a function of $X$ behaves as a known constant given $X$, so $\mathbb{E}[h(X)\,Z \mid X] = h(X)\,\mathbb{E}[Z \mid X]$. The [[law-of-total-expectation]] links it to ordinary expectation: $\mathbb{E}\big[\mathbb{E}[Z \mid X]\big] = \mathbb{E}[Z]$.
+
+Also written as: $\mu(x)$, $m(x)$, $\mathbb{E}[Y \mid x]$; the slides' $f(X)$ (L3 p.38, L4 p.3) and $g(X)$ (L3 p.41).
+
+</Definition>
+
+<Callout type="slide">
+
+The slides use three names for two objects. On L3 p.38 and L4 p.3 the unknown truth is $f(X)$ in $Y = f(X) + \epsilon$. From L3 p.41 on the truth is renamed $g(X)$, and $f(X; \theta)$ becomes the fitted model. We write $f^\star$ for the truth and $f_\theta$ for the model throughout, so the two never share a letter. When lesson 2.2 quotes the slides' $g(X)$, it means our $f^\star(X)$.
+
+</Callout>
+
+Is $Y = f^\star(X) + \varepsilon$ an assumption about the data? The derivation below shows it is not, as long as $Y$ has finite variance. Any joint distribution can be written this way, with a noise term that averages to zero at every input.
+
+<Derivation
+  id="der-2-1-4"
+  title="Every target is its conditional mean plus noise that averages to zero"
+  goalTex="Y = f^\star(X) + \varepsilon \text{ with } \mathbb{E}[\varepsilon \mid X] = 0, \text{ for any } (X, Y) \text{ with } \mathbb{E}[Y^2] \lt \infty"
+  resultTex="Y = f^\star(X) + \varepsilon, \qquad \mathbb{E}[\varepsilon \mid X] = 0, \qquad \mathbb{E}[\varepsilon] = 0, \qquad \mathbb{E}[h(X)\,\varepsilon] = 0 \text{ for every } h"
+  source="L3 p.38 and L4 p.3 (Y = f(X) + ε stated, with no conditions on f or ε)"
+>
+
+<Chunk title="Define the signal and the noise, then condition on X">
+
+<Step justification="def-2-1-6: call the conditional mean the signal and whatever is left over the noise">
+$$f^\star(x) := \mathbb{E}[Y \mid X = x], \qquad \varepsilon := Y - f^\star(X)$$
+</Step>
+
+<Step justification="add $f^\star(X)$ to both sides of the definition of $\varepsilon$">
+$$Y = f^\star(X) + \varepsilon$$
+</Step>
+
+<Step justification="linearity of conditional expectation applied to $\varepsilon = Y - f^\star(X)$" sticky="conditional-expectation">
+$$\mathbb{E}[\varepsilon \mid X] = \mathbb{E}[Y \mid X] - \mathbb{E}[f^\star(X) \mid X]$$
+</Step>
+
+</Chunk>
+
+<Chunk title="The noise averages to zero at every input">
+
+<Step justification="given $X$, the number $f^\star(X)$ is known, so its conditional mean is itself">
+$$\mathbb{E}[f^\star(X) \mid X] = f^\star(X)$$
+</Step>
+
+<Step justification="substitute step 4 into step 3, and $\mathbb{E}[Y \mid X] = f^\star(X)$ by definition" fadeable>
+$$\mathbb{E}[\varepsilon \mid X] = f^\star(X) - f^\star(X) = 0$$
+</Step>
+
+<Step justification="law of total expectation, then step 5" sticky="law-of-total-expectation" fadeable>
+$$\mathbb{E}[\varepsilon] = \mathbb{E}\big[\mathbb{E}[\varepsilon \mid X]\big] = \mathbb{E}[0] = 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="The noise is uncorrelated with every function of X">
+
+<Step justification="law of total expectation, for any function $h$ with $\mathbb{E}[h(X)^2] \lt \infty$" sticky="law-of-total-expectation">
+$$\mathbb{E}[h(X)\,\varepsilon] = \mathbb{E}\big[\mathbb{E}[h(X)\,\varepsilon \mid X]\big]$$
+</Step>
+
+<Step justification="given $X$, $h(X)$ is a known constant factor and comes out of the inner expectation" fadeable>
+$$\mathbb{E}[h(X)\,\varepsilon] = \mathbb{E}\big[h(X)\,\mathbb{E}[\varepsilon \mid X]\big]$$
+</Step>
+
+<Step justification="step 5: the inner expectation is zero" fadeable>
+$$\mathbb{E}[h(X)\,\varepsilon] = \mathbb{E}[h(X) \cdot 0] = 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+Y = f^\star(X) + \varepsilon, \qquad \mathbb{E}[\varepsilon \mid X] = 0 \tag{2.1.2} \htmlId{eq-2-1-2}{}
+$$
+
+So the equation on L3 p.38 restricts nothing by itself. The assumptions in a data-generating model live elsewhere: in the *shape* of $f^\star$ (linear, Emax, anything), and in what the noise looks like (Gaussian, independent of $X$, with the same variance at every input). The linear example below makes all three assumptions; der-2-1-4 makes none.
+
+<Check ids={["q-u2-l1-016", "q-u2-l1-019"]} />
+
+## The best predictor under squared error
+
+<Intuition>
+
+Start with no input at all. You must predict $Y$ with one number $c$, and you are scored by the expected squared error $\mathbb{E}[(Y - \htmlClass{sym-yhat}{c})^2]$. Add and subtract the mean $\mu = \mathbb{E}[Y]$ and expand; the cross term is $2(\mu - c)\,\mathbb{E}[Y - \mu] = 0$, so
+
+$$\mathbb{E}\big[(Y - \htmlClass{sym-yhat}{c})^2\big] = \Var(Y) + (\mu - \htmlClass{sym-yhat}{c})^2.$$
+
+The first term does not depend on your guess. The second is a parabola in $c$ with its minimum, zero, at $c = \mu$. The best constant is the mean, and even the mean is off by $\Var(Y)$ on average: that part is spread in $Y$ itself, not a failure of the guess.
+
+Now let the guess depend on an input. Among the patients with input $x$, the same argument applies to the conditional distribution of $Y$: the best number is the conditional mean $f^\star(x)$, and what is left is the conditional variance. Doing this separately at every $x$ gives the best predictor. In the VASCO trial, the best prediction for patients at 10 mg and a baseline of 150 mmHg is the mean change in that group; the patient-to-patient spread around it, a standard deviation of 8 mmHg in the case specification, stays no matter how good the model is.
+
+</Intuition>
+
+<Theorem id="thm-2-1-1" title="The conditional mean is the MSE-optimal predictor" source="beyond the slides (motivates L3 p.39's 'linear regression works well if the DGP is linear')">
+
+Let $\mathbb{E}[Y^2] \lt \infty$ and $f^\star(x) = \mathbb{E}[Y \mid X = x]$. For every predictor $h$ with $\mathbb{E}[h(X)^2] \lt \infty$,
+
+$$\mathbb{E}\big[(Y - h(X))^2\big] = \mathbb{E}\big[\Var(Y \mid X)\big] + \mathbb{E}\big[(f^\star(X) - h(X))^2\big] \;\ge\; \mathbb{E}\big[(Y - f^\star(X))^2\big],$$
+
+with equality exactly when $h(X) = f^\star(X)$ with probability 1.
+
+</Theorem>
+
+The proof is der-2-1-4's last chunk, used once. Add and subtract the conditional mean; the cross term is the noise times a function of $X$, which averages to zero.
+
+<Derivation
+  id="der-2-1-5"
+  title="The conditional mean minimizes the expected squared error"
+  goalTex="\mathbb{E}\big[(Y - h(X))^2\big] \text{ for an arbitrary predictor } h"
+  resultTex="\mathbb{E}\big[(Y - h(X))^2\big] = \mathbb{E}\big[\Var(Y \mid X)\big] + \mathbb{E}\big[(f^\star(X) - h(X))^2\big] \;\ge\; \mathbb{E}\big[(Y - f^\star(X))^2\big]"
+  source="beyond the slides; course map L3 derivation gap 8 (needed for L3 p.39 poll option c)"
+>
+
+<Chunk title="Add and subtract the conditional mean">
+
+<Step justification="add and subtract $f^\star(X)$ inside the error" fadeable>
+$$Y - h(X) = \big(Y - f^\star(X)\big) + \big(f^\star(X) - h(X)\big)$$
+</Step>
+
+<Step justification="the first bracket is the noise $\varepsilon$ of der-2-1-4 step 1">
+$$Y - h(X) = \varepsilon + \big(f^\star(X) - h(X)\big)$$
+</Step>
+
+<Step justification="square both sides: $(a + b)^2 = a^2 + 2ab + b^2$">
+$$\big(Y - h(X)\big)^2 = \varepsilon^2 + 2\,\varepsilon\,\big(f^\star(X) - h(X)\big) + \big(f^\star(X) - h(X)\big)^2$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Average, cancel the cross term, and read off the floor">
+
+<Step justification="take expectations; expectation is linear" sticky="expectation">
+$$\mathbb{E}\big[(Y - h(X))^2\big] = \mathbb{E}[\varepsilon^2] + 2\,\mathbb{E}\big[\varepsilon\,(f^\star(X) - h(X))\big] + \mathbb{E}\big[(f^\star(X) - h(X))^2\big]$$
+</Step>
+
+<Step justification="der-2-1-4 step 9 with the function $f^\star - h$ of $X$, which has a finite second moment because $\mathbb{E}[h(X)^2] \lt \infty$ and $\mathbb{E}[f^\star(X)^2] \le \mathbb{E}[Y^2] \lt \infty$ (conditional Jensen): the noise is uncorrelated with every such function of the input" fadeable>
+$$\mathbb{E}\big[\varepsilon\,(f^\star(X) - h(X))\big] = 0$$
+</Step>
+
+<Step justification="substitute step 5 into step 4">
+$$\mathbb{E}\big[(Y - h(X))^2\big] = \mathbb{E}[\varepsilon^2] + \mathbb{E}\big[(f^\star(X) - h(X))^2\big]$$
+</Step>
+
+<Step justification="the second term is the expectation of a square, so it is at least 0, and it is 0 exactly when $h(X) = f^\star(X)$ with probability 1" fadeable>
+$$\mathbb{E}\big[(Y - h(X))^2\big] \;\ge\; \mathbb{E}[\varepsilon^2]$$
+</Step>
+
+<Step justification="step 6 with $h = f^\star$: the second term vanishes, so the bound of step 7 is attained" fadeable>
+$$\mathbb{E}\big[(Y - f^\star(X))^2\big] = \mathbb{E}[\varepsilon^2]$$
+</Step>
+
+<Step justification="law of total expectation; given $X$, $\varepsilon = Y - \mathbb{E}[Y \mid X]$, so $\mathbb{E}[\varepsilon^2 \mid X]$ is the conditional variance of $Y$" sticky="law-of-total-expectation" fadeable>
+$$\mathbb{E}[\varepsilon^2] = \mathbb{E}\big[\mathbb{E}[\varepsilon^2 \mid X]\big] = \mathbb{E}\big[\Var(Y \mid X)\big]$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+\mathbb{E}\big[(Y - h(X))^2\big] = \underbrace{\mathbb{E}\big[\Var(Y \mid X)\big]}_{\text{irreducible}} + \underbrace{\mathbb{E}\big[(f^\star(X) - h(X))^2\big]}_{\text{distance from } f^\star} \tag{2.1.3} \htmlId{eq-2-1-3}{}
+$$
+
+<EqRef id="eq-2-1-3" /> splits the error of any predictor into two parts. The **irreducible error** $\mathbb{E}[\Var(Y \mid X)]$ is the same for every predictor: it is the spread of outcomes among patients who share the same input, and no function of that input can predict it. The second part measures how far $h$ is from the truth, averaged over the inputs you will actually see. Learning can only shrink the second part.
+
+Two consequences shape the rest of the course. First, the expected squared error under $P$ is what lesson 2.2 calls the true risk; der-2-1-5 says that over *all* functions, its minimizer is $f^\star$. A model class $\mathcal{M}$ can reach that minimum only if $f^\star \in \mathcal{M}$. Second, the theorem is about squared error. Change the loss and the best predictor changes: under absolute error it is the conditional median, and under 0/1 loss for classification it is the most probable class, the Bayes classifier of lesson 6.1.
+
+<Check ids={["q-u2-l1-010", "q-u2-l1-013", "q-u2-l1-015", "q-u2-l1-020"]} />
+
+## A linear data-generating distribution
+
+L3 p.37 gives a concrete $P$ to reason about <SlideRef lecture={3} pages="37" />. Here it is with the conventions stated.
+
+<Definition id="def-2-1-7" title="Linear data-generating distribution" source="L3 pp.37, 40">
+
+$X$ is an input with mean $\mu_X$ and variance $\sigma_X^2$; the noise $\varepsilon$ is independent of $X$ with mean 0 and variance $\sigma_\varepsilon^2$; and
+
+$$Y = \alpha + \beta X + \varepsilon.$$
+
+The slides' example takes both $X$ and $\varepsilon$ Gaussian, $X \sim \mathcal{N}(\mu_X, \sigma_X^2)$ and $\varepsilon \sim \mathcal{N}(0, \sigma_\varepsilon^2)$, written there as $X \sim N(168, 30)$ and $\varepsilon \sim N(0, 20)$ <SlideRef lecture={3} pages="40" />. The derivation below does not need the Gaussian shape, only the means, the variances, and independence.
+
+</Definition>
+
+We use the course convention for the [[gaussian]]: the second argument of $\mathcal{N}(\mu, \sigma^2)$ is a variance. The slide does not say which it means; the Pitfalls section shows how much the choice changes.
+
+<Derivation
+  id="der-2-1-6"
+  title="Under a linear DGP the regression function is the line, and the best MSE is the noise variance"
+  goalTex="\mathbb{E}[Y \mid X], \quad \min_h \mathbb{E}\big[(Y - h(X))^2\big], \quad \Var(Y) \text{ for } Y = \alpha + \beta X + \varepsilon"
+  resultTex="f^\star(X) = \alpha + \beta X, \qquad \min_h \mathbb{E}\big[(Y - h(X))^2\big] = \sigma_\varepsilon^2, \qquad \Var(Y) = \beta^2\sigma_X^2 + \sigma_\varepsilon^2"
+  source="L3 pp.37-40 (linear DGP stated; its conditional mean, irreducible error, and variance split are not derived)"
+>
+
+<Chunk title="The conditional mean is the line">
+
+<Step justification="substitute the data-generating equation of def-2-1-7">
+$$\mathbb{E}[Y \mid X] = \mathbb{E}[\alpha + \beta X + \varepsilon \mid X]$$
+</Step>
+
+<Step justification="linearity of conditional expectation; $\alpha + \beta X$ is known once $X$ is given" sticky="conditional-expectation">
+$$\mathbb{E}[Y \mid X] = \alpha + \beta X + \mathbb{E}[\varepsilon \mid X]$$
+</Step>
+
+<Step justification="$\varepsilon$ is independent of $X$, so knowing $X$ does not change its mean: $\mathbb{E}[\varepsilon \mid X] = \mathbb{E}[\varepsilon] = 0$" fadeable>
+$$f^\star(X) = \mathbb{E}[Y \mid X] = \alpha + \beta X$$
+</Step>
+
+<Step justification="the linear model class of lesson 1.2 contains $f_\theta(x) = \theta_0 + \theta_1 x$ for every $\theta$; choose $\theta = (\alpha, \beta)$">
+$$f^\star = f_{(\alpha, \beta)} \in \mathcal{M} = \{f_\theta(x) = \theta_0 + \theta_1 x\}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="What the line leaves: the noise floor and the variance split">
+
+<Step justification="der-2-1-5 says the minimum is attained at $h = f^\star$, which is the line by step 3; what remains is $\varepsilon$, whose mean is 0, so $\mathbb{E}[\varepsilon^2] = \Var(\varepsilon)$" fadeable>
+$$\min_h \mathbb{E}\big[(Y - h(X))^2\big] = \mathbb{E}\big[(Y - \alpha - \beta X)^2\big] = \mathbb{E}[\varepsilon^2] = \sigma_\varepsilon^2$$
+</Step>
+
+<Step justification="adding the constant $\alpha$ does not change a variance, and independent terms have zero covariance, so their variances add" sticky="covariance">
+$$\Var(Y) = \Var(\beta X) + \Var(\varepsilon)$$
+</Step>
+
+<Step justification="scaling a variable by $\beta$ scales its variance by $\beta^2$, and $\Var(X) = \sigma_X^2$" sticky="variance" fadeable>
+$$\Var(Y) = \beta^2 \sigma_X^2 + \sigma_\varepsilon^2$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 4 is what L3 p.39 means by "we expect linear regression to work well if the data-generating distribution is linear": the truth is inside the model class, so the class is **well specified**, and the only error left is the noise (step 5). If $f^\star$ is not a line, as with VASCO's Emax curve in dose, <EqRef id="eq-2-1-3" /> says every line pays an extra $\mathbb{E}[(f^\star(X) - h(X))^2] > 0$ on top of the noise, however many patients you collect.
+
+Step 7 splits the spread of $Y$ into the part the input explains, $\Var(f^\star(X)) = \beta^2 \sigma_X^2$, and the part it cannot, $\sigma_\varepsilon^2$. The explained share,
+
+$$\frac{\Var(f^\star(X))}{\Var(Y)} = \frac{\beta^2 \sigma_X^2}{\beta^2 \sigma_X^2 + \sigma_\varepsilon^2},$$
+
+is a population version of $R^2$. L3 p.40 asks what the sample $R^2$ of linear regression converges to as $n \to \infty$ under this DGP <SlideRef lecture={3} pages="40" />. The answer is this ratio. The convergence argument needs the law of large numbers (lesson 2.2) and the definition of $R^2$ from lesson 1.3, which carries it out.
+
+<Check ids={["q-u2-l1-001", "q-u2-l1-002", "q-u2-l1-003", "q-u2-l1-004", "q-u2-l1-005"]} />
+
+## Explore the data-generating distribution
+
+<Widget
+  name="dgp-sampler"
+  alpha={0}
+  beta={1}
+  sigmaX={1}
+  sigmaEps={1}
+  n={20}
+  showConditionalMean={true}
+  challenge="Set σ_ε = 0, then σ_ε = 2, and redraw a few times at n = 20. How much does the OLS line move between draws, and where does the cloud sit relative to the true line α + βx? Then raise n until the training MSE settles. What does it settle near, and why can it dip below σ_ε² at small n? (Lesson 2.2 answers the last question.)"
+/>
+
+The sampler draws a fresh dataset from the linear DGP of def-2-1-7 each time you press redraw. The true line $f^\star(x) = \alpha + \beta x$ never moves; the data and the fitted line do. That is the distinction between $P$, which is fixed, and $\mathcal{D}$, which is one realization from it.
+
+## Worked example: the VASCO conditional mean
+
+<Example title="What the best predictor says for a VASCO patient">
+
+The VASCO case specification (Part C, C1) writes the 8-week change in systolic blood pressure as
+
+$$\Delta\mathrm{SBP} = E_0 + \frac{E_{\max} D}{ED_{50} + D} + 0.15\,(B - 150) + \varepsilon, \qquad \varepsilon \sim \mathcal{N}(0, 8^2),$$
+
+with $E_0 = -3$, $E_{\max} = -22$ mmHg, $ED_{50} = 6$ mg, dose $D$, and baseline pressure $B$. The noise is independent of $(D, B)$ with mean zero.
+
+**The regression function.** By der-2-1-6 steps 1–3 with the Emax curve in place of the line (the same three moves: substitute, pull out what is known, use $\mathbb{E}[\varepsilon \mid D, B] = 0$),
+
+$$f^\star(D, B) = -3 - \frac{22\,D}{6 + D} + 0.15\,(B - 150).$$
+
+At $D = 6$ mg and $B = 150$ mmHg, the dose term is $-22 \cdot 6 / 12 = -11$ and the baseline term is 0, so $f^\star(6, 150) = -3 - 11 = -14$ mmHg. That is the best prediction under squared error for every patient with this dose and baseline.
+
+**The irreducible error.** By der-2-1-5 steps 8–9, the best achievable expected squared error is $\mathbb{E}[\Var(Y \mid D, B)] = 8^2 = 64$ $\text{mmHg}^2$, an RMSE of 8 mmHg. About two thirds of patients with this dose and baseline land within 8 mmHg of $-14$, since the noise is Gaussian; the two hook patients differ because each drew a different $\varepsilon$.
+
+**Averaging out an input.** Suppose we only know the dose, not the baseline. Baseline is $B \sim \mathcal{N}(155, 12^2)$ in the specification, independent of the assigned dose. By the law of total expectation, $\mathbb{E}[\Delta\mathrm{SBP} \mid D] = \mathbb{E}\big[f^\star(D, B) \mid D\big]$, and only the baseline term averages: $0.15\,(\mathbb{E}[B] - 150) = 0.15 \cdot 5 = 0.75$. So $\mathbb{E}[\Delta\mathrm{SBP} \mid D = 6] = -14 + 0.75 = -13.25$ mmHg. The best predictor from dose alone is a different function from the best predictor from dose and baseline, and its irreducible error is larger by $0.15^2 \cdot 12^2 = 3.24$ $\text{mmHg}^2$, the variance of the baseline term it can no longer see.
+
+**What a line in dose must pay.** The best predictor from dose alone, $-3 - 22D/(6 + D) + 0.75$, is not a line in $D$ (lesson 1.1, der-1-1-3 step 9). By <EqRef id="eq-2-1-3" />, every line in dose has expected squared error strictly above the irreducible error of the dose-only problem, however much data is used to fit it.
+
+</Example>
+
+## Check your understanding
+
+The section checks above cover each derivation and the L3 pp.39–40 polls. These two are the faded version of the worked example: item q-u2-l1-011 changes the dose and baseline on every attempt, and q-u2-l1-012 changes the noise level.
+
+<Check ids={["q-u2-l1-011", "q-u2-l1-012"]} />
+
+## Pitfalls
+
+<Pitfall title="Spot the error: N(168, 30) does not say whether 30 is a variance" misconception="gaussian-second-arg-ambiguous">
+
+L3 pp.37 and 40 write $X \sim N(168, 30)$ and $\varepsilon \sim N(0, 20)$ without saying whether the second argument is a variance or a standard deviation. The two readings differ by a lot. If 30 is the variance, $X$ has standard deviation $\sqrt{30} \approx 5.48$; if 30 is the standard deviation, its variance is 900. In this course $\mathcal{N}(\mu, \sigma^2)$ always takes a variance, and whenever a source is ambiguous we say which reading we use. Two more defects on the same slides: 168 is not a plausible mean BMI (it looks like a height in centimeters), so treat the example as a synthetic toy; and L3 p.37's rendering drops $\beta$ and $\varepsilon$ from $Y = \alpha + \beta X + \varepsilon$. L3 p.40 shows the full form.
+
+</Pitfall>
+
+<Pitfall title="You can run linear regression on any data" misconception="linreg-needs-linear-dgp">
+
+The belief: linear regression requires the data-generating distribution to be linear. The fix: least squares runs on any dataset and returns the best line in its class. Linearity of $f^\star$ is what makes that line *the best predictor overall* (der-2-1-6 step 4). Without it, the line is the best line and pays the extra term of <EqRef id="eq-2-1-3" />.
+
+</Pitfall>
+
+<Pitfall title="The family of the DGP is rarely easy to guess" misconception="dgp-family-easy-to-guess">
+
+The belief: we do not know $P$, but we can usually tell which family it belongs to. The fix: real data come with no label saying "linear" or "Emax". VASCO's dose–response is Emax only because the case specification says so; for real patients, pharmacologists fit and compare several families. Choosing a model class is a bet about $f^\star$, and checking it (residual plots, held-out error) is part of the work.
+
+</Pitfall>
+
+<Pitfall title="Writing Y = f(X) + ε assumes nothing until you say what ε is" misconception="noise-form-is-assumption">
+
+The belief: modeling data as signal plus noise is a strong assumption. The fix: der-2-1-4 shows that every $(X, Y)$ with finite variance can be written this way, with $f^\star = \mathbb{E}[Y \mid X]$ and $\mathbb{E}[\varepsilon \mid X] = 0$. The real assumptions are about the shape of $f^\star$ and the behavior of $\varepsilon$: independent of $X$, constant variance, Gaussian. Each of these can fail separately.
+
+</Pitfall>
+
+<Pitfall title="The best predictor still makes errors" misconception="optimal-predictor-zero-error">
+
+The belief: if a model equals the true regression function, its expected error is zero. The fix: der-2-1-5 steps 8–9 say the best possible expected squared error is $\mathbb{E}[\Var(Y \mid X)]$, which is zero only if $Y$ is a deterministic function of $X$. In VASCO it is $8^2 = 64$ $\text{mmHg}^2$ even for a perfect model. A training error far below the noise level is a warning sign, not an achievement (lesson 2.2).
+
+</Pitfall>
+
+<Pitfall title="The irreducible error is the spread within an input, not the total spread" misconception="irreducible-is-total-variance">
+
+The belief: the error floor is $\Var(Y)$. The fix: $\Var(Y)$ is the error of the best *constant* (the Intuition). Using $X$ removes the part of the spread that $X$ explains; what is left is $\mathbb{E}[\Var(Y \mid X)]$, which for a linear DGP is $\sigma_\varepsilon^2$, smaller than $\Var(Y) = \beta^2 \sigma_X^2 + \sigma_\varepsilon^2$ whenever $\beta \ne 0$.
+
+</Pitfall>
+
+<Pitfall title="The mean is optimal for squared error, the median for absolute error" misconception="median-is-mse-optimal">
+
+The belief: the best prediction is the most typical outcome, the median or the most likely value. The fix: which summary is best depends on the loss. Squared error is minimized by the conditional mean (der-2-1-5); absolute error by the conditional median; 0/1 loss by the most probable value. For a skewed outcome, such as length of hospital stay, these three are different numbers.
+
+</Pitfall>
+
+<Pitfall title="Patients from one family or one ward are not independent draws" misconception="iid-always-holds">
+
+The belief: each row of a clinical table is an independent draw, so the iid model always applies. The fix: repeated visits by one patient, members of one family, and patients treated in one hospital share unrecorded causes, so knowing one outcome changes your prediction for another. L3 p.35 flags this ("my BMI has no effect on your BMI — Really?"). Then the product in <EqRef id="eq-2-1-1" /> is wrong, and later, cross-validation must split by patient, not by row (Unit 5).
+
+</Pitfall>
+
+<Pitfall title="The dataset is a realization, not the distribution" misconception="dataset-is-distribution">
+
+The belief: the 20 patients in the table are the data-generating distribution. The fix: they are one draw of $n = 20$ from $P$. A second study would draw different patients with different numbers from the same $P$. Quantities computed from the table, such as the training error, are therefore random; quantities defined by $P$, such as $f^\star$ and the true risk, are fixed. Lesson 2.2 is built on this difference.
+
+</Pitfall>
+
+<Connections>
+
+- Previous: 1.2 Datasets, models, and model classes defined the dataset and the linear model class; this lesson says where the dataset comes from and when the linear class contains the truth.
+- Unit 1, still to come: 1.3 Loss functions defines MSE and $R^2$ and proves the population limit of $R^2$ that L3 p.40 asks about; 1.4 Least squares finds the best line in closed form.
+- Next: 2.2 True and empirical risk turns the expected squared error of der-2-1-5 into the true risk $R(\theta)$, replaces it with the empirical average over the dataset, and explains why the training error of the fitted model is biased downward. It uses [[law-of-large-numbers]] and the iid model of def-2-1-5.
+- Then: 2.3 Gradients and optimality, 2.4 Gradient descent, and 2.5 Step size and conditioning search for the minimizer when no closed form is available.
+- Later: Unit 3 maximizes the log-likelihood of der-2-1-3 step 6, with a Gaussian noise model on $\varepsilon$; lesson 6.1 proves the 0/1-loss analog of der-2-1-5, the optimality of the Bayes classifier.
+- Graph neighbors: [[random-variable]], [[data-generating-distribution]], [[conditional-expectation]], [[law-of-total-expectation]], [[iid]], [[expectation]], [[variance]].
+
+</Connections>
+
+{/* no-homework-bridge: this lesson feeds HW1 (due 2026-09-16) and HW2's R² limit question (due 2026-10-05), both past; neither src/content/homework/hw1.mdx nor hw2.mdx exists. No live homework uses Unit 2 material. */}
+
+<Summary>
+
+- **Probability axioms:** $P(A) \ge 0$, $P(\Omega) = 1$, countable additivity. Consequences: $P(\emptyset) = 0$, $P(A^c) = 1 - P(A)$, $P(A) \le 1$.
+- **Random variable:** a function $X : \Omega \to E$; its distribution is $P_X(B) = P(X^{-1}(B))$, itself a probability. One sample space supports many random variables.
+- **iid:** independent draws with one shared distribution; then $p(\mathcal{D}) = \prod_i p(x^{(i)}, y^{(i)})$ and $\log p(\mathcal{D}) = \sum_i \log p(y^{(i)} \mid x^{(i)}) + \sum_i \log p(x^{(i)})$.
+- **Data-generating distribution:** $(X^{(i)}, Y^{(i)}) \overset{\text{iid}}{\sim} P$, fixed and unknown; the dataset is one realization.
+- **Signal plus noise:** always $Y = f^\star(X) + \varepsilon$ with $f^\star(x) = \mathbb{E}[Y \mid X = x]$, $\mathbb{E}[\varepsilon \mid X] = 0$, and $\mathbb{E}[h(X)\varepsilon] = 0$ for every $h$.
+- **Best predictor:** $\mathbb{E}[(Y - h(X))^2] = \mathbb{E}[\Var(Y \mid X)] + \mathbb{E}[(f^\star(X) - h(X))^2]$, minimized by $h = f^\star$. The first term is irreducible.
+- **Linear DGP:** $Y = \alpha + \beta X + \varepsilon$ gives $f^\star(X) = \alpha + \beta X$ (linear regression is well specified), minimum MSE $\sigma_\varepsilon^2$, and $\Var(Y) = \beta^2 \sigma_X^2 + \sigma_\varepsilon^2$.
+- **Notation:** $\mathcal{N}(\mu, \sigma^2)$ takes a variance; the slides' $f(X)$ and $g(X)$ are our $f^\star$, and their $f(X; \theta)$ is our $f_\theta$.
+
+</Summary>

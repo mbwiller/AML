@@ -1,0 +1,12 @@
+---
+id: law-of-large-numbers
+term: Law of large numbers
+aliases: [LLN, weak law of large numbers]
+field: probability
+firstUsedIn: u2-risk-and-gradient-descent
+related: [expectation, variance, iid, empirical-risk]
+---
+
+**What it is.** If $Z_1, \dots, Z_n$ are i.i.d. with mean $\mu$ and finite variance $\sigma^2$, the sample mean $\bar Z_n = \frac1n\sum_i Z_i$ concentrates at $\mu$: for every tolerance $\epsilon > 0$, $P(\lvert \bar Z_n - \mu\rvert \ge \epsilon) \le \frac{\sigma^2}{n\epsilon^2} \to 0$. The bound is Chebyshev's inequality applied to $\bar Z_n$, whose variance is $\sigma^2/n$.
+
+**How ML uses it.** With $Z_i$ the loss on example $i$ of a fixed model, $\bar Z_n$ is the empirical risk and $\mu$ is the true risk, so training on more data makes the estimate of a fixed model's error reliable. The law says nothing about a model chosen to make the sample mean small; that gap is selection bias.
