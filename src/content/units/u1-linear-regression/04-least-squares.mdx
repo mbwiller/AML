@@ -43,7 +43,7 @@ status: review
 authors: [matt]
 ---
 
-{/* no-case-frontmatter: the hook and the second worked example use the VASCO dose-finding trial (docs/reference/pedagogy-and-curriculum.md Part C, C1), but src/content/cases/vasco.mdx and src/data/vasco.json do not exist yet. Add `cases: [vasco]` when they do, and replace the population arm means below by the generated trial's arm means. The arm means come from the C1 specification (E0 = -3, Emax = -22 mmHg, ED50 = 6 mg, baseline term 0.15(B - 150) with B ~ N(155, 12^2), 50 patients per arm), and the fits and residuals were computed once from them with NumPy (script output recorded 2026-10-07). The diabetes numbers come from the L2 companion (cells 8 and 15) and were reproduced with the code shown. */}
+{/* no-case-frontmatter: the hook and the second worked example use the VASCO dose-finding trial (docs/reference/pedagogy-and-curriculum.md Part C, C1), and src/data/vasco.json now exists, but there is no src/content/cases/vasco.mdx page yet; add `cases: [vasco]` when it lands. The worked example deliberately uses the population arm means, the fit a large trial approaches, so the residual pattern is exact rather than one sample's noise. The arm means come from the C1 specification (E0 = -3, Emax = -22 mmHg, ED50 = 6 mg, baseline term 0.15(B - 150) with B ~ N(155, 12^2), 50 patients per arm), and the fits and residuals were computed once from them with NumPy (script output recorded 2026-10-07). The diabetes numbers come from the L2 companion (cells 8 and 15) and were reproduced with the code shown. */}
 
 <Frame
   data="the design matrix $X \in \mathbb{R}^{n \times (d+1)}$ with a column of ones, and the targets $y \in \mathbb{R}^n$"
