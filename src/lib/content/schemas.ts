@@ -11,6 +11,11 @@
  */
 import { z } from 'zod';
 
+import { EDGE_TYPES, FIELDS, NODE_TYPES } from './vocab';
+
+/** Closed vocabularies live in ./vocab.ts (Zod-free); re-exported for existing importers. */
+export { EDGE_TYPES, FIELDS, NODE_TYPES } from './vocab';
+
 // ---------------------------------------------------------------------------
 // Primitives
 // ---------------------------------------------------------------------------
@@ -36,15 +41,6 @@ export const frontmatterDate = z.union([
   z.date().transform((d) => d.toISOString().slice(0, 10)),
 ]);
 
-export const FIELDS = [
-  'probability',
-  'statistics',
-  'linear-algebra',
-  'calculus',
-  'information-theory',
-  'ml',
-  'evaluation',
-] as const;
 export const fieldEnum = z.enum(FIELDS);
 export type Field = z.infer<typeof fieldEnum>;
 
@@ -129,7 +125,6 @@ export type GlossaryTerm = z.infer<typeof glossarySchema>;
 // Concept graph (src/content/graph/nodes.yaml, edges.yaml) (§6)
 // ---------------------------------------------------------------------------
 
-export const NODE_TYPES = ['concept', 'method', 'metric', 'prereq', 'dataset'] as const;
 export const nodeTypeEnum = z.enum(NODE_TYPES);
 
 export const graphNodeSchema = z.object({
@@ -146,7 +141,6 @@ export const graphNodeSchema = z.object({
 });
 export type GraphNode = z.infer<typeof graphNodeSchema>;
 
-export const EDGE_TYPES = ['requires', 'generalizes', 'contrasts', 'uses'] as const;
 export const edgeTypeEnum = z.enum(EDGE_TYPES);
 
 export const graphEdgeSchema = z.object({

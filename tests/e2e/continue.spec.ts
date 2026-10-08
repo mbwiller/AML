@@ -18,7 +18,7 @@ test('home continue card remembers the last lesson', async ({ page }) => {
 });
 
 test('unknown routes get the 404 page', async ({ page }) => {
-  const response = await page.goto('/atlas');
+  const response = await page.goto('/nowhere');
   expect(response?.status()).toBe(404);
   await expect(page.locator('h1').first()).toContainText('There is no page here');
 });
