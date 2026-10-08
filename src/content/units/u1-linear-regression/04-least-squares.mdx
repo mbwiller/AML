@@ -314,7 +314,7 @@ Choosing $\theta$ means choosing a point on the plane, and $\lVert X\theta - y\r
   title="Every solution of the normal equations is a global minimizer: Pythagoras in the column space"
   goalTex="\lVert X\theta - y\rVert_2^2 \ \text{ versus } \ \lVert X\hat\theta - y\rVert_2^2 \ \text{ for every } \theta, \ \text{ when } \ X^\top X\hat\theta = X^\top y"
   resultTex="\lVert X\theta - y\rVert_2^2 = \lVert X\hat\theta - y\rVert_2^2 + \lVert X(\theta - \hat\theta)\rVert_2^2 \ \ge\ \lVert X\hat\theta - y\rVert_2^2, \quad \text{equality} \iff X\theta = X\hat\theta; \quad X\hat\theta \text{ is the orthogonal projection of } y \text{ onto } \operatorname{col}(X)"
-  source="beyond the slides (course map L3 derivation gap 1; the projection view is not on the slides)"
+  source="beyond the slides (the projection view is not on the slides)"
 >
 
 <Chunk title="The residual is orthogonal to every column">
@@ -499,7 +499,7 @@ So the L3 p.22 poll's option is a reason for a non-unique $\hat\theta$, not for 
   challenge="Locate the bottom of the bowl by eye and compare it with the least-squares point the normal equations give. Then turn on standardization: how does the shape of the contours change, and do the fitted values change at all?"
 />
 
-The surface is $\hat R(\theta)$ for the 20 companion patients, the bowl of L3 p.14. Its bottom is the solution of <EqRef id="eq-1-4-2" />, and the level sets are ellipses whose axes are the eigenvectors of the Hessian $\frac2n X^\top X$ (der-1-4-2 step 2). Standardizing the feature changes the coordinates of the bottom but not the fitted line, because the new columns span the same column space (der-1-4-3 step 8). Running gradient descent from the start point previews lesson 2.4.
+The surface is $\hat R(\theta)$ for the same 20 patients, the bowl of L3 p.14, in the Lecture 4 companion's units: the feature is scikit-learn's scaled `bmi` (about $-0.1$ to $0.1$), the target is the score divided by 300, and $\theta = (\theta_{\text{bmi}}, \theta_{\text{one}})$. Its bottom, $\hat\theta \approx (3.7379, 0.4580)$, is the solution of <EqRef id="eq-1-4-2" /> in those units, the same line as $-797.08 + 37.3788x$ on the L2 axis, and the level sets are ellipses whose axes are the eigenvectors of the Hessian $\frac2n X^\top X$ (der-1-4-2 step 2). Standardizing the feature changes the coordinates of the bottom but not the fitted line, because the new columns span the same column space (der-1-4-3 step 8). Running gradient descent from the start point previews lesson 2.4.
 
 ## One feature: the companion's numbers
 
@@ -643,15 +643,23 @@ Solving the normal equations for the six expected arm means gives $\hat\theta \a
 | 20 | 3.045 | −19.173 | +0.489 | +3.049 |
 | 40 | 3.714 | −21.380 | −0.870 | −2.730 |
 
-Plot the residual against dose. For both lines the residuals sum to zero, as der-1-4-3 step 2 requires, but they are not scattered at random: negative at the ends, positive in the middle. That systematic arc is the signature of a misspecified model class, the Emax curvature that no line in the chosen feature can follow. For the raw-dose line it is large, about 6 mmHg at placebo. For $\log(1 + D)$ it is under 0.9 mmHg everywhere. A real trial adds noise: each arm mean has a standard error of about 1.2 mmHg, from the residual standard deviation of 8 mmHg and the baseline term over 50 patients. So in a single trial the $\log(1 + D)$ arc would be hard to see, while the raw-dose arc would be plain. The feature is a good approximation, not the truth.
+The widget after this example plots the residuals by arm; its dotted pattern is the infinite-trial fit this table computes. For both lines the residuals sum to zero, as der-1-4-3 step 2 requires, but they are not scattered at random: negative at the ends, positive in the middle. That systematic arc is the signature of a misspecified model class, the Emax curvature that no line in the chosen feature can follow. For the raw-dose line it is large, about 6 mmHg at placebo. For $\log(1 + D)$ it is under 0.9 mmHg everywhere. A real trial adds noise: each arm mean has a standard error of about 1.2 mmHg, from the residual standard deviation of 8 mmHg and the baseline term over 50 patients. So in a single trial the $\log(1 + D)$ arc would be hard to see, while the raw-dose arc would be plain. The feature is a good approximation, not the truth.
 
 </Example>
+
+<Widget
+  name="linear-bias-probe"
+  dataset="vasco"
+  features={["log1p_dose"]}
+  showTruth={true}
+  challenge="Read the residuals by arm for the line in log(1 + D): which arms sit above the line and which below? Switch the feature to dose, then to D/(6 + D): which choice makes the pattern vanish, and why does more data not do it?"
+/>
 
 ## From the closed form to gradient descent
 
 If a closed form exists, why does the course spend Unit 2 on gradient descent? Because <EqRef id="eq-1-4-2" /> is special. Forming $X^\top X$ costs on the order of $n d^2$ operations and solving the system on the order of $d^3$, which is prohibitive with hundreds of thousands of features. The data may arrive in a stream, so that $X$ is never all in memory. And most models have no closed form at all: logistic regression (Unit 3) has a gradient whose zero no formula isolates, and so do neural networks.
 
-Gradient descent needs only the gradient of der-1-4-1, $\frac2n X^\top(X\theta - y)$, evaluated at the current $\theta$. Because the objective is convex (der-1-4-2), L3 p.21's guarantee applies: with a suitable step size it reaches the global minimum <SlideRef lecture={3} pages="21" />. How fast it gets there depends on the shape of the bowl. For the 20 companion patients, the eigenvalues of $X^\top X$ are about 0.062 and 12,260, a ratio near 200,000: the bowl is a long, narrow valley, because the BMI column (around 25) and the ones column point in nearly the same direction. Centering BMI makes the two columns orthogonal and the eigenvalues 20 and 38.0. Lessons 2.4 and 2.5 explain why that ratio, the condition number, governs the speed of gradient descent.
+Gradient descent needs only the gradient of der-1-4-1, $\frac2n X^\top(X\theta - y)$, evaluated at the current $\theta$. Because the objective is convex (der-1-4-2), L3 p.21's guarantee applies: with a suitable step size it reaches the global minimum <SlideRef lecture={3} pages="21" />. How fast it gets there depends on the shape of the bowl. For the 20 companion patients, the eigenvalues of $X^\top X$ are about 0.062 and 12,260, a ratio near 200,000: the bowl is a long, narrow valley, because the BMI column (around 25) and the ones column point in nearly the same direction. Centering BMI makes the two columns orthogonal and the eigenvalues 20 and 38.0. The widget above uses the Lecture 4 units, where the ratio is about 474 rather than 200,000: still a long valley, and exactly 1 after standardizing. Lessons 2.4 and 2.5 explain why that ratio, the condition number, governs the speed of gradient descent.
 
 ## Check your understanding
 
@@ -686,6 +694,12 @@ The belief: with BMI entered twice, the coefficient 7.4758 is "the effect of BMI
 <Pitfall title="n ≥ d + 1 is necessary but not sufficient" misconception="n-ge-d-sufficient">
 
 The belief: with more patients than parameters, $X^\top X$ is invertible. The fix: invertibility needs full column rank (der-1-4-2 step 10 and der-1-4-4). Having $n \ge d + 1$ allows it but does not guarantee it: one collinear column, or one-hot columns plus an intercept, makes $X^\top X$ singular however many rows there are.
+
+</Pitfall>
+
+<Pitfall title="Symmetric does not mean invertible" misconception="symmetric-means-invertible">
+
+The belief: $X^\top X$ is symmetric, so it has an inverse. The fix: symmetry says nothing about the null space. $X^\top X$ is invertible exactly when $X$ has full column rank (der-1-4-2 step 10, der-1-4-4 step 3); BMI entered twice gives a symmetric, singular $X^\top X$.
 
 </Pitfall>
 

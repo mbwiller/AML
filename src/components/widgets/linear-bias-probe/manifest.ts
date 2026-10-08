@@ -44,7 +44,7 @@ export const manifest = {
   title: 'What a linear model must get wrong',
   challenge:
     'Apply the +10 mg step at 0 mg and again at 20 mg, and compare the model’s change with the truth’s. Then swap the dose feature for D/(6 + D) and watch the residual pattern and the squared bias.',
-  usedIn: ['1.2'],
+  usedIn: ['1.2', '1.4'],
   height: 820,
   params,
   fallback: renderFallback,

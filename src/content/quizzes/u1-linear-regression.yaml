@@ -529,11 +529,10 @@
   difficulty: 1
   source: "L3 p.19 poll"
   prompt: |
-    What is the most common objective (loss) function for linear regression? (In class, "least squares" and "mean squared error" were both accepted; choose the option that names the loss function itself rather than the fitting method.)
+    What is the most common objective (loss) function for linear regression?
   options:
-    - { text: 'Least squares', explanation: 'Close: least squares is the name of the method, and its objective, the sum of squared errors, is $n$ times the MSE. The poll keys the objective by its name, mean squared error.' }
     - { text: 'Gradient descent', misconception: optimizer-as-loss }
-    - { text: 'Mean squared error', correct: true }
+    - { text: 'Mean squared error (least squares: the same objective, summed)', correct: true }
     - { text: '$R^2$', misconception: r2-is-a-loss }
   explanation: |
     The mean squared error, $\frac1n\sum_i (f_\theta(x^{(i)}) - y^{(i)})^2$ (def-1-3-3; L2 p.31 calls it "the most common"). Gradient descent is an optimizer, a way to minimize a loss, not a loss. $R^2$ is an evaluation metric (L3 p.8); on a fixed training set, maximizing it is the same as minimizing MSE (eq-1-3-2).
@@ -687,7 +686,7 @@
   difficulty: 2
   source: "original"
   prompt: |
-    In the line-fit playground, the 20 diabetes patients are fit twice: by least squares (MSE) and by least absolute deviations (MAE). You drag the patient with BMI 23.3 from a score of 183 up to 1830. Predict what happens to the two fitted lines.
+    The 20 diabetes patients are fit twice: by least squares (MSE) and by least absolute deviations (MAE). The score of the patient with BMI 23.3 (DIAB-430) is mis-entered as 1830 instead of 183, and both lines are refit. Predict what happens to the two fitted lines.
   options:
     - { text: 'The least-squares line swings sharply, and its slope can even turn negative; the MAE line barely moves or does not move at all', correct: true }
     - { text: 'Both lines move up by the same amount, since both average over the same 20 patients', misconception: mse-robust-to-outliers }
@@ -944,7 +943,7 @@
     - { text: '$X^\top X$ is invertible, but gradient descent will get stuck', misconception: lsq-local-minima }
     - { text: 'The fit has a higher MSE than the fit without an intercept', misconception: collinear-high-loss }
   explanation: |
-    This is the dummy-variable trap (lesson 1.1, der-1-1-1 step 11): one column is a combination of others, so $X$ lacks full column rank whatever $n$ is (der-1-4-4 step 11). All solutions give the six arm means as predictions and the same MSE (step 10). Drop one arm's column or the intercept.
+    This is the dummy-variable trap (lesson 1.1, der-1-1-1 steps 11–12): one column is a combination of others, so $X$ lacks full column rank whatever $n$ is (der-1-4-4 step 11). All solutions give the six arm means as predictions and the same MSE (step 10). Drop one arm's column or the intercept.
   discriminates: [singular-normal-equations, dummy-variable-trap]
 
 - id: q-u1-l4-012

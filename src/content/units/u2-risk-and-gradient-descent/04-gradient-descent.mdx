@@ -58,7 +58,7 @@ authors: [jide]
 
 <Hook>
 
-Lesson 1.4 fits the VASCO trial's 300 patients by least squares in one line, because setting the gradient of the mean squared error to zero gives a linear system. Unit 3 asks a different question of the same kind of data: will this patient have a serious adverse event? The natural loss for that question has a gradient whose zero no formula can isolate. Neural networks are worse still.
+Lesson 1.4 fits the VASCO trial's dose–response line by least squares in one solve, because setting the gradient of the mean squared error to zero gives a linear system. Unit 3 asks a different question of the same kind of data: will this patient have a serious adverse event? The natural loss for that question has a gradient whose zero no formula can isolate. Neural networks are worse still.
 
 So we need a method that never solves $\nabla \hat R(\theta) = 0$. It only asks, at the current $\theta$: which way is downhill, and how far should I step? Repeat until the answer is "nowhere".
 
@@ -380,7 +380,7 @@ $$
 \nabla_\theta \hat R(\theta) = \frac{2}{n}\, X^\top (X\theta - y) \tag{2.4.3} \htmlId{eq-2-4-3}{}
 $$
 
-Check the shapes: $X^\top$ is $(d+1) \times n$ and the residual vector $X\theta - y$ is $n \times 1$, so the gradient is $(d+1) \times 1$, a column with one entry per parameter, as a gradient must be. Setting <EqRef id="eq-2-4-3" /> to zero gives $X^\top X\theta = X^\top y$, the normal equations that lesson 1.4 solves in closed form; the Hessian of step 11 is what lesson 1.4 uses to prove the bowl is convex and lesson 2.5 uses to choose $\eta$.
+Check the shapes: $X^\top$ is $(d+1) \times n$ and the residual vector $X\theta - y$ is $n \times 1$, so the gradient is $(d+1) \times 1$, a column with one entry per parameter, as a gradient must be. Setting <EqRef id="eq-2-4-3" /> to zero gives $X^\top X\theta = X^\top y$, the normal equations that lesson 1.4 solves in closed form; the Hessian of step 11 is the one lesson 1.4 derives again (der-1-4-2 step 2) to prove the bowl is convex and lesson 2.5 uses to choose $\eta$.
 
 The matrix form is compact but hides where the gradient comes from. The chain rule, applied to one example at a time, shows it.
 
@@ -689,7 +689,7 @@ The belief: every call to `.backward()` overwrites `theta.grad` with the current
 
 - Previous: 2.3 Gradients and optimality proves that $-\nabla F$ is the steepest-descent direction and states the first- and second-order conditions this lesson relies on.
 - Next: 2.5 Step size and conditioning analyzes $\eta$ exactly on a quadratic, explains the slow, flat direction in the companion's run with the [[condition-number]], proves convergence for [[l-smooth]] convex functions, and replaces the full gradient by a minibatch estimate ([[stochastic-gradient-descent]]).
-- Back: 1.4 Least squares solves $\nabla\hat R = 0$ for the same loss in closed form, $X^\top X\theta = X^\top y$, and uses der-2-4-3's Hessian to prove convexity.
+- Back: 1.4 Least squares solves $\nabla\hat R = 0$ for the same loss in closed form, $X^\top X\theta = X^\top y$, and proves convexity from the same Hessian (der-1-4-2).
 - Forward: Unit 3 trains logistic regression with <EqRef id="eq-2-4-2" />, where no closed form exists; its gradient has the residual-times-input shape of <EqRef id="eq-2-4-4" />.
 - Companion: <Notebook path="Code Companions/lecture4-code companion.ipynb" cells="3-23" /> (autograd on the toy loss, then gradient descent for linear regression on the diabetes data, cross-checked against scikit-learn).
 - Homework: HW1 Part II Q5 asked for exactly this loop, without `nn.Sequential`, and Q6 asked when gradient descent beats the closed form (large $n$ or $d$, streaming data, no closed form).
