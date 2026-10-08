@@ -1,0 +1,208 @@
+---
+/**
+ * Internal: the `<Derivation>` control bar (Next step · Reveal all · Reset ·
+ * "3 of 12" · step dots · key hints), rendered once under the goal banner
+ * (`position="top"`) and once under the last chunk (`position="bottom"`).
+ * Hidden by CSS until the engine marks the section `data-enhanced`; the
+ * engine in Derivation.astro wires the buttons and keeps the state in sync.
+ * Only the top count is a live region so a change is announced once.
+ * Not in the MDX registry.
+ */
+interface Props {
+  position: 'top' | 'bottom';
+  /** "Derivation 6.1.1" */
+  label: string;
+  total: number;
+}
+const { position, label, total } = Astro.props;
+const steps = Array.from({ length: total }, (_, i) => i + 1);
+const top = position === 'top';
+---
+
+<div class="derivation-controls" data-derivation-controls={position}>
+  <div class="controls-row">
+    <div class="controls-buttons" role="group" aria-label={`${label} steps`}>
+      <button type="button" class="ctl ctl-primary" data-action="next">
+        Next step
+      </button>
+      <button type="button" class="ctl" data-action="all">
+        Reveal all
+      </button>
+      <button type="button" class="ctl ctl-quiet" data-action="reset">
+        Reset
+      </button>
+    </div>
+    <p
+      class="derivation-count"
+      data-count
+      aria-live={top ? 'polite' : undefined}
+      aria-atomic={top ? 'true' : undefined}
+      aria-hidden={top ? undefined : 'true'}
+    >
+      {Math.min(1, total)} of {total}
+    </p>
+    {top && (
+      <p class="controls-keys" aria-hidden="true">
+        <kbd>→</kbd> next · <kbd>←</kbd> back · <kbd>a</kbd> all · <kbd>r</kbd> reset
+      </p>
+    )}
+  </div>
+  {total > 1 && (
+    <ol class="step-dots" aria-label={`${label}: jump to a step`}>
+      {steps.map((n) => (
+        <li>
+          <button
+            type="button"
+            class="step-dot"
+            data-action="to"
+            data-step-target={n}
+            aria-label={`Reveal through step ${n}`}
+          >
+            {n}
+          </button>
+        </li>
+      ))}
+    </ol>
+  )}
+</div>
+
+<style>
+  .derivation-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-block: 0.75em 0;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+  .derivation-controls[data-derivation-controls='bottom'] {
+    margin-block: 0 1.25em;
+  }
+  .controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+  }
+  .controls-buttons {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.2rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    font: inherit;
+    font-weight: 500;
+    color: var(--fg);
+    cursor: pointer;
+    transition:
+      background-color var(--duration-micro) var(--ease-standard),
+      border-color var(--duration-micro) var(--ease-standard),
+      color var(--duration-micro) var(--ease-standard);
+  }
+  .ctl:hover {
+    background: var(--surface-2);
+    border-color: var(--muted);
+  }
+  .ctl-primary {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .ctl-quiet {
+    border-color: transparent;
+    background: transparent;
+    color: var(--muted);
+  }
+  .ctl[aria-disabled='true'] {
+    opacity: 0.5;
+    cursor: default;
+    border-color: var(--border);
+    background: var(--surface);
+    color: var(--muted);
+  }
+  .derivation-count {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .controls-keys {
+    display: none;
+    margin: 0 0 0 auto;
+    white-space: nowrap;
+  }
+  .controls-keys kbd {
+    display: inline-block;
+    min-width: 1.25em;
+    padding: 0 0.3em;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    text-align: center;
+  }
+  @media (width >= 1024px) and (hover: hover) {
+    .controls-keys {
+      display: block;
+    }
+  }
+
+  /* Step dots: a hidden number reveals through it; a shown number scrolls there. */
+  .step-dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .step-dots li {
+    margin: 0;
+    padding: 0;
+  }
+  .step-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.75rem;
+    height: 1.75rem;
+    padding: 0 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: transparent;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    cursor: pointer;
+    transition:
+      background-color var(--duration-micro) var(--ease-standard),
+      border-color var(--duration-micro) var(--ease-standard),
+      color var(--duration-micro) var(--ease-standard);
+  }
+  .step-dot:hover {
+    border-color: var(--muted);
+    color: var(--fg);
+  }
+  .step-dot[data-state='revealed'] {
+    border-color: var(--fg);
+    background: var(--fg);
+    color: var(--bg);
+  }
+  .step-dot[data-state='revealed']:hover {
+    background: var(--muted);
+    border-color: var(--muted);
+  }
+  .step-dot[aria-current='step'] {
+    box-shadow: 0 0 0 2px var(--bg) inset;
+  }
+</style>
