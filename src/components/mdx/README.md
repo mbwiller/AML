@@ -23,8 +23,8 @@ Conventions: the twelve anatomy sections are `h2` with fixed ids (`objectives`, 
 | `Widget` | `name`, `challenge?`, `…params` | placeholder `<figure class="widget" data-widget data-widget-params>` with the name, challenge, params JSON, 16rem reserved | the React island in `<WidgetFrame>`, manifest validation |
 | `Figure` | `src`, `alt`, `caption?`, `source?` | `<figure class="figure">` with plain `<img loading="lazy">` and a figcaption + chip | `astro:assets` |
 | `Example` | `case?`, `title?`, `id?` | `<section class="example" id="example-<slug>">` with `h3` "Worked example · title" and a case chip | faded variant |
-| `Check` | `ids` | placeholder `<section class="check" data-check-ids>` listing the ids | the practice engine renders and grades |
-| `Pitfall` | `title`, `misconception?` | `<aside class="pitfall" data-misconception>`: "Pitfall" label, the false statement as title, the fix as body | surfaced from quiz distractors |
+| `Check` | `ids` | `<section class="check" data-check data-check-ids>` with one `<li data-check-item>` per id, rendered from the quiz bank at build time and graded in the browser by one vanilla controller (see "Check" below) | persistence, shuffling, the remaining item types |
+| `Pitfall` | `title`, `misconception?` | `<aside class="pitfall" id="pitfall-<misconception>" data-misconception>`: "Pitfall" label, the false statement as title, the fix as body | — |
 | `Connections` | — | `<section id="connections"><h2>` | graph neighborhood |
 | `Notebook` | `path`, `cells` | chip "`<basename>` · cells 0–8" → `/materials#notebook-<slug>` | rendered cells with outputs |
 | `HomeworkBridge` | `hw`, `skills` | `<section class="homework-bridge" id="homework-hw3">` with `h3` "Readiness gate · HW3", a Skill / Lesson section / Check table (— for now), link to `/homework/hw3` | sections and checks filled from the homework map |
@@ -62,5 +62,28 @@ DOM contract, for anything that wants a sticky (prerequisite chips in `Lesson.as
 - **Events:** bubbling `CustomEvent`s on the trigger, `sticky:open` and `sticky:close`, with `detail: { id }`.
 
 Tests: `src/lib/glossary.test.ts` (grouping, filtering, used-by, placement) and `tests/e2e/sticky.spec.ts` (hover, Escape, keyboard, phone tap, one template per term, screenshots in both themes).
+
+## Check
+
+`<Check ids={[…]} />` looks every id up in the `quizzes` collection at build time and renders what the graders in `src/lib/graders/` can grade. Unknown ids and item types without a grader render as muted rows and never fail the build.
+
+| Item type | Renders as | Graded by |
+|---|---|---|
+| `mc` | fieldset of radios in file order (no shuffling yet; `data-shuffle-seed` is reserved for it) | `gradeMc` |
+| `numeric` | text input (decimal, fraction, or scientific notation; `tolerance` is absolute) with a format hint; seeded items get a "New numbers" button that resamples `seeded` through `sampleSeededParams` and shows the new values under the prompt as `name = value` | `gradeNumeric` |
+| `which-step` | radios over the derivation's steps, read from the lesson body that defines `derivation` with `extractDerivationSteps`, one step replaced by `corrupt.replaceTex` | `gradeWhichStep` |
+| `match`, `order`, `predict`, `estimate`, `code-trace` | muted row ("arrive with the practice engine") | — |
+
+Prompts, options, explanations, and step TeX go through `renderInlineTex` / `renderDisplayTex` at build time; the browser never loads KaTeX for a check.
+
+DOM contract (stable; the practice engine builds on it rather than replacing it):
+
+- `section.check[data-check][data-check-ids="a,b"]` wraps `ol.check-items`.
+- `li.check-item[data-check-item=<id>][data-check-type=mc|numeric|which-step][data-check-state=idle|correct|incorrect|invalid][data-item=<json>][data-shuffle-seed=<n>][data-check-targets="der-…-step-3,der-…"]`. Unsupported rows carry `data-check-supported="false"` and no `data-item`.
+- `data-item` is the trimmed client copy the grader needs: mc `{ type, options: [{ correct?, misconception? }] }`; numeric `{ type, answer, tolerance, seeded?, formula? }`; which-step `{ type, corrupt: { step } }`. Explanations are pre-rendered in the DOM, not shipped as JSON.
+- Inside the `form[data-check-form]`: `p.check-prompt#check-<id>-prompt`; radios named `check-<id>` with `value` = 0-based index, or `input[name="answer"]#check-<id>-input` (`aria-describedby` the hint and the feedback); `button[data-check-action=grade|reset|resample]` with accessible names "Check answer to question n", "Try question n again", "New numbers for question n".
+- `div[data-check-feedback][role=status]` holds the verdict (`[data-check-verdict]`, icon plus text), `[data-check-explanation]`, optional `[data-check-option-explanation=<index>]`, and two links the controller reveals on a wrong answer: `[data-check-pitfall-link]` → `#pitfall-<misconception>` when that `<Pitfall>` is on the page, `[data-check-derivation-link]` → the first of `data-check-targets` that exists on the page (`der-x-y-z-step-n` ids come from the derivation engine; `der-x-y-z` is the fallback).
+- Seeded numeric items publish the current parameters as `data-check-params=<json>` on the `li` after "New numbers"; `p[data-check-params]` shows them.
+- Every grade dispatches a bubbling `check:graded` CustomEvent on the `li` with `detail: { id, type, correct }`. State is in memory only.
 
 Smoke page: `/dev/components-smoke` (`src/pages/dev/components-smoke.astro` + `_components-smoke.mdx`) renders the §11 skeleton and one of every other component. The real kitchen-sink page is `/dev/kitchen-sink`.
