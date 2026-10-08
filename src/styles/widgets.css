@@ -407,6 +407,69 @@
 
 .bnb-input,
 .bnb-ledger {
+
+/* ---------- Choice (radio group for enum params) ---------- */
+
+.param-choice {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.param-choice-legend {
+  padding: 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.param-choice-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+}
+
+/* ---------- gda-fitter ---------- */
+
+.gdf {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1rem;
+}
+
+@media (width >= 640px) {
+  .gdf {
+    grid-template-columns: minmax(0, 1.25fr) minmax(220px, 1fr);
+    align-items: start;
+  }
+  .gdf-controls {
+    grid-column: 1 / -1;
+  }
+}
+
+.gdf-plot {
+  min-width: 0;
+}
+
+.gdf-legend,
+.gdf-axes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.375rem 0 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.gdf-axes {
+  margin-top: 0.125rem;
+}
+
+.gdf-key {
+  white-space: nowrap;
+}
+
+.gdf-panel {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -495,12 +558,17 @@
 
 .bnb-math {
   padding: 0.25rem 0.5rem;
+
+.gdf-math {
+  padding: 0.5rem 0.75rem;
   border-radius: var(--radius-control);
   background: var(--surface-2);
   overflow-x: auto;
 }
 
 .bnb-math .katex-display {
+
+.gdf-math .katex-display {
   margin: 0.25em 0;
   font-size: 0.95em;
 }
@@ -644,4 +712,79 @@
 
 .bnb-failure-title {
   font-weight: 600;
+
+.gdf-note,
+.gdf-hint {
+  margin: 0;
+  font-size: var(--text-ui-sm);
+  color: var(--fg);
+}
+
+.gdf-hint {
+  color: var(--muted);
+}
+
+.gdf-toggles,
+.gdf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+}
+
+.gdf-actions {
+  gap: 0.5rem;
+}
+
+.gdf-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.gdf-sliders {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem 1.5rem;
+}
+
+@media (width >= 640px) {
+  .gdf-sliders {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Draggable points: focus ring in the accent, hitbox ≥ 44 px (r = 22). */
+.gdf-point {
+  cursor: grab;
+  outline: none;
+  touch-action: none;
+}
+
+.gdf-point-dragging {
+  cursor: grabbing;
+}
+
+.gdf-point-ring {
+  stroke: var(--accent);
+  stroke-width: 2;
+  opacity: 0;
+  transition: opacity var(--duration-micro) var(--ease-standard);
+}
+
+.gdf-point:focus-visible .gdf-point-ring,
+.gdf-point-dragging .gdf-point-ring {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gdf-point-ring {
+    transition: none;
+  }
+}
+
+.gdf-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2rem;
 }

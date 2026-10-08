@@ -93,6 +93,47 @@ export interface ToggleProps {
   onChange: (checked: boolean) => void;
 }
 
+export interface ChoiceOption<T extends string> {
+  value: T;
+  label: string;
+}
+
+export interface ChoiceProps<T extends string> {
+  /** Plain-text group name, used as the accessible name of the radio group. */
+  label: string;
+  value: T;
+  options: readonly ChoiceOption<T>[];
+  onChange: (value: T) => void;
+}
+
+/**
+ * A radio group for enum params (`dataset`, a feature name), styled like
+ * `<Param>`: one `<fieldset>` with a legend; arrow keys move between the
+ * options, each a ≥44 px target.
+ */
+export function Choice<T extends string>({ label, value, options, onChange }: ChoiceProps<T>) {
+  const name = useId();
+  return (
+    <fieldset className="param-choice">
+      <legend className="param-choice-legend">{label}</legend>
+      <div className="param-choice-options">
+        {options.map((o) => (
+          <label key={o.value} className="param-toggle">
+            <input
+              type="radio"
+              name={name}
+              value={o.value}
+              checked={o.value === value}
+              onChange={() => onChange(o.value)}
+            />
+            <span>{o.label}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 /** A labelled checkbox for boolean params, styled like `<Param>`. */
 export function Toggle({ label, checked, onChange }: ToggleProps) {
   const id = useId();
