@@ -21,7 +21,6 @@ import vascoJson from '@/data/vasco.json';
 import type { AdverseRow } from './adverse';
 import type { DiabetesBmi20Row } from './diabetes-bmi-20';
 import type { NotesRow } from './notes';
-import { createRng } from './random';
 import type { TropoRow } from './tropo';
 import type { CaseId, Dataset, DatasetId, ReferenceId } from './types';
 import type { VascoRow } from './vasco';
@@ -133,23 +132,4 @@ export function findRow<Row extends { id: string }>(
   return index.get(id) as Row | undefined;
 }
 
-/**
- * `k` distinct rows chosen uniformly without replacement, in a seeded order
- * (partial Fisher–Yates), so a lesson's sample is the same on every build.
- */
-export function sampleRows<Row>(dataset: Dataset<Row>, k: number, seed: number): Row[] {
-  const n = dataset.rows.length;
-  const take = Math.max(0, Math.min(Math.trunc(k), n));
-  const rng = createRng(seed);
-  const order = Array.from({ length: n }, (_, i) => i);
-  const out: Row[] = [];
-  for (let i = 0; i < take; i++) {
-    const j = i + rng.int(0, n - i);
-    const oi = order[i] as number;
-    const oj = order[j] as number;
-    order[i] = oj;
-    order[j] = oi;
-    out.push(dataset.rows[oj] as Row);
-  }
-  return out;
-}
+export { sampleRows } from './sample';
