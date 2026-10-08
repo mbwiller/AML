@@ -407,69 +407,6 @@
 
 .bnb-input,
 .bnb-ledger {
-
-/* ---------- Choice (radio group for enum params) ---------- */
-
-.param-choice {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  min-width: 0;
-}
-
-.param-choice-legend {
-  padding: 0;
-  font-size: var(--text-ui-sm);
-  color: var(--muted);
-}
-
-.param-choice-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 1rem;
-}
-
-/* ---------- gda-fitter ---------- */
-
-.gdf {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem 1rem;
-}
-
-@media (width >= 640px) {
-  .gdf {
-    grid-template-columns: minmax(0, 1.25fr) minmax(220px, 1fr);
-    align-items: start;
-  }
-  .gdf-controls {
-    grid-column: 1 / -1;
-  }
-}
-
-.gdf-plot {
-  min-width: 0;
-}
-
-.gdf-legend,
-.gdf-axes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1rem;
-  margin: 0.375rem 0 0;
-  font-size: var(--text-ui-sm);
-  color: var(--muted);
-}
-
-.gdf-axes {
-  margin-top: 0.125rem;
-}
-
-.gdf-key {
-  white-space: nowrap;
-}
-
-.gdf-panel {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -558,17 +495,12 @@
 
 .bnb-math {
   padding: 0.25rem 0.5rem;
-
-.gdf-math {
-  padding: 0.5rem 0.75rem;
   border-radius: var(--radius-control);
   background: var(--surface-2);
   overflow-x: auto;
 }
 
 .bnb-math .katex-display {
-
-.gdf-math .katex-display {
   margin: 0.25em 0;
   font-size: 0.95em;
 }
@@ -712,6 +644,87 @@
 
 .bnb-failure-title {
   font-weight: 600;
+}
+
+/* ---------- Choice (radio group for enum params) ---------- */
+
+.param-choice {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.param-choice-legend {
+  padding: 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.param-choice-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+}
+
+/* ---------- gda-fitter ---------- */
+
+.gdf {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1rem;
+}
+
+@media (width >= 640px) {
+  .gdf {
+    grid-template-columns: minmax(0, 1.25fr) minmax(220px, 1fr);
+    align-items: start;
+  }
+  .gdf-controls {
+    grid-column: 1 / -1;
+  }
+}
+
+.gdf-plot {
+  min-width: 0;
+}
+
+.gdf-legend,
+.gdf-axes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.375rem 0 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.gdf-axes {
+  margin-top: 0.125rem;
+}
+
+.gdf-key {
+  white-space: nowrap;
+}
+
+.gdf-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.gdf-math {
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  overflow-x: auto;
+}
+
+.gdf-math .katex-display {
+  margin: 0.25em 0;
+  font-size: 0.95em;
+}
 
 .gdf-note,
 .gdf-hint {
