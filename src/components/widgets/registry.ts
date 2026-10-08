@@ -10,6 +10,7 @@ import type { WidgetModule } from './types';
 
 export const registry = {
   'bow-nb-scorer': () => import('./bow-nb-scorer/Widget'),
+  'bow-vectorizer': () => import('./bow-vectorizer/Widget'),
   'encoding-explorer': () => import('./encoding-explorer/Widget'),
   'gaussian-2d-covariance': () => import('./gaussian-2d-covariance/Widget'),
   'gda-fitter': () => import('./gda-fitter/Widget'),
