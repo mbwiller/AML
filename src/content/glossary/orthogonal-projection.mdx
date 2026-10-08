@@ -1,0 +1,12 @@
+---
+id: orthogonal-projection
+term: Orthogonal projection
+aliases: [projection, projection matrix, hat matrix]
+field: linear-algebra
+firstUsedIn: u1-linear-regression
+related: [linear-independence, vector-norm, design-matrix]
+---
+
+**What it is.** The orthogonal projection of a vector $y$ onto a subspace $S$ is the point $\hat y \in S$ whose difference $y - \hat y$ is orthogonal to every vector in $S$. It is the point of $S$ closest to $y$: for every $s \in S$, Pythagoras gives $\lVert y - s \rVert_2^2 = \lVert y - \hat y \rVert_2^2 + \lVert \hat y - s \rVert_2^2$. When $S$ is the column space of a full-column-rank matrix $X$, $\hat y = Hy$ with $H = X(X^\top X)^{-1}X^\top$, a symmetric matrix with $H^2 = H$: projecting twice changes nothing.
+
+**How ML uses it.** Least squares is a projection. The fitted values $X\hat\theta$ are the projection of the target vector onto the span of the feature columns, and the residuals are orthogonal to every column. $H$ is called the hat matrix because it puts the hat on $y$.
