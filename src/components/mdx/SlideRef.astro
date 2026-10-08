@@ -1,10 +1,15 @@
 ---
 /**
  * `<SlideRef lecture={7} pages="47" />` — inline citation chip linking to the
- * PDF page in /materials (docs/CONTENT_AUTHORING.md §4). "47" → "L7 p.47";
- * "12-14" → "L7 pp.12–14". M1 adds a hover preview of the slide.
+ * slide (docs/CONTENT_AUTHORING.md §4). "47" → "L7 p.47"; "12-14" →
+ * "L7 pp.12–14". The link opens the copied lecture PDF at the first page
+ * (`/materials/files/lectures/<file>.pdf#page=47`) when the course folder has
+ * that lecture, else the lecture's row on /materials (`/materials#L7`).
+ * A hover preview of the slide is a follow-up.
  */
-import { slideRefHref, slideRefLabel } from '@/lib/markdown/numbering';
+import { slideRefLabel } from '@/lib/markdown/numbering';
+import { slideHref } from '@/lib/materials';
+import { lecturePdfUrl } from '@/lib/materials-scan';
 
 import Chip from './Chip.astro';
 
@@ -18,7 +23,7 @@ const label = slideRefLabel(lecture, String(pages));
 
 <Chip
   class="slideref"
-  href={slideRefHref(lecture, String(pages))}
+  href={slideHref(lecture, String(pages), lecturePdfUrl(lecture))}
   title={`Lecture ${lecture}, slide ${pages}`}
 >
   {label}
