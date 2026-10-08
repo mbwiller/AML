@@ -352,10 +352,12 @@ export default function EncodingExplorer({
             <thead>
               <tr>
                 <th scope="col">encoding</th>
-                <th scope="col">columns</th>
+                <th scope="col">
+                  <abbr title="columns">p</abbr>
+                </th>
                 <th scope="col">rank</th>
                 <th scope="col">unique θ</th>
-                <th scope="col">exact fit</th>
+                <th scope="col">exact</th>
               </tr>
             </thead>
             <tbody>
