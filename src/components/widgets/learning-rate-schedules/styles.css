@@ -1,0 +1,126 @@
+/*
+ * learning-rate-schedules (prefix lrs-). Tokens only. Imported by Widget.tsx
+ * so it ships with the widget chunk.
+ */
+@import '../_shared/plot-kit/styles.css';
+
+.lrs {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1.25rem;
+}
+
+@media (width >= 640px) {
+  .lrs {
+    grid-template-columns: minmax(0, 1.2fr) minmax(240px, 1fr);
+    align-items: start;
+  }
+  .lrs-controls {
+    grid-column: 1 / -1;
+  }
+}
+
+.lrs-charts,
+.lrs-panel,
+.lrs-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.lrs-caption {
+  margin: 0.25rem 0 0;
+  font-size: var(--text-ui-sm);
+  color: var(--fg);
+  text-align: left;
+}
+
+.lrs-math {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem 1.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+
+.lrs-chip {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.lrs-outcome {
+  margin: 0;
+  padding: 0.375rem 0.75rem;
+  border-left: 3px solid var(--accent);
+  font-size: var(--text-ui);
+  color: var(--fg);
+}
+
+.lrs[data-arrived='no'] .lrs-outcome {
+  border-left-color: var(--viz-negative);
+}
+
+.lrs[data-arrived='yes'] .lrs-outcome {
+  border-left-color: var(--viz-positive);
+}
+
+.lrs-sliders {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem 1.5rem;
+}
+
+@media (width >= 480px) {
+  .lrs-sliders {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.lrs-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.lrs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-ui-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.lrs-table th,
+.lrs-table td {
+  padding: 0.25rem 0.375rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.lrs-table thead th {
+  color: var(--muted);
+}
+
+.lrs-table tr[aria-current='true'] {
+  background: var(--surface-2);
+}
+
+.lrs-table tr[aria-current='true'] th {
+  font-weight: 600;
+}
+
+.lrs-key {
+  display: inline-block;
+  margin-right: 0.375rem;
+  vertical-align: middle;
+}
+
+.lrs-note {
+  margin: 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}

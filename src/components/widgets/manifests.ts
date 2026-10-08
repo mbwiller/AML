@@ -10,13 +10,17 @@ import { manifest as bowVectorizer } from './bow-vectorizer/manifest';
 import { manifest as dgpSampler } from './dgp-sampler/manifest';
 import { manifest as encodingExplorer } from './encoding-explorer/manifest';
 import { manifest as gaussian2dCovariance } from './gaussian-2d-covariance/manifest';
+import { manifest as gd1dQuadratic } from './gd-1d-quadratic/manifest';
+import { manifest as gd2dEigen } from './gd-2d-eigen/manifest';
 import { manifest as gdaFitter } from './gda-fitter/manifest';
 import { manifest as generativeVsDiscriminativeToggle } from './generative-vs-discriminative-toggle/manifest';
 import { manifest as hessianClassifier } from './hessian-classifier/manifest';
 import { manifest as innerProductDial } from './inner-product-dial/manifest';
+import { manifest as learningRateSchedules } from './learning-rate-schedules/manifest';
 import { manifest as lineFitPlayground } from './line-fit-playground/manifest';
 import { manifest as linearBiasProbe } from './linear-bias-probe/manifest';
 import { manifest as mseBowlGd } from './mse-bowl-gd/manifest';
+import { manifest as sgdNoise } from './sgd-noise/manifest';
 import { manifest as trueVsEmpiricalRisk } from './true-vs-empirical-risk/manifest';
 import type { ParamsSchema, WidgetManifest } from './types';
 
@@ -26,14 +30,18 @@ export const manifests: Readonly<Record<string, WidgetManifest>> = {
   [dgpSampler.name]: dgpSampler as WidgetManifest<ParamsSchema>,
   [encodingExplorer.name]: encodingExplorer as WidgetManifest<ParamsSchema>,
   [gaussian2dCovariance.name]: gaussian2dCovariance as WidgetManifest<ParamsSchema>,
+  [gd1dQuadratic.name]: gd1dQuadratic as WidgetManifest<ParamsSchema>,
+  [gd2dEigen.name]: gd2dEigen as WidgetManifest<ParamsSchema>,
   [gdaFitter.name]: gdaFitter as WidgetManifest<ParamsSchema>,
   [generativeVsDiscriminativeToggle.name]:
     generativeVsDiscriminativeToggle as WidgetManifest<ParamsSchema>,
   [hessianClassifier.name]: hessianClassifier as WidgetManifest<ParamsSchema>,
   [innerProductDial.name]: innerProductDial as WidgetManifest<ParamsSchema>,
+  [learningRateSchedules.name]: learningRateSchedules as WidgetManifest<ParamsSchema>,
   [lineFitPlayground.name]: lineFitPlayground as WidgetManifest<ParamsSchema>,
   [linearBiasProbe.name]: linearBiasProbe as WidgetManifest<ParamsSchema>,
   [mseBowlGd.name]: mseBowlGd as WidgetManifest<ParamsSchema>,
+  [sgdNoise.name]: sgdNoise as WidgetManifest<ParamsSchema>,
   [trueVsEmpiricalRisk.name]: trueVsEmpiricalRisk as WidgetManifest<ParamsSchema>,
 };
 

@@ -1,0 +1,205 @@
+/*
+ * gd-2d-eigen (prefix g2e-). Tokens only. Imported by Widget.tsx so it ships
+ * with the widget chunk.
+ */
+@import '../_shared/plot-kit/styles.css';
+
+.g2e {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1.25rem;
+}
+
+@media (width >= 640px) {
+  .g2e {
+    grid-template-columns: minmax(0, 1.15fr) minmax(240px, 1fr);
+    align-items: start;
+  }
+  .g2e-modes,
+  .g2e-controls,
+  .g2e-five {
+    grid-column: 1 / -1;
+  }
+}
+
+.g2e-plot,
+.g2e-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.g2e-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.g2e-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.g2e-presets-label {
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.g2e-presets .widget-btn {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.g2e-presets .widget-btn[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.g2e-math {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 1.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+
+.g2e-chip {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.g2e-verdict {
+  margin: 0;
+  padding: 0.375rem 0.75rem;
+  border-left: 3px solid var(--field-calculus);
+  font-size: var(--text-ui);
+  color: var(--fg);
+}
+
+.g2e-modes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem 1.25rem;
+  min-width: 0;
+}
+
+@media (width >= 640px) {
+  .g2e-modes {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.g2e-caption {
+  margin: 0 0 0.25rem;
+  font-size: var(--text-ui-sm);
+  color: var(--fg);
+  text-align: left;
+}
+
+.g2e-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.g2e-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-ui-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.g2e-table th,
+.g2e-table td {
+  padding: 0.25rem 0.375rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-weight: 400;
+}
+
+.g2e-table thead th {
+  color: var(--muted);
+}
+
+.g2e-table tbody th {
+  white-space: nowrap;
+}
+
+.g2e-swatch {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-right: 0.375rem;
+  border-radius: var(--radius-full);
+}
+
+.g2e-chart {
+  min-width: 0;
+}
+
+.g2e-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.g2e-sliders {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem 1.5rem;
+}
+
+@media (width >= 640px) {
+  .g2e-sliders {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.g2e-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+}
+
+.g2e-five {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (width >= 640px) {
+  .g2e-five {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.g2e-small {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.g2e-small-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-control);
+}
+
+.g2e-small figcaption {
+  font-size: var(--text-ui-xs);
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}

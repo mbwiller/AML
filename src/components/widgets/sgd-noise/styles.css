@@ -1,0 +1,90 @@
+/*
+ * sgd-noise (prefix sgn-). Tokens only. Imported by Widget.tsx so it ships
+ * with the widget chunk.
+ */
+@import '../_shared/plot-kit/styles.css';
+
+.sgn {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1.25rem;
+}
+
+@media (width >= 640px) {
+  .sgn {
+    grid-template-columns: minmax(0, 1.15fr) minmax(240px, 1fr);
+    align-items: start;
+  }
+  .sgn-controls {
+    grid-column: 1 / -1;
+  }
+}
+
+.sgn-plot,
+.sgn-panel,
+.sgn-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.sgn-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  font-size: var(--text-ui-sm);
+  color: var(--muted);
+}
+
+.sgn-math {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 1.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+
+.sgn-chip {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.sgn-readout {
+  margin: 0;
+  padding: 0.375rem 0.75rem;
+  border-left: 3px solid var(--viz-1);
+  font-size: var(--text-ui);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.sgn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sgn-actions .widget-btn {
+  min-height: 2.75rem;
+}
+
+.sgn-sliders {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem 1.5rem;
+}
+
+@media (width >= 640px) {
+  .sgn-sliders {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.sgn-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+}

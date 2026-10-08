@@ -1,0 +1,67 @@
+/*
+ * plot-kit (shared by the lesson 2.5 widgets): MiniChart, MovablePoint,
+ * PlayerControls. Tokens only. Imported by each widget's styles.css so it
+ * ships in the widget chunk, not in the global stylesheet.
+ */
+
+.pk-chart {
+  width: 100%;
+  min-width: 0;
+}
+
+.pk-chart svg {
+  display: block;
+  overflow: visible;
+}
+
+.pk-chart-ticks text,
+.pk-chart-rule-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-ui-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-movable {
+  cursor: grab;
+  outline: none;
+  touch-action: none;
+}
+
+.pk-movable-dragging {
+  cursor: grabbing;
+}
+
+.pk-movable-ring {
+  stroke: var(--accent);
+  stroke-width: 2;
+  opacity: 0;
+  transition: opacity var(--duration-micro) var(--ease-standard);
+}
+
+.pk-movable:focus-visible .pk-movable-ring,
+.pk-movable-dragging .pk-movable-ring {
+  opacity: 1;
+}
+
+.pk-player {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pk-player .widget-btn {
+  min-height: 2.75rem;
+}
+
+.pk-player-status {
+  font-size: var(--text-ui-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-movable-ring {
+    transition: none;
+  }
+}
