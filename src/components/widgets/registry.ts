@@ -15,6 +15,7 @@ export const registry = {
   'gd-1d-quadratic': () => import('./gd-1d-quadratic/Widget'),
   'gd-2d-eigen': () => import('./gd-2d-eigen/Widget'),
   'learning-rate-schedules': () => import('./learning-rate-schedules/Widget'),
+  'sgd-noise': () => import('./sgd-noise/Widget'),
 } satisfies Record<string, () => Promise<WidgetModule>>;
 
 export type WidgetName = keyof typeof registry;

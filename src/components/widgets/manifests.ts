@@ -11,6 +11,7 @@ import { manifest as gdaFitter } from './gda-fitter/manifest';
 import { manifest as gd1dQuadratic } from './gd-1d-quadratic/manifest';
 import { manifest as gd2dEigen } from './gd-2d-eigen/manifest';
 import { manifest as learningRateSchedules } from './learning-rate-schedules/manifest';
+import { manifest as sgdNoise } from './sgd-noise/manifest';
 import type { ParamsSchema, WidgetManifest } from './types';
 
 export const manifests: Readonly<Record<string, WidgetManifest>> = {
@@ -20,6 +21,7 @@ export const manifests: Readonly<Record<string, WidgetManifest>> = {
   [gd1dQuadratic.name]: gd1dQuadratic as WidgetManifest<ParamsSchema>,
   [gd2dEigen.name]: gd2dEigen as WidgetManifest<ParamsSchema>,
   [learningRateSchedules.name]: learningRateSchedules as WidgetManifest<ParamsSchema>,
+  [sgdNoise.name]: sgdNoise as WidgetManifest<ParamsSchema>,
 };
 
 export function getManifest(name: string): WidgetManifest | undefined {
