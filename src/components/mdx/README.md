@@ -72,7 +72,7 @@ Tests: `src/lib/glossary.test.ts` (grouping, filtering, used-by, placement) and 
 | `mc` | fieldset of radios in file order (no shuffling yet; `data-shuffle-seed` is reserved for it) | `gradeMc` |
 | `numeric` | text input (decimal, fraction, or scientific notation; `tolerance` is absolute) with a format hint; seeded items get a "New numbers" button that resamples `seeded` through `sampleSeededParams` and shows the new values under the prompt as `name = value` | `gradeNumeric` |
 | `which-step` | radios over the derivation's steps, read from the lesson body that defines `derivation` with `extractDerivationSteps`, one step replaced by `corrupt.replaceTex` | `gradeWhichStep` |
-| `match`, `order`, `predict`, `estimate`, `code-trace` | muted row ("arrive with the practice engine") | — |
+| `match`, `order`, `predict`, `estimate`, `code-trace` | muted row ("have no grader yet"; the practice quiz leaves them out too) | — |
 
 Prompts, options, explanations, and step TeX go through `renderInlineTex` / `renderDisplayTex` at build time; the browser never loads KaTeX for a check.
 

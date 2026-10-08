@@ -131,7 +131,7 @@ test('unsupported and unknown items render as muted rows', async ({ page }) => {
   await open(page, 'light');
   const order = page.locator('[data-check-item="q-u6-l1-016"]');
   await expect(order).toHaveAttribute('data-check-supported', 'false');
-  await expect(order).toContainText('practice engine');
+  await expect(order).toContainText('no grader yet');
   await expect(order.getByRole('button')).toHaveCount(0);
 
   const missing = page.locator('[data-check-item="q-u9-l9-999"]');
