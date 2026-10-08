@@ -42,10 +42,18 @@ const nextMilestone = milestones.find((m) => m.date >= today);
           Open any lesson and your place is remembered on this device.
         </p>
       </section>
-      <section class="rounded-card border border-border bg-surface p-5">
+      <section class="rounded-card border border-border bg-surface p-5" data-due>
         <h2 class="m-0 text-ui-xs font-semibold tracking-caps text-muted uppercase">Due today</h2>
-        <p class="mt-2 text-ui-lg font-semibold">0 reviews</p>
-        <p class="mt-1 text-ui-sm text-muted">Flashcards arrive with the practice engine.</p>
+        <a
+          href="/practice#review"
+          class="mt-2 block text-ui-lg font-semibold text-fg no-underline hover:underline"
+          data-due-count
+        >
+          Start reviewing
+        </a>
+        <p class="mt-1 text-ui-sm text-muted" data-due-note>
+          Ten new cards a day from the lessons, spaced so you remember them.
+        </p>
       </section>
       <section class="rounded-card border border-border bg-surface p-5">
         <h2 class="m-0 text-ui-xs font-semibold tracking-caps text-muted uppercase">
@@ -84,7 +92,36 @@ const nextMilestone = milestones.find((m) => m.date >= today);
 </Base>
 
 <script>
+  import { countFromSummary, DUE_SUMMARY_KEY, parseDueSummary } from '@/lib/practice/due-summary';
   import { LAST_LESSON_KEY, parseLastLesson, relativeTime } from '@/lib/progress';
+
+  // "Due today": the practice island writes a small summary after every change
+  // (src/lib/practice/due-summary.ts), so this card costs no IndexedDB read.
+  const due = document.querySelector<HTMLElement>('[data-due]');
+  let dueRaw: string | null = null;
+  try {
+    dueRaw = localStorage.getItem(DUE_SUMMARY_KEY);
+  } catch {
+    /* storage unavailable: keep the default text */
+  }
+  const summary = parseDueSummary(dueRaw);
+  if (due && summary) {
+    const { due: reviews, fresh } = countFromSummary(summary, Date.now());
+    const link = due.querySelector<HTMLAnchorElement>('[data-due-count]');
+    const note = due.querySelector<HTMLElement>('[data-due-note]');
+    if (link) {
+      link.textContent = `${reviews} review${reviews === 1 ? '' : 's'}`;
+      link.dataset['dueReviews'] = String(reviews);
+    }
+    if (note) {
+      note.textContent =
+        reviews + fresh === 0
+          ? summary.unseen > 0
+            ? 'All caught up. New cards arrive tomorrow.'
+            : 'All caught up.'
+          : `Plus ${fresh} new card${fresh === 1 ? '' : 's'} today.`;
+    }
+  }
 
   const card = document.querySelector<HTMLElement>('[data-continue]');
   let raw: string | null = null;
