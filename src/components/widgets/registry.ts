@@ -13,6 +13,8 @@ export const registry = {
   'encoding-explorer': () => import('./encoding-explorer/Widget'),
   'gaussian-2d-covariance': () => import('./gaussian-2d-covariance/Widget'),
   'gda-fitter': () => import('./gda-fitter/Widget'),
+  'generative-vs-discriminative-toggle': () =>
+    import('./generative-vs-discriminative-toggle/Widget'),
 } satisfies Record<string, () => Promise<WidgetModule>>;
 
 export type WidgetName = keyof typeof registry;
