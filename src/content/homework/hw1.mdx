@@ -1,0 +1,297 @@
+---
+id: hw1
+title: "Homework 1: NumPy and PyTorch warm-up and the housing prices"
+due: 2026-09-16
+live: false
+units: [u1-linear-regression, u2-risk-and-gradient-descent]
+---
+
+HW1 was due Wednesday, September 16, 2026, together with the HW1 Canvas quiz. It had two parts. Part I is a five-problem warm-up in NumPy and PyTorch: arrays, tensor operations, autograd, and norms. Part II, "The Housing Prices", asks you to clean the Ames housing data from Kaggle, fit ordinary least squares twice (once with scikit-learn, once with your own gradient-descent loop in PyTorch), and submit predictions to the Kaggle leaderboard.
+
+The deadline has passed, so this page does two jobs. The readiness gate lists the skills the homework uses, where each is taught, and a check that practices it. The walkthrough then goes problem by problem through our solution, says where it was weak, and ends with harder variants for practice.
+
+<Callout type="note">
+
+None of the source files is the original assignment. The Part I statements below are reconstructed from our solved notebook, which kept only the section numbers. The Part II questions are quoted from the notebook, which reproduced them verbatim.
+
+</Callout>
+
+## Readiness gate
+
+Each row names a skill, the lesson section that teaches it, and an inline check that practices it. Lessons 1.3 (Loss functions) and 1.4 (Least squares) are not published yet; their rows name the lesson and have no check.
+
+### Tools and gradients (Part I)
+
+| Skill | Learn it in | Check |
+|---|---|---|
+| Build a design matrix with a column of ones, multiply with `@`, and predict the shapes | [1.2 Linear models](/units/u1-linear-regression/datasets-models-and-model-classes#linear-models) | q-u1-l2-006, q-u1-l2-008 |
+| Read the gradient of a scalar function of a vector, one partial derivative per coordinate | [2.3 Derivatives and local linearity](/units/u2-risk-and-gradient-descent/gradients-and-optimality#derivatives-and-local-linearity) | q-u2-l3-003 |
+| Check an autograd gradient by hand with the chain rule | [2.3 Worked examples](/units/u2-risk-and-gradient-descent/gradients-and-optimality#worked-examples) | q-u2-l4-014 |
+| Use autograd: `requires_grad=True`, a scalar `.backward()`, reading `.grad`, and knowing that `.grad` accumulates | [2.4 Gradient descent in PyTorch](/units/u2-risk-and-gradient-descent/gradient-descent#gradient-descent-in-pytorch) | q-u2-l4-015 |
+
+### Data representation (Part II, Q2–Q4)
+
+| Skill | Learn it in | Check |
+|---|---|---|
+| Name the five components of a learning problem | [1.1 Five components, one recipe](/units/u1-linear-regression/components-of-a-learning-problem#five-components-one-recipe) | q-u1-l1-003 |
+| Represent a categorical attribute without imposing a false order | [1.1 Kinds of attributes](/units/u1-linear-regression/components-of-a-learning-problem#kinds-of-attributes) | q-u1-l1-001 |
+| One-hot encode a categorical attribute and avoid the dummy-variable trap | [1.1 One-hot encoding](/units/u1-linear-regression/components-of-a-learning-problem#one-hot-encoding) | q-u1-l1-005, q-u1-l1-006 |
+| Engineer a new feature from existing columns while keeping the model linear in $\theta$ | [1.1 Feature engineering](/units/u1-linear-regression/components-of-a-learning-problem#feature-engineering) | q-u1-l1-011 |
+| Explain why more features is not always better | [1.1 How many features?](/units/u1-linear-regression/components-of-a-learning-problem#how-many-features) | q-u1-l1-002 |
+
+### Least squares and gradient descent (Part II, Q5–Q8)
+
+| Skill | Learn it in | Check |
+|---|---|---|
+| Define MSE and $R^2 = 1 - \mathrm{RSS}/\mathrm{TSS}$, and say what $R^2$ measures | 1.3 Loss functions (not yet published) | — |
+| Solve least squares in closed form and explain why the minimizer is unique | 1.4 Least squares (not yet published) | — |
+| Explain why the training MSE of a fitted model is an optimistic estimate of its risk | [2.2 The selection-bias caveat](/units/u2-risk-and-gradient-descent/true-and-empirical-risk#the-selection-bias-caveat) | q-u2-l2-017 |
+| Write the gradient of the mean squared error with the right shape | [2.4 The gradient of the mean squared error](/units/u2-risk-and-gradient-descent/gradient-descent#the-gradient-of-the-mean-squared-error) | q-u2-l4-009 |
+| Write the gradient-descent loop in PyTorch without `nn` layers | [2.4 Gradient descent in PyTorch](/units/u2-risk-and-gradient-descent/gradient-descent#gradient-descent-in-pytorch) | q-u2-l4-016 |
+| Translate a stopping rule on the parameter change into a bound on the gradient | [2.4 Convergence and when to stop](/units/u2-risk-and-gradient-descent/gradient-descent#convergence-and-when-to-stop) | q-u2-l4-007 |
+| Explain why gradient descent stops slightly short of the closed-form answer | [2.4 Worked examples](/units/u2-risk-and-gradient-descent/gradient-descent#worked-examples) | q-u2-l4-017 |
+| Predict whether a fixed step size converges, oscillates, or diverges | [2.5 One step on a parabola](/units/u2-risk-and-gradient-descent/step-size-and-conditioning#one-step-on-a-parabola) | q-u2-l5-008 |
+| Explain why standardizing features speeds up gradient descent | [2.5 Conditioning in practice](/units/u2-risk-and-gradient-descent/step-size-and-conditioning#conditioning-in-practice) | q-u2-l5-006, q-u2-l5-025 |
+
+### Skills no lesson teaches yet
+
+The homework also leaned on practical skills that the lectures did not cover as theory. The walkthrough below shows how our solution handled each.
+
+| Skill | Learn it in | Check |
+|---|---|---|
+| Elementwise tensor operations versus the dot product; dtypes and `.numpy()`; the Frobenius norm | Corequisite linear algebra and the L4 code companion | — |
+| Read a data dictionary; impute missing values; encode ordinal quality scales | The Q3 walkthrough below | — |
+| Transform a skewed target with `log1p` and back with `expm1` | The Q3 and Q7 walkthroughs below | — |
+| Fit preprocessing on training rows only; build a Kaggle submission file | The Q3 and Q7 walkthroughs below | — |
+
+## Part I: NumPy and PyTorch warm-up
+
+Part I maps to the L1 tooling list (Python, Jupyter, matplotlib, NumPy, pandas, scikit-learn, PyTorch), the L2 code companion (NumPy arrays), and the L4 code companion (autograd and the gradient-descent loop).
+
+### Problem 1: reshape
+
+Reconstructed task: create the array of the integers 1 through 8 and reshape it to $2 \times 4$.
+
+```python
+np.array([1, 2, 3, 4, 5, 6, 7, 8]).reshape(2, 4)
+# [[1 2 3 4]
+#  [5 6 7 8]]
+```
+
+NumPy fills the new shape in row-major order: the first row takes the first four entries. Two mistakes are common: confusing `reshape(2, 4)` with `reshape(4, 2)`, and reaching for `.T`, which gives a transpose, not the row-major fill.
+
+### Problem 2: elementwise operations and the dot product
+
+Reconstructed task: with `a = tensor([1, 3, 5, 6])` and `b = tensor([5, 6, 8, 9])`, write functions for addition, multiplication, exponentiation $a^b$, the dot product, $\exp$, $\log$, and the composition $\log(\exp(x))$, and print each.
+
+| Operation | Output |
+|---|---|
+| `torch.add(a, b)` | `[6, 9, 13, 15]` |
+| `torch.mul(a, b)` | `[5, 18, 40, 54]` |
+| `torch.pow(a, b)` | `[1, 729, 390625, 10077696]` |
+| `torch.dot(a, b)` | `117` |
+| `torch.exp(a)` | `[2.7183, 20.0855, 148.4132, 403.4288]` |
+| `torch.log(a)` | `[0, 1.0986, 1.6094, 1.7918]` |
+| `torch.log(torch.exp(a))` | `[1, 3, 5, 6]`, as floats |
+
+Multiplication is elementwise and returns a vector; the dot product sums those products into one number, $5 + 18 + 40 + 54 = 117$. Using `*` when the question wants a dot product is the classic slip. Note also the dtype: `a` holds integers, but `torch.exp(a)` returns floats, so the last row prints floats.
+
+**Where our solution was weak.** It defined a function named `exponent` twice, once for `pow` and once for `exp`. The second definition silently replaces the first. Here that was harmless, but it is sloppy: any later call to `exponent` runs `exp`. Give each function its own name. Also keep in mind that `torch.pow` on integer tensors overflows: an `int64` result wraps around once it passes about $9.2 \times 10^{18}$ (for example $9^{20}$).
+
+### Problem 3a: autograd of a scalar function of a vector
+
+Reconstructed task: let $g(p) = \sum_i c_i\, e^{p_i} p_i^2$ with $c = (1, 3, 5, 6)$, and evaluate $\nabla g$ at $p = (5, 6, 8, 9)$.
+
+```python
+point = torch.tensor([5., 6., 8., 9.], requires_grad=True)
+coeffs = torch.tensor([1., 3., 5., 6.])
+g = torch.sum(coeffs * torch.exp(point) * point**2)
+g.backward()
+point.grad
+# [5194.46, 58093.75, 1192383.25, 4813232.0]
+```
+
+Check the first entry by hand. By the product rule,
+
+$$\frac{\partial g}{\partial p_i} = c_i\, e^{p_i}\,(p_i^2 + 2p_i),$$
+
+and for $i = 1$ this is $1 \cdot e^5 \cdot (25 + 10) = 35\,e^5 \approx 5194.46$, matching autograd. Three things make this work: `point` is a float tensor (autograd does not track integer tensors), it has `requires_grad=True`, and `g` is a scalar, so `.backward()` needs no extra argument.
+
+### Problem 3b: a matrix function
+
+Reconstructed task: with
+
+$$A = \begin{bmatrix} 4 & 3 \\ 7 & 9 \end{bmatrix} \ (\text{requires grad}), \qquad B = \begin{bmatrix} 3 & 5 \\ 1 & 11 \end{bmatrix},$$
+
+compute $f(A) = \log \lVert A^\top A B^\top A A^\top A B \rVert_F^2$ and, almost certainly, its gradient with respect to $A$.
+
+Our solution computed the value:
+
+```python
+inside = A.T @ A @ B.T @ A @ A.T @ A @ B
+f = torch.log(torch.norm(inside, p=2)**2)
+f
+# 34.8454
+```
+
+On a 2-D tensor, `torch.norm(X, p=2)` flattens the matrix and takes the vector 2-norm of its entries, which is the Frobenius norm. That is what the formula asks for. Do not confuse it with `torch.linalg.matrix_norm(X, 2)`, the spectral norm, which is a different number.
+
+**Where our solution was weak.** It created `A` with `requires_grad=True` and then never called `f.backward()` or printed `A.grad`. The `requires_grad` flag only makes sense if the question asked for the gradient, so the answer is very likely incomplete. The missing lines are short:
+
+```python
+f.backward()
+A.grad   # the 2 x 2 gradient of f with respect to A
+```
+
+The lesson: when you mark a tensor with `requires_grad=True`, ask yourself what gradient you meant to read, and read it.
+
+### Problem 3c: the gradient of a sum of tanh
+
+Reconstructed task: compute the gradient of $\sum_i \tanh(x_i)$ at $x = (3, 7)$.
+
+```python
+x.grad
+# [9.8660e-03, 3.3379e-06]
+```
+
+Each entry is $1 - \tanh^2(x_i)$, the derivative of $\tanh$. Both are small because $\tanh$ is nearly flat far from 0, and the entry at $x = 7$ is about three thousand times smaller than the one at $x = 3$. This is a first look at saturation: an input far from 0 sends almost no gradient back. As in 3a, the input must be a float tensor.
+
+### Problem 4: tensors, NumPy, and dtypes
+
+Reconstructed task: create a tensor, convert it to NumPy, and convert it to float.
+
+```python
+a.numpy()   # [1 2 3]
+a.float()   # tensor([1., 2., 3.])
+```
+
+One fact from this problem matters later: `.numpy()` fails on a tensor with `requires_grad=True`. You must call `.detach()` first. Part II Q5 runs into exactly this when it converts the fitted $\theta$ back to NumPy.
+
+### Problem 5: matrix product and Frobenius norm
+
+Reconstructed task: compute $XY$ for
+
+$$X = \begin{bmatrix} 1 & 3 & 5 \\ 2 & 1 & 5 \end{bmatrix}, \qquad Y = \begin{bmatrix} 8 & 4 \\ 3 & 6 \\ 2 & 7 \end{bmatrix},$$
+
+and the Frobenius norm of the vector $(100, 2, 1)$.
+
+```python
+x @ y
+# [[27 57]
+#  [29 49]]
+LA.norm(frob.reshape(1, 3), 'fro')
+# 100.025
+```
+
+$X$ is $2 \times 3$ and $Y$ is $3 \times 2$, so the inner dimensions agree and $XY$ is $2 \times 2$. The norm is $\sqrt{100^2 + 2^2 + 1^2} = \sqrt{10005} \approx 100.025$. The reshape is needed because `numpy.linalg.norm` accepts `'fro'` only for a 2-D array and raises on a 1-D one.
+
+## Part II: the housing prices
+
+**The data.** Part II uses the Kaggle competition "House Prices - Advanced Regression Techniques", the Ames, Iowa dataset of De Cock. `train.csv` has 1460 rows and 81 columns (`Id`, 79 attributes, `SalePrice`); `test.csv` has 1459 rows and no `SalePrice`; the submission has 1459 rows with columns `Id` and `SalePrice`. After dropping `Id` and the target, 43 columns are strings, 25 are integers, and 11 are floats. The target is continuous and strongly right-skewed, and Kaggle scores the RMSE between the logs of the predicted and actual prices.
+
+The file `data_description.txt` (523 lines) documents every column, and you need it: in many columns the string "NA" means "this house has no such feature", not "unknown". `PoolQC` is "NA" in 1453 of 1460 training rows because most houses have no pool. Two numeric columns, `MSSubClass` and `MoSold`, are really category codes, and about 14 quality columns share the scale Ex, Gd, TA, Fa, Po.
+
+### Q1: join the competition
+
+"Join the House Prices - Advanced Regression Techniques competition on Kaggle. Download the training and test data." This is logistics: a Kaggle account and the download.
+
+### Q2: continuous and categorical features
+
+"Give 3 examples of continuous and categorical features in the dataset; choose one feature of each type and plot the histogram to illustrate the distribution."
+
+Our solution chose `LotArea`, `TotalBsmtSF`, and `1stFlrSF` as continuous and `Foundation`, `RoofMatl`, and `Heating` as categorical. It plotted `LotArea` with `hist(bins=50)`, which shows a long right tail reaching about 215,000 square feet, and `Foundation` with `value_counts().plot(kind="bar")`: PConc about 650, CBlock about 630, BrkTil about 150, then Slab, Stone, and Wood. It repeated both plots on train and test combined.
+
+A histogram is for a continuous column and a bar chart of counts is for a categorical one. Do not call an ordinal code such as `OverallQual` continuous: it is ordered, but the spacing between its levels is not a measurement.
+
+### Q3: preprocessing
+
+"Pre-process your data, explain your pre-processing steps, and the reasons why you need them." The hint mentions missing values, normalizing numerical values, and categorical values. This was the bulk of the work. Our pipeline had twelve steps.
+
+1. **Drop two documented outliers.** Rows with `GrLivArea` above 4000 and `SalePrice` below 300,000 (Ids 524 and 1299, both partial sales) were removed, leaving 1458 training rows.
+2. **Concatenate train and test features** into one $2917 \times 79$ frame, so that every transform is applied identically to both.
+3. **"NA means none."** In 15 string columns (`Alley`, `MasVnrType`, the five basement columns, `FireplaceQu`, the four garage columns, `PoolQC`, `Fence`, `MiscFeature`), missing values were filled with the string "None".
+4. **Companion numeric columns get 0.** `MasVnrArea`, the basement areas and bath counts, `GarageCars`, and `GarageArea` were filled with 0. `GarageYrBlt` was filled with `YearBuilt`, and one typo year after 2010 was reset to `YearBuilt`.
+5. **True gaps.** Eight categorical columns with genuine gaps (`MSZoning`, `Utilities`, `Exterior1st`, `Exterior2nd`, `Electrical`, `KitchenQual`, `Functional`, `SaleType`) were filled with the mode. `LotFrontage`, missing in 486 rows of the combined frame, was filled with the median within the house's `Neighborhood` using `groupby().transform`.
+6. **Fix dtypes.** `MSSubClass` and `MoSold` were cast to strings so that they would be one-hot encoded instead of treated as numbers.
+7. **Ordinal maps.** The scale Ex, Gd, TA, Fa, Po, None became 5 down to 0 for 10 quality columns; `BsmtExposure` became 4 to 0; `BsmtFinType1` and `BsmtFinType2` became 6 to 0; `GarageFinish` became 3 to 0.
+8. **Engineered features.** `TotalSF` (basement plus first and second floors), `TotalBath` (full baths plus half of the half baths, above and below ground), `HouseAge` ($\text{YrSold} - \text{YearBuilt}$), `RemodAge` ($\text{YrSold} - \text{YearRemodAdd}$), and `TotalPorchSF` (the sum of five porch columns). The stated reason: "a linear model can't add or subtract columns on its own".
+9. **Log target.** $y = \log(1 + \text{SalePrice})$ via `log1p`, because of the long right tail and because Kaggle scores on the log scale.
+10. **Skew.** For numeric columns that are neither ordinal nor counts, with skewness above 0.75 in absolute value, `log1p` was applied and kept only if it cut the absolute skewness by at least 25%. It was kept for 14 columns, among them `LotArea`, `GrLivArea`, and `TotalSF`, and rejected for 5, among them `PoolArea` and `LotFrontage`.
+11. **Standardize** every numeric column with `StandardScaler`, fit on the training rows only.
+12. **One-hot encode** everything with `pd.get_dummies`, giving $2917 \times 273$, then split back into `X_train` ($1458 \times 273$) and `X_test` ($1459 \times 273$) and verify that there are no NaNs and the lengths match.
+
+**What this did well.** Step 11 fits the scaler on the training rows only, so no information from the test set leaks into the transform. Steps 2 and 12 encode train and test together, so both get the same 273 columns; encoding them separately would give mismatched columns. Step 3 reads the data dictionary instead of imputing a garage quality for a house with no garage.
+
+**Pitfalls to avoid.** Do not drop test rows with missing values: Kaggle expects a prediction for all 1459 houses. And whatever you do to the target in step 9, undo it before you submit (Q7).
+
+### Q4: one-hot encoding
+
+The question defines one-hot encoding for a feature $x_j \in \{R, G, B\}$, asks for examples of features that should use it and why, and asks you to convert at least one feature and plot histograms of the original and its encoding.
+
+Our solution encoded `Neighborhood`, which has 25 categories, into 25 binary columns with `pd.get_dummies`. It plotted a bar chart of the original counts and a $5 \times 5$ grid of 0/1 bar charts, one per new column.
+
+One-hot encoding suits unordered categories such as `Neighborhood`, `MSZoning`, and `SaleType`, where integer codes would impose an order and a spacing that do not exist. Quality scales are ordered, which is why Q3 gave them ordinal maps instead. With an intercept, keeping all $K$ columns of a one-hot block makes them sum to the intercept column, so the coefficients are not unique: this is the dummy-variable trap from lesson 1.1. Scikit-learn's least-squares solver tolerates it, but the Hessian becomes singular, so $\theta$ is not unique and gradient descent's answer depends on where it starts.
+
+### Q5: ordinary least squares, twice
+
+The question asks you to predict prices with OLS, justify the features you use, evaluate MSE and $R^2$ on the training set, and implement OLS twice: with scikit-learn, and with PyTorch autograd from scratch, "using tensors and the code provided in the code companion as a starting point", without `nn.Sequential` or built-in linear layers.
+
+**Choosing features.** Our solution correlated all 273 columns with the log price. The top correlations were `OverallQual` 0.82, `TotalSF` 0.82, `GrLivArea` 0.74, then `ExterQual`, `GarageCars`, and `TotalBath` at 0.68 and `KitchenQual` at 0.67. Among the top 30 it then looked for pairs with absolute correlation above 0.7, which flag redundant features: `HouseAge` and `YearBuilt` at 0.999, `GarageCars` and `GarageArea` at 0.89, `TotalSF` and `GrLivArea` at 0.86. Keeping one feature from each redundant pair gave 17 features: `OverallQual`, `TotalSF`, `GarageCars`, `TotalBath`, `KitchenQual`, `BsmtQual`, `GarageFinish`, `HouseAge`, `RemodAge`, `FireplaceQu`, `Foundation_PConc`, `HeatingQC`, `GarageType_Attchd`, `MasVnrArea`, `LotArea`, `MSSubClass_60`, and `TotalPorchSF`.
+
+**Scikit-learn.** `LinearRegression` on the log target gave training MSE 0.018660 and $R^2$ 0.8831. The intercept was 12.03, and the largest coefficients were `TotalSF` (0.118) and `OverallQual` (0.110).
+
+**PyTorch.** The loop follows the L4 companion. The course map records its structure in prose; here it is reconstructed as code:
+
+```python
+# X has a column of ones appended: 18 columns
+theta = torch.zeros(18, dtype=torch.float64, requires_grad=True)
+for it in range(50000):
+    theta_prev = theta
+    loss = mse_loss(X @ theta_prev, y)
+    loss.backward()
+    with torch.no_grad():
+        theta = (theta_prev - 0.05 * theta_prev.grad).requires_grad_()
+    if torch.linalg.norm(theta - theta_prev) <= 1e-5:
+        break
+```
+
+It stopped after 1212 iterations with MSE 0.018661 and $R^2$ 0.8831, the same fit as scikit-learn to four decimals.
+
+Several details make this loop correct. The column of ones gives the intercept. The tensors are `float64`. The update runs under `torch.no_grad()` so it is not recorded as part of the loss. Because the update builds a new `theta` each step, `.grad` starts empty every iteration and nothing accumulates; a loop that updates `theta` in place must reset `.grad` instead. The step size 0.05 works only because Q3 standardized the features: on raw square footage the Hessian is badly conditioned and the same step diverges. Finally, converting the fitted `theta` to NumPy needs `.detach()` first (Problem 4).
+
+**Where our solution was weak.** The question asked for training-set metrics, and that is all the solution reported. A training MSE is an optimistic estimate of the risk, because the same rows chose both the coefficients and, here, the 17 features (lesson 2.2). The only out-of-sample number in the homework is the Kaggle score in Q7. Also keep the scales apart: an MSE of 0.0187 on log prices cannot be compared with an MSE in dollars.
+
+### Q6: comparing the two fits
+
+"Compare and discuss the two results that you obtained in Q5. In addition, identify situations where applying gradient descent is more desirable in the context of linear regression."
+
+Our answer: the MSE of linear regression is convex with a unique minimizer, so both methods target the same $\theta$. Scikit-learn solves least squares in closed form in one shot. Gradient descent took 1212 steps and stopped when the steps became tiny, so the small gap in the coefficients comes from stopping early in flat directions of the loss, where a small gradient can hide a sizable distance to the minimizer (lesson 2.4's worked example makes this precise).
+
+Gradient descent is preferable when $n$ or $d$ is too large for the closed-form solve (the solve costs on the order of $d^3$ operations and the matrices must fit in memory), when data arrive in a stream or in minibatches, when the model or loss has no closed form (logistic regression, neural networks), and when you add penalties such as an L1 term.
+
+### Q7: the Kaggle submission
+
+"Train your model using all of the training data (all data points, but not necessarily all the features), and generate the predictions on the test set." Submit them in Kaggle's format and include a screenshot of your leaderboard position.
+
+Our solution refit OLS on the 17 features using all 1458 training rows, applied `np.expm1` to turn log predictions back into prices (they ranged from 50,396 to 727,245), and wrote `submission.csv` with columns `Id` and `SalePrice`. Kaggle scored it 0.14910 in log-RMSE, rank 2240.
+
+Three mistakes would have broken the submission: forgetting `expm1`, which submits a value near 12 for every house; wrong column names; and missing Ids.
+
+### Q8: a model that predicts poorly
+
+"Select one model with poor performance and explain in words why the selected features are not predictive."
+
+Our solution fit OLS on 12 weak features: the sale-month dummies `MoSold_2` to `MoSold_6`, `YrSold`, `LotFrontage`, `MiscVal`, `PoolArea`, `3SsnPorch`, `LowQualFinSF`, and `Street_Pave`. Training MSE was 0.1351 and $R^2$ was 0.1536. Most of these features have absolute correlation below 0.08 with the log price; only `LotFrontage`, at 0.37, is higher.
+
+The explanation: the month and year of sale do not describe the house, and the 2006–2010 window is too short for market drift to show. Lot frontage says little about size or quality. The rare amenities are 0 for almost every house, so for most rows the column carries no information.
+
+## Level 2: going further
+
+These variants push each part one step beyond what our solution did. They are for practice, so no answers are given.
+
+1. **Finish 3b.** Call `f.backward()` and read `A.grad`. Then check it with finite differences: perturb each entry of $A$ by a small $h$, recompute $f$, and compare $(f(A + h E_{ij}) - f(A))/h$ with the corresponding entry of `A.grad`. How small must $h$ be before the two agree to three digits, and what happens if you make $h$ much smaller still?
+2. **Derive 3a symbolically and test it.** Write $\partial g/\partial p_i$ as a formula, then compare it with autograd at ten random points $p$. Do the same for 3c with the formula $1 - \tanh^2(x_i)$.
+3. **Ridge and lasso on Ames.** Use all 273 columns of Q3 instead of 17. Fit ridge regression and lasso for a range of penalty strengths, choosing the penalty on a validation split carved out of the 1458 training rows. Report validation MSE on the log scale and the number of nonzero lasso coefficients, then submit the best model to Kaggle and compare its score with the OLS baseline of 0.14910. Which features does the lasso keep, and how do they compare with the 17 chosen by correlation?
+4. **Turn off standardization.** Rerun the Q5 PyTorch loop on unstandardized features with step size 0.05. Before you run it, predict whether it converges, and if so roughly how many steps it needs. Then compute the condition number of $\frac{2}{n}X^\top X$ with and without standardization, and use lesson 2.5 to find the largest stable step size in each case.
+5. **An honest estimate.** Hold out 20% of the training rows before choosing features, repeat Q5's feature selection on the remaining 80%, and report MSE and $R^2$ on the held-out rows. How far are they from the training values?
+6. **Compare norms in 3b.** Recompute $f$ with `torch.linalg.matrix_norm(inside, 2)`, the spectral norm, and explain why the value changes.
