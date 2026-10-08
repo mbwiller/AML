@@ -5,6 +5,7 @@ const PAGES = [
   '/units/u6-generative-models-and-naive-bayes/naive-bayes/',
   '/dev/kitchen-sink/',
   '/units/',
+  '/atlas/',
 ];
 
 test.use({ viewport: { width: 390, height: 844 } });

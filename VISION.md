@@ -241,7 +241,7 @@ Catalog with priorities (the full per-lecture idea lists, with the slide figures
 
 - **Data:** `src/content/graph/nodes.yaml` and `edges.yaml`, plus nodes/edges auto-derived from lesson frontmatter (`concepts`, `prerequisites`) and glossary frontmatter. A build step merges and validates (no dangling edges, no cycles in `requires`).
 - **Node schema:** `id, label, type (concept|method|metric|prereq|dataset), field, unit, lesson, summary, derivation?` (the field is `derivation`, matching `docs/CONTENT_AUTHORING.md` §6 and `nodes.yaml`). **Edge schema:** `from, to, type (requires|generalizes|contrasts|uses)`.
-- **Rendering:** force-directed 2-D canvas (react-force-graph-2d over d3-force), draggable nodes, zoom/pan, hover tooltips, click → side panel. Mastery glow is the minimum FSRS retrievability over the node's cards. Edges of type `requires` animate as a path when "show prerequisites of X" is selected.
+- **Rendering:** custom React SVG driven by d3-force, with the layout precomputed at build time from a fixed seed (§11.1; react-force-graph-2d was the fallback and is not used), draggable nodes, zoom/pan, hover tooltips, click → side panel. Node size is degree centrality (total degree over every edge type, normalized), documented in `src/lib/graph/types.ts`. Mastery glow is the minimum FSRS retrievability over the node's cards. Edges of type `requires` animate as a path when "show prerequisites of X" is selected.
 - **Starting edge list:** each `docs/course-map/` file has a "Concept-graph edges" section per lecture (~200 edges already written). Those are the seed.
 
 ### 9.5 Flashcards and quizzes
