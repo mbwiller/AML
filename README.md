@@ -4,6 +4,32 @@ An interactive, mathematically rigorous learning platform for **CS 5785 Applied 
 
 **Status (2026-10-06):** planning complete, build starting. Read `VISION.md`.
 
+## Workstream B (content) status: 2026-10-07
+
+**Process note for Matt:** content is committed and pushed straight to `main` (pull before every push), with no branches or PRs. Every lesson still goes through a `math-reviewer` and `content-reviewer` pass before it is pushed, and lessons stay `status: review` for you to flip to `published`.
+
+**Done and on `main`**
+
+| Area | What landed |
+|---|---|
+| Unit 1 | 1.1 Components of a learning problem; 1.2 Datasets, models, and model classes (1.3 and 1.4 are yours) |
+| Unit 2 | 2.1 Data-generating distributions; 2.2 True and empirical risk; 2.3 Gradients and optimality; 2.4 Gradient descent; 2.5 Step size and conditioning |
+| Unit 6 | 6.1 Generative vs discriminative; 6.2 Text as features; 6.3 Naive Bayes; 6.4 The spam exercise |
+| Unit 7 | 7.1 Multivariate Gaussian and covariance; 7.2 Gaussian discriminant analysis; 7.3 Shared covariance and logistic regression |
+| Supporting | 72 glossary terms; quiz banks for Units 1, 2, 6, 7 (271 items, every L2–L10 poll in scope); `graph/nodes.yaml` (122) and `edges.yaml`; case pages `adverse`, `notes`, `tropo`; `homework/hw3.mdx` (live readiness gate, no answers) |
+
+**Validated against `platform/m0-loose-ends`** (run from a separate checkout, nothing merged): `pnpm validate:content --strict` reports **0 errors** and 6 warnings, and `pnpm build` succeeds with no `katex-error` on any page. All 6 warnings are the R17 check "lesson feeds a live homework and an `<Example>` states a numeric result" (6.1, 6.3, 6.4, 7.1 ×2, 7.3). Each was reviewed by hand: the numbers come from posted notebook solutions or case specs, not HW3. They clear on 2026-10-19 when `hw3.mdx` goes `live: false`. If you want `--strict` green before then, an "acknowledged" marker on `<Example>` would do it; your call, since the validator is yours.
+
+**For you (platform)**
+
+- Your branch shortens the 7.2 summary; `main` now has the same text, so the merge should not conflict.
+- `src/data/*.json` does not exist yet. The case pages and every `<Example>` use notebook outputs or case-spec parameters until `scripts/gen-datasets` lands. The case pages have no data sample yet.
+- Widgets referenced as placeholders (names and params are in each lesson): `bow-nb-scorer`, `bow-vectorizer`, `generative-vs-discriminative-toggle`, `gaussian-2d-covariance`, `gda-fitter`, `encoding-explorer`, `linear-bias-probe`, `dgp-sampler`, `true-vs-empirical-risk`, `mse-bowl-gd`, `gd-1d-quadratic`, `gd-2d-eigen`, `learning-rate-schedules`, `sgd-noise`.
+- Units 1 and 2 point to your lessons 1.3 (Loss functions) and 1.4 (Least squares) by title only, for the normal equations, the singular-normal-equations case, and the log(1+D) residual plot. No derivation ids are assumed.
+- HW3 decision: the lessons include the full general derivations (NB MLE, Laplace as MAP, NB/GDA linearity, GDA MLE) that the HW3 forecast predicts. This was a deliberate choice (learn it before the homework); no HW3-specific numbers appear anywhere.
+
+**Next for Workstream B:** `homework/hw1.mdx` (walkthrough), then Unit 8 (k-means), then Units 3, 4, 5, and 0 and `hw2.mdx` toward the Nov 2 milestone. After Oct 19: flip `hw3.mdx` to `live: false` and add the walkthrough.
+
 ## Start here
 
 | File | What it is |
