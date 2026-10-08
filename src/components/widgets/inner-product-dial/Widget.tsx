@@ -445,8 +445,8 @@ export default function InnerProductDial({
               <Text
                 x={dialRadius * steepest.descent[0]}
                 y={dialRadius * steepest.descent[1]}
-                attachDistance={18}
-                attach={steepest.descent[1] >= 0 ? 'n' : 's'}
+                attachDistance={14}
+                attach={steepest.descent[0] >= 0 ? 'e' : 'w'}
                 color={theme.negative}
                 size={13}
               >
@@ -473,8 +473,8 @@ export default function InnerProductDial({
           <Text
             x={u[0]}
             y={u[1]}
-            attach={u[1] >= 0 ? 'nw' : 'sw'}
-            attachDistance={10}
+            attach={u[0] >= 0 ? 'e' : 'w'}
+            attachDistance={8}
             color={theme.viz[2]}
             size={15}
           >
