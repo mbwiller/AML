@@ -6,6 +6,13 @@ const PAGES = [
   '/dev/kitchen-sink/',
   '/units/',
   '/atlas/',
+  '/homework/',
+  '/homework/hw1/',
+  '/homework/hw3/',
+  '/cases/',
+  '/cases/notes/',
+  '/cases/adverse/',
+  '/materials/',
 ];
 
 test.use({ viewport: { width: 360, height: 780 } });
