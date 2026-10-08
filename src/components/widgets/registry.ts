@@ -13,6 +13,7 @@ export const registry = {
   'gaussian-2d-covariance': () => import('./gaussian-2d-covariance/Widget'),
   'gda-fitter': () => import('./gda-fitter/Widget'),
   'line-fit-playground': () => import('./line-fit-playground/Widget'),
+  'mse-bowl-gd': () => import('./mse-bowl-gd/Widget'),
 } satisfies Record<string, () => Promise<WidgetModule>>;
 
 export type WidgetName = keyof typeof registry;
