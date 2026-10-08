@@ -126,16 +126,25 @@ const p = (cls: string, html: string) => `<p class="${cls}">${html}</p>`;
 
 function definitionBack(blocks: Block[]): string | null {
   const isAlso = (b: Block) => b.kind === 'para' && /^\s*Also written as/i.test(b.text);
-  const formula = blocks.find((b) => b.kind === 'math');
-  const firstPara = blocks.findIndex((b) => b.kind === 'para' && !isAlso(b));
-  const parts: string[] = [];
-  if (formula) parts.push(renderBlock(formula));
-  const para = blocks[firstPara];
-  if (para) {
-    parts.push(renderBlock(para));
-    const next = blocks[firstPara + 1];
-    if (!formula && next?.kind === 'list') parts.push(renderBlock(next));
+  const body = blocks.filter((b) => !isAlso(b));
+  const formula = body.findIndex((b) => b.kind === 'math');
+  const prose = body.findIndex((b) => b.kind !== 'math');
+  const picked = new Set<number>();
+  if (formula !== -1) picked.add(formula);
+  if (prose !== -1) {
+    picked.add(prose);
+    // Without a formula, a list right after the lead paragraph is the definition itself.
+    if (formula === -1 && body[prose]?.kind === 'para' && body[prose + 1]?.kind === 'list') {
+      picked.add(prose + 1);
+    }
   }
+  // Source order, so a sentence ending in a colon still precedes its formula.
+  const parts = [...picked]
+    .sort((a, b) => a - b)
+    .flatMap((i) => {
+      const b = body[i];
+      return b ? [renderBlock(b)] : [];
+    });
   return parts.length ? parts.join('') : null;
 }
 

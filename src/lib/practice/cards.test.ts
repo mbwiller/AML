@@ -196,6 +196,31 @@ describe('buildDeck', () => {
     expect(deck.concepts['bernoulli-nb-mle']).toBe('Bernoulli NB MLE');
   });
 
+  it('keeps a list-only definition, and source order when the lead sentence ends in a colon', () => {
+    const body = `<Definition id="def-1-1-2" title="Attribute types" source="L2 p.8">
+
+- **Discrete**: countable values.
+- **Continuous**: real values.
+
+Also written as: ordinal.
+
+</Definition>
+
+<Definition id="def-1-1-3" title="One-hot encoding" source="L2 p.10">
+
+The one-hot encoding of category $k$ is the vector:
+
+$$\\phi_j(k) = \\mathbb{1}[j = k].$$
+
+</Definition>`;
+    const d = buildDeck({ lessons: [lesson({}, body)], units: [unit], dev: false });
+    expect(d.cards.map((c) => c.id)).toEqual(['card:def-1-1-2', 'card:def-1-1-3']);
+    expect(d.cards[0]?.backHtml).toContain('<strong>Discrete</strong>');
+    expect(d.cards[0]?.backHtml).not.toContain('ordinal');
+    const back = d.cards[1]?.backHtml ?? '';
+    expect(back.indexOf('the vector:')).toBeLessThan(back.indexOf('pc-formula'));
+  });
+
   it('hides draft lessons in production and shows them in dev', () => {
     const draft = lesson({ status: 'draft' }, BODY);
     expect(buildDeck({ lessons: [draft], units: [unit], dev: false }).cards).toHaveLength(0);
