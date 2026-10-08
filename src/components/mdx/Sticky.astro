@@ -1,46 +1,34 @@
 ---
 /**
- * Plain sticky note (M0): a tooltip via the native `title` attribute.
- * M1 replaces this with a Base UI popover that renders the glossary entry
- * (hover on desktop, tap on mobile, keyboard accessible).
- * Produced by the remark-sticky plugin from `[[term]]`; never written by hand.
- * The field color is unknown until the glossary is loaded, so M0 underlines
- * in `--muted`; the first use in a lesson gets a stronger underline.
+ * Sticky note (VISION.md §9.2): a `[[term]]` from the remark-sticky plugin,
+ * never written by hand. Renders the trigger and, once per page per term,
+ * the glossary card (`StickyCard.astro`). The popover itself is the vanilla
+ * controller in src/components/shell/sticky-controller.ts (included by
+ * Base.astro), not a React island: lesson pages ship no React runtime.
+ *
+ * Trigger contract (reused by prerequisite chips and anything else that
+ * wants a sticky): `data-sticky="<glossary id>"`, `data-field="<field>"`,
+ * `aria-haspopup="dialog"`, `aria-expanded="false"`, focusable.
+ *
+ * Underline: dotted, 1px, offset 3px, in the term's field color; the first
+ * use in a lesson (`first`) is 2px. Text stays `--fg`. Unknown ids keep the
+ * underline in `--muted` and open a "no entry yet" card; the build never fails.
+ *
+ * The markup line is prettier-ignored: whitespace text nodes around an inline
+ * trigger would be underlined or add a space before the next punctuation.
  */
+import { glossaryEntry } from '@/lib/site';
+
+import StickyCard from './StickyCard.astro';
+
 interface Props {
   id: string;
   first?: boolean;
 }
 const { id, first = false } = Astro.props;
+const entry = await glossaryEntry(id);
+const term = entry?.data;
 ---
 
-<span
-  class:list={['sticky', { 'sticky-first': first }]}
-  data-sticky={id}
-  tabindex="0"
-  role="term"
-  title={`Glossary: ${id}`}
->
-  <slot />
-</span>
-
-<style>
-  .sticky {
-    color: var(--fg);
-    text-decoration: underline dotted;
-    text-decoration-color: var(--muted);
-    text-decoration-thickness: 1px;
-    text-underline-offset: 0.2em;
-    cursor: help;
-    border-radius: var(--radius-control);
-    transition: background-color var(--duration-micro) var(--ease-standard);
-  }
-  .sticky-first {
-    text-decoration-thickness: 1.5px;
-    text-decoration-color: var(--fg);
-  }
-  .sticky:hover,
-  .sticky:focus-visible {
-    background-color: var(--math-hl);
-  }
-</style>
+{/* prettier-ignore */}
+<Fragment><span class:list={['sticky', { 'sticky-first': first }]} data-sticky={id} data-field={term?.field} role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" title={term ? `${term.term} (glossary)` : `Glossary: ${id}`}><slot /></span><StickyCard id={id} /></Fragment>

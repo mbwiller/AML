@@ -1,0 +1,64 @@
+---
+/**
+ * Internal: the sticky-note card for one glossary id, rendered at build time
+ * into a hidden `<template data-sticky-card="<id>">` ONCE per page. Every
+ * trigger (`[data-sticky="<id>"]`) on the page shares it; the controller in
+ * src/components/shell/sticky-controller.ts clones it into the popover host.
+ *
+ * Dedup uses `Astro.locals.stickyCards` (per-request, so per page in a static
+ * build). Render order is sequential within a page, so the first component
+ * to ask emits the template and later ones emit nothing.
+ *
+ * Unknown ids (content written ahead of the glossary) get a muted
+ * "no entry yet" card. Never throws. Not in the MDX registry.
+ */
+import { render } from 'astro:content';
+
+import { FIELD_LABELS } from '@/lib/glossary';
+import { glossaryEntry } from '@/lib/site';
+
+interface Props {
+  id: string;
+}
+const { id } = Astro.props;
+
+const seen = (Astro.locals.stickyCards ??= new Set<string>());
+const emit = !seen.has(id);
+seen.add(id);
+
+const entry = emit ? await glossaryEntry(id) : undefined;
+const Content = entry ? (await render(entry)).Content : undefined;
+const data = entry?.data;
+---
+
+{emit && (
+  <template data-sticky-card={id}>
+    <div class="sticky-card" data-field={data?.field}>
+      <div class="sticky-card-head">
+        <span class="sticky-card-term" data-sticky-title>
+          {data?.term ?? id.replace(/-/g, ' ')}
+        </span>
+        {data && data.aliases.length > 0 && (
+          <span class="sticky-card-aliases">{data.aliases.join(' · ')}</span>
+        )}
+        {data && (
+          <span class="field-chip" data-field={data.field}>
+            {FIELD_LABELS[data.field]}
+          </span>
+        )}
+      </div>
+      {Content ? (
+        <div class="sticky-card-body">
+          <Content />
+        </div>
+      ) : (
+        <p class="sticky-card-missing">
+          No glossary entry for <code>{id}</code> yet.
+        </p>
+      )}
+      <div class="sticky-card-foot">
+        <a href={`/glossary#${id}`}>Open in glossary →</a>
+      </div>
+    </div>
+  </template>
+)}

@@ -1,0 +1,15 @@
+---
+/**
+ * Mounts the shared sticky-note popover controller (one per page, vanilla
+ * script, event-delegated). Included by Base.astro so any page with a
+ * `[data-sticky]` trigger (lesson prose, prerequisite chips, glossary
+ * cross-references, widgets) gets the same card. Astro hoists and dedupes
+ * this script; it is ~2 KB gzipped and ships no React.
+ */
+---
+
+<script>
+  import { initStickies } from '@/components/shell/sticky-controller';
+
+  initStickies();
+</script>

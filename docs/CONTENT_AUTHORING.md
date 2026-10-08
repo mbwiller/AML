@@ -155,7 +155,7 @@ Full proof, folded; the key idea stays visible.
 Links to a display equation tagged with `\tag{6.3.1}` and `\htmlId{eq-6-3-1}{…}`.
 
 ### `[[term]]` and `[[term|display text]]`
-Sticky-note popover for a glossary id. The first use in a lesson is emphasized; later uses get a dotted underline. Unknown ids fail validation.
+Sticky-note popover for a glossary id: hover (300 ms) or tap opens the glossary card beside the term, Escape closes it, and the card links to `/glossary#term`. The underline is dotted in the term's field color; the first use in a lesson is emphasized (2px), later uses are lighter (1px). The card is built once per page per term from the glossary file, so repeat uses are free. Unknown ids fail validation (the page still builds, showing a "no entry yet" card, so a term can be written a little ahead of its glossary file). Prerequisite chips in the lesson header open the same card.
 
 ### `<Callout type="note | warning | slide | beyond">` … `</Callout>`
 `slide` = "what the slide says, and how we normalize it"; `beyond` = "beyond the slides" (e.g., the MAP view of regularization).

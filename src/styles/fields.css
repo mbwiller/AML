@@ -1,0 +1,59 @@
+/*
+ * Field color by data attribute (STYLE_GUIDE.md §4.1; VISION.md §13).
+ * Any element with `data-field="<field>"` gets `--field-color`, so sticky
+ * underlines, prerequisite-chip dots, glossary chips, and graph nodes read the
+ * same token without each repeating the seven-way mapping. The default is
+ * `--muted` for elements with no or an unknown field.
+ */
+[data-field] {
+  --field-color: var(--muted);
+}
+[data-field='probability'] {
+  --field-color: var(--field-probability);
+}
+[data-field='statistics'] {
+  --field-color: var(--field-statistics);
+}
+[data-field='linear-algebra'] {
+  --field-color: var(--field-linear-algebra);
+}
+[data-field='calculus'] {
+  --field-color: var(--field-calculus);
+}
+[data-field='information-theory'] {
+  --field-color: var(--field-information);
+}
+[data-field='ml'] {
+  --field-color: var(--field-ml);
+}
+[data-field='evaluation'] {
+  --field-color: var(--field-evaluation);
+}
+
+/* A field chip: hairline pill with a colored dot. The label stays --muted
+   because field colors are never used for text under 14px (§4.1). */
+.field-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.05rem 0.55rem 0.05rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.field-chip::before {
+  content: '';
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--field-color, var(--muted));
+}

@@ -29,9 +29,9 @@ Conventions: the twelve anatomy sections are `h2` with fixed ids (`objectives`, 
 | `Notebook` | `path`, `cells` | chip "`<basename>` · cells 0–8" → `/materials#notebook-<slug>` | rendered cells with outputs |
 | `HomeworkBridge` | `hw`, `skills` | `<section class="homework-bridge" id="homework-hw3">` with `h3` "Readiness gate · HW3", a Skill / Lesson section / Check table (— for now), link to `/homework/hw3` | sections and checks filled from the homework map |
 | `Summary` | — | bordered `<section id="summary" data-flashcard-source><h2>Summary card</h2>` | flashcard extraction |
-| `Sticky` | `id`, `first?` (from `[[term]]`, never hand-written) | dotted-underlined `<span class="sticky" data-sticky>` with a native tooltip | Base UI popover with the glossary entry |
+| `Sticky` | `id`, `first?` (from `[[term]]`, never hand-written) | `<span class="sticky [sticky-first]" data-sticky="<id>" data-field="<field>" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded>`: dotted 1px underline in the field color (2px on first use), text stays `--fg`; plus one `<template data-sticky-card="<id>">` per term per page (`StickyCard`). Unknown ids render a muted "no entry yet" card; the build never fails | done (M1): see "Sticky notes" below |
 
-Internal (not in the registry): `ResultBox`, `Section`, `Label`, `Chip`, `SourceChip`, `DerivationControls`.
+Internal (not in the registry): `ResultBox`, `Section`, `Label`, `Chip`, `SourceChip`, `DerivationControls`, `StickyCard`.
 
 ## Derivation step engine
 
@@ -46,5 +46,21 @@ Internal (not in the registry): `ResultBox`, `Section`, `Label`, `Chip`, `Source
 - **Where we are.** Each `[data-chunk]` gets `data-state` done / current / upcoming (current = the chunk holding the last revealed step), a glyph marker (✓ ▸ ○), `aria-current="step"` on the current chunk, and visually hidden "(done)" / "(upcoming)" text.
 - **`aml:figure-state` event contract** (`src/lib/figure-state.ts`). When a step with `data-figure-state` becomes revealed, the engine parses it (`parseFigureState`: a JSON object, else ignored) and dispatches `new CustomEvent('aml:figure-state', { bubbles: true, detail: { derivation: '<derivation id>', step: <1-based n>, state: <object> } })` on the `section[data-derivation]`, then the same event on the nearest *preceding* `figure[data-widget]` in document order (`findWidgetHost`; a following widget is not driven). On first paint every revealed step's state is dispatched in order; on hiding steps, the latest still-visible step with a state is re-dispatched so the widget rolls back. Widget hosts (M1 item 9) listen on their own `figure`; `document`-level listeners receive it once per target.
 
+
+## Sticky notes (M1)
+
+The popover is **not** the Base UI React island that `docs/reference/tech-stack.md` §3 proposed. A lesson has dozens of `[[term]]` uses and must ship no React runtime (STYLE_GUIDE §8: ≤60 KB gzipped JS per lesson page), so the card is a vanilla, event-delegated controller: `src/components/shell/sticky-controller.ts`, mounted once per page by `src/components/shell/StickyController.astro` from `Base.astro` (about 1.7 KB gzipped). Styles are global in `src/styles/sticky.css` and `src/styles/fields.css` (`[data-field]` → `--field-color`).
+
+Build time: `StickyCard.astro` resolves the glossary entry (`glossaryEntry(id)` in `src/lib/site.ts`, then `render()`) and emits the card body once per page per term into `<template data-sticky-card="<id>">`, deduplicated through `Astro.locals.stickyCards` (typed in `src/env.d.ts`). A term used twenty times costs one copy. The card holds the term, its aliases, a field chip, the rendered body (KaTeX HTML and `sym-*` classes inherit the page's global CSS), and an "Open in glossary" link to `/glossary#<id>`.
+
+DOM contract, for anything that wants a sticky (prerequisite chips in `Lesson.astro` already use it; a derivation step's "see: term" chip or a widget label can too):
+
+- **Trigger:** any element with `data-sticky="<glossary id>"`; add `data-field="<field>"` for the color, make it focusable, and give it `aria-haspopup="dialog"` and `aria-expanded="false"`. A link trigger keeps its `href` as the no-JS fallback; the controller prevents navigation. The controller sets `aria-expanded` and `aria-controls="sticky-popover"` while open.
+- **Card:** a `<template data-sticky-card="<id>">` anywhere on the page, normally from `<StickyCard id />`. Its `[data-sticky-title]` labels the dialog. A trigger with no template gets a runtime "no glossary entry on this page yet" card.
+- **Host:** one `<div id="sticky-popover" class="sticky-popover" role="dialog" aria-labelledby="sticky-popover-title">` appended to `<body>`, `position: fixed`, placed by `placePopover` in `src/lib/popover.ts` (below, flipping above, clamped to the viewport); `data-open` while visible, `data-side="below|above"`, `data-field` copied from the trigger.
+- **Behaviour:** hover-intent open after 300 ms on mouse/pen (stays open while the pointer is on the trigger or in the card, closes 150 ms after leaving); click or tap toggles and pins; outside pointerdown closes; Enter/Space toggles; Escape closes and returns focus; Tab from an open trigger moves into the card's links, Tab past the last (or Shift+Tab before the first) closes it and continues from the trigger. Opens with a 120 ms fade; instant under `prefers-reduced-motion`.
+- **Events:** bubbling `CustomEvent`s on the trigger, `sticky:open` and `sticky:close`, with `detail: { id }`.
+
+Tests: `src/lib/glossary.test.ts` (grouping, filtering, used-by, placement) and `tests/e2e/sticky.spec.ts` (hover, Escape, keyboard, phone tap, one template per term, screenshots in both themes).
 
 Smoke page: `/dev/components-smoke` (`src/pages/dev/components-smoke.astro` + `_components-smoke.mdx`) renders the §11 skeleton and one of every other component. The real kitchen-sink page is `/dev/kitchen-sink`.

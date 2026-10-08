@@ -30,12 +30,19 @@ const lesson = lessonSchema.parse({
 
 const headings = outlineFromHeadings(getHeadings());
 const prerequisites = [
-  { id: 'bayes-rule', label: "Bayes' rule", href: '/glossary#bayes-rule', field: 'probability' },
+  {
+    id: 'bayes-rule',
+    label: "Bayes' rule",
+    href: '/glossary#bayes-rule',
+    field: 'probability',
+    sticky: true,
+  },
   {
     id: 'conditional-probability',
     label: 'Conditional probability',
     href: '/glossary#conditional-probability',
     field: 'probability',
+    sticky: true,
   },
   {
     id: 'softmax-regression',
