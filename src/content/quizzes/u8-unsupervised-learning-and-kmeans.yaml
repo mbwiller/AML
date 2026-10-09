@@ -1,0 +1,306 @@
+# Quiz bank: Unit 8, Unsupervised learning and k-means.
+# Format: docs/CONTENT_AUTHORING.md §7. Poll items carry source "L<n> p.<k> poll" and the
+# course map's suggested key (docs/course-map/04-lectures-L8-L10.md, L10 poll section).
+# The "select all that are true" polls on L10 p.45 and p.49 are split into one true/false item
+# per statement, as in the Unit 6 and Unit 2 banks. Numeric values are toy values or recorded
+# companion outputs; none comes from HW3.
+
+# ---------- Lesson 8.1: kmeans ----------
+
+- id: q-u8-l1-001
+  lesson: kmeans
+  concepts: [feature-scaling-kmeans]
+  type: mc
+  difficulty: 1
+  source: "L10 p.45 poll"
+  prompt: |
+    True or false: K-means performance is sensitive to the choice of units, for example time measured in days versus years.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False", misconception: kmeans-scale-invariant }
+  explanation: |
+    True (the course map's key). Changing the unit of feature $j$ multiplies its values by a constant $\alpha$ and its term in the squared distance by $\alpha^2$ (der-8-1-6 step 2); days instead of years multiplies it by $365^2$. That changes which centroid is nearest, so it changes the clustering.
+  discriminates: [feature-scaling-kmeans, feature-scaling-conditioning]
+
+- id: q-u8-l1-002
+  lesson: kmeans
+  concepts: [feature-scaling-kmeans]
+  type: mc
+  difficulty: 1
+  source: "L10 p.45 poll"
+  prompt: |
+    True or false: the L2 distance is primarily driven by the variables of a smaller scale.
+  options:
+    - { text: "True", misconception: kmeans-scale-invariant }
+    - { text: "False", correct: true }
+  explanation: |
+    False (the course map's key): it is driven by the variables of **larger** scale. Averaged over pairs of data points, feature $j$ contributes $2s_j^2$ to the squared distance (der-8-1-6 step 7), so its share is $s_j^2 / \sum_l s_l^2$. A feature with a large spread dominates.
+
+- id: q-u8-l1-003
+  lesson: kmeans
+  concepts: [feature-scaling-kmeans]
+  type: mc
+  difficulty: 1
+  source: "L10 p.45 poll"
+  prompt: |
+    True or false: it is hard to compare different units in the L2 distance, for example days and miles.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False", misconception: kmeans-scale-invariant }
+  explanation: |
+    True (the course map's key). The Euclidean distance adds $(\text{days})^2$ to $(\text{miles})^2$ as if they were the same quantity, so the exchange rate between them is set by the arbitrary choice of units. Z-scoring (L10 p.46) puts every feature in units of its own standard deviation, so each contributes equally on average (der-8-1-6 step 9).
+
+- id: q-u8-l1-004
+  lesson: kmeans
+  concepts: [kmeans-local-minima]
+  type: mc
+  difficulty: 1
+  source: "L10 p.49 poll"
+  prompt: |
+    True or false: K-means returns the exact same solution every time on the same dataset, even with different initial centroids.
+  options:
+    - { text: "True", misconception: kmeans-global-optimum }
+    - { text: "False", correct: true }
+  explanation: |
+    False (the course map's key). Lloyd's algorithm stops at a point that neither of its steps can improve (der-8-1-4 step 11), and which such point it reaches depends on where it starts. In the rectangle example of lesson 8.1, one start ends at $J = 0.25$ and another at $J = 4$.
+  discriminates: [kmeans-local-minima, lloyds-monotone-termination]
+
+- id: q-u8-l1-005
+  lesson: kmeans
+  concepts: [kmeans-voronoi-cells]
+  type: mc
+  difficulty: 2
+  source: "L10 p.49 poll"
+  prompt: |
+    True or false: K-means performs best when the variables are correlated (ellipsoid-shaped clusters) with different variances across clusters.
+  options:
+    - { text: "True", misconception: kmeans-any-shape }
+    - { text: "False", correct: true }
+  explanation: |
+    False (the course map's key). The objective uses an unweighted Euclidean distance, and the boundaries between clusters are perpendicular bisectors of pairs of centroids (der-8-1-5). That favors round clusters of similar size; an elongated cluster next to a compact one is cut by a straight wall. A Gaussian mixture with full covariances is the model for ellipsoidal clusters.
+
+- id: q-u8-l1-006
+  lesson: kmeans
+  concepts: [kmeans-local-minima]
+  type: mc
+  difficulty: 1
+  source: "L10 p.49 poll"
+  prompt: |
+    True or false: k-means can get stuck at local minima.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False", misconception: kmeans-global-optimum }
+  explanation: |
+    True (the course map's key). The problem $\min_{c, z} J$ is non-convex: the assignments are discrete, and $\min_z J(c, z) = \frac1n\sum_i \min_k \lVert x^{(i)} - c_k \rVert_2^2$ is not convex in $c$. Lloyd's algorithm is coordinate descent, and it stops where no single block move helps (der-8-1-4 step 11), which can be far from the global minimum. Restarts and k-means++ seeding are the standard remedies.
+
+- id: q-u8-l1-007
+  lesson: kmeans
+  concepts: [elbow-method]
+  type: mc
+  difficulty: 1
+  source: "L10 p.49 poll"
+  prompt: |
+    True or false: measuring clustering quality is hard and relies on heuristics.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False", misconception: kmeans-choose-k-by-j }
+  explanation: |
+    True (the course map's key). There are no labels to score against, and the objective itself is no guide to $K$: its smallest achievable value never increases as $K$ grows and reaches 0 at $K = n$ (for distinct points). The elbow method (from the companion) looks for where the decrease in $J$ slows, which is a judgment call.
+
+- id: q-u8-l1-008
+  lesson: kmeans
+  concepts: [kmeans-model, kmeans-gmm-limit]
+  type: mc
+  difficulty: 1
+  source: "L10 p.49 poll"
+  prompt: |
+    True or false: the assignment returned by k-means has a probabilistic interpretation that represents confidence.
+  options:
+    - { text: "True", misconception: kmeans-probabilistic }
+    - { text: "False", correct: true }
+  explanation: |
+    False (the course map's key). k-means returns a hard label $z^{(i)} \in \{1, \dots, K\}$ and nothing else; a point on the boundary between two cells is labeled as firmly as a point at a centroid. A Gaussian mixture fit by EM gives each point a probability for each cluster, and k-means is its limit as the shared variance goes to 0.
+
+- id: q-u8-l1-009
+  lesson: kmeans
+  concepts: [kmeans-update-step]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    After an assignment step, a cluster holds the 1-D points $0$, $a = 2$, and $b = 9$. Where does the update step put its centroid? Give three decimal places.
+  answer: 3.666667
+  tolerance: 0.001
+  seeded: { a: [1, 2, 3], b: [7, 8, 9, 10] }
+  formula: "(a + b) / 3"
+  explanation: |
+    The update step minimizes $\sum_{i \in C_k} (x^{(i)} - c)^2$ over $c$, and the minimizer is the mean (der-8-1-2 step 5): $c = (0 + a + b)/3$, here $11/3$. It is not the median $a$, which would minimize the un-squared sum (der-8-1-3).
+
+- id: q-u8-l1-010
+  lesson: kmeans
+  concepts: [feature-scaling-kmeans]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A dataset has two features. Feature 1 has sample standard deviation $s_1 = 10$ and feature 2 has $s_2 = 1$ (both computed with $\tfrac1n$). Averaged over all ordered pairs of data points, what fraction of the squared Euclidean distance comes from feature 1? Give four decimal places.
+  answer: 0.990099
+  tolerance: 0.0001
+  seeded: { s1: [1, 2, 3, 5, 10, 30], s2: [1, 2, 4] }
+  formula: "s1 * s1 / (s1 * s1 + s2 * s2)"
+  explanation: |
+    Feature $j$'s term averages to $2s_j^2$ over all ordered pairs (der-8-1-6 step 7), so feature 1's share is $s_1^2 / (s_1^2 + s_2^2)$ (step 8). Only the ratio of the spreads matters. After z-scoring both shares are $\tfrac12$ (step 9).
+
+- id: q-u8-l1-011
+  lesson: kmeans
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-8-1-2
+  corrupt: { step: 5, replaceTex: 'v = \sum_{i \in C_k} x^{(i)}', explanation: 'Setting step 4 to zero gives $n_k\,v = \sum_{i \in C_k} x^{(i)}$, so $v$ is the sum divided by $n_k$. The corrupted step returns the sum itself, which grows with the cluster size and lies far outside the data.' }
+
+- id: q-u8-l1-012
+  lesson: kmeans
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-8-1-5
+  corrupt: { step: 3, replaceTex: '2(c_k - c_l)^\top x \le \lVert c_l \rVert_2^2 - \lVert c_k \rVert_2^2', explanation: 'Moving $-2c_k^\top x + 2c_l^\top x$ to the left gives $2(c_l - c_k)^\top x$, not $2(c_k - c_l)^\top x$. With the sign flipped on the left only, the boundary passes through $-\tfrac12(c_k + c_l)$ instead of the midpoint. With $c_k = 0$ and $c_l = (2, 0)$ it gives $x_1 \ge -1$ instead of $x_1 \le 1$.' }
+
+- id: q-u8-l1-013
+  lesson: kmeans
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-8-1-4
+  corrupt: { step: 3, replaceTex: 'J^{(t+1)} < J^{(t)}', explanation: 'Steps 1 and 2 are non-strict inequalities, so their chain is non-strict too. At the stopping point both hold with equality and $J$ stays constant. Strict decrease needs an extra fact: some point was reassigned (step 7).' }
+
+- id: q-u8-l1-014
+  lesson: kmeans
+  concepts: [kmeans-unsquared-geometric-median, kmeans-objective]
+  type: mc
+  difficulty: 2
+  source: "original (L10 p.40 slide error)"
+  prompt: |
+    A cluster contains the 1-D points $0$, $0$, and $3$. If the objective used the un-squared distance $\sum_i |x^{(i)} - c|$, as written on L10 p.40, which centroid $c$ would minimize the cluster's cost?
+  options:
+    - { text: "$c = 0$, the median", correct: true }
+    - { text: "$c = 1$, the mean", misconception: kmeans-unsquared-objective }
+    - { text: "$c = 1.5$, the midpoint of the range" }
+    - { text: "every $c \\in [0, 3]$ gives the same cost" }
+  explanation: |
+    The cost is $2|c| + |3 - c|$, which is 3 at $c = 0$ and 4 at $c = 1$ (der-8-1-3 step 5). In 1-D the un-squared sum is minimized by the median (step 6); the mean minimizes the squared sum. That mismatch is why the lesson squares the norm in $J$: with the slide's objective, the mean update can increase it.
+  discriminates: [kmeans-unsquared-geometric-median, kmeans-update-step]
+
+- id: q-u8-l1-015
+  lesson: kmeans
+  concepts: [lloyds-monotone-termination]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Which argument shows that Lloyd's algorithm stops after finitely many iterations?
+  options:
+    - { text: "$J$ strictly decreases whenever a point is reassigned, after an update $J$ depends only on the assignment, and there are only $K^n$ assignments, so none can repeat", correct: true }
+    - { text: "$J$ is convex, so gradient descent on it converges", misconception: kmeans-global-optimum }
+    - { text: "$J$ is bounded below by 0, so the iterations must stop" }
+    - { text: "Each step moves every centroid by a fixed fraction of its distance to the optimum" }
+  explanation: |
+    Bounded below and non-increasing gives convergence of the values $J^{(t)}$ (der-8-1-4 step 4), not termination in finitely many steps. Termination needs steps 5–9: $J^{(t)} = g(z^{(t)})$ is a function of the partition, it drops strictly whenever the partition changes, and there are finitely many partitions. The problem $\min_{c, z} J$ is non-convex, which is why the stopping point can be a poor local minimum.
+  discriminates: [lloyds-monotone-termination, kmeans-local-minima]
+
+- id: q-u8-l1-016
+  lesson: kmeans
+  concepts: [elbow-method]
+  type: mc
+  difficulty: 2
+  source: "original (lecture10 companion)"
+  prompt: |
+    The lecture10 companion reports an objective (sklearn inertia) of 462.03 at $K = 2$ and 5.46 at $K = 50$ on 100 points from four blobs. Why not choose $K = 50$, or an even larger $K$?
+  options:
+    - { text: "The smallest achievable inertia never increases with $K$ and reaches 0 at $K = n$, so its minimum always picks one cluster per point; the elbow at $K = 4$ is where extra clusters stop paying", correct: true }
+    - { text: "At $K = 50$ Lloyd's algorithm does not converge" }
+    - { text: "Inertia starts increasing after the true $K$, so $K = 50$ must be past the minimum", misconception: kmeans-choose-k-by-j }
+    - { text: "The companion's inertia at $K = 50$ is a local minimum; restarts would give a larger value" }
+  explanation: |
+    Adding a centroid on a data point can only lower $J$, so the smallest achievable $J$ is non-increasing in $K$ and 0 at $K = n$ (for distinct points). Choosing $K$ by minimizing $J$ always overfits; the companion calls the $K = 50$ fit "small, local noise clusters". The elbow method picks the $K$ after which the curve flattens, $K = 4$ for these blobs.
+
+- id: q-u8-l1-017
+  lesson: kmeans
+  concepts: [kmeans-gmm-limit]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    In a Gaussian mixture with weights $\pi_k > 0$ and covariances $\Sigma_k = \sigma^2 I$, what happens to the responsibility $r_k^{(i)} = p(z^{(i)} = k \mid x^{(i)})$ as $\sigma \to 0$, if $\mu_m$ is the unique nearest mean to $x^{(i)}$?
+  options:
+    - { text: "$r_m^{(i)} \\to 1$ and $r_k^{(i)} \\to 0$ for $k \\ne m$, whatever the weights $\\pi_k$", correct: true }
+    - { text: "$r_k^{(i)} \\to \\pi_k$ for every $k$" }
+    - { text: "$r_k^{(i)} \\to 1/K$ for every $k$" }
+    - { text: "the component with the largest weight $\\pi_k$ gets responsibility 1", misconception: kmeans-probabilistic }
+  explanation: |
+    The ratio $r_k^{(i)} / r_m^{(i)} = (\pi_k / \pi_m)\exp\!\big(-(\lVert x^{(i)} - \mu_k\rVert^2 - \lVert x^{(i)} - \mu_m\rVert^2)/2\sigma^2\big)$ has a negative exponent that tends to $-\infty$, so it tends to 0 for every $k \ne m$; the fixed weights cannot compete. The soft assignment becomes the hard k-means assignment.
+
+- id: q-u8-l1-018
+  lesson: kmeans
+  concepts: [kmeans-voronoi-cells]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    With two centroids $c_1$ and $c_2$, which set separates the two clusters' assignment regions?
+  options:
+    - { text: "The hyperplane through $\\tfrac12(c_1 + c_2)$ perpendicular to $c_2 - c_1$", correct: true }
+    - { text: "The hyperplane through $c_1$ perpendicular to $c_2 - c_1$" }
+    - { text: "A circle centered at $\\tfrac12(c_1 + c_2)$" }
+    - { text: "An ellipse whose shape depends on the spread of each cluster", misconception: kmeans-any-shape }
+  explanation: |
+    $\lVert x - c_1 \rVert^2 = \lVert x - c_2 \rVert^2$ loses its $\lVert x \rVert^2$ terms and becomes $(c_2 - c_1)^\top\big(x - \tfrac12(c_1 + c_2)\big) = 0$ (der-8-1-5 steps 3–5): the perpendicular bisector. The spread of the clusters plays no role, which is why k-means draws only straight walls.
+
+- id: q-u8-l1-019
+  lesson: kmeans
+  concepts: [kmeans-objective]
+  type: mc
+  difficulty: 1
+  source: "original (lecture10 companion)"
+  prompt: |
+    The lecture10 companion prints `K-Means Objective: 462.03`, computed as `-model.score(X)`, for $K = 2$ on $n = 100$ points. What is the lesson's objective $J$ (equation 8.1.1) for that fit?
+  options:
+    - { text: "4.6203", correct: true }
+    - { text: "462.03", misconception: kmeans-inertia-is-j }
+    - { text: "-462.03" }
+    - { text: "21.495, the square root of 462.03" }
+  explanation: |
+    `model.score(X)` is the negative inertia, and inertia is the **sum** of squared distances to the assigned centroids, $nJ$. The lesson's $J$ keeps the $\frac1n$, so $J = 462.03 / 100$. Both are squared, unlike the slide's L10 p.40 formula.
+
+- id: q-u8-l1-020
+  lesson: kmeans
+  concepts: [clustering, kmeans-local-minima]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    You run k-means with $K = 4$ on eight standardized admission measurements from an ICU sepsis cohort, and it returns four clusters with different average lactate. What does this show?
+  options:
+    - { text: "Only that Lloyd's algorithm partitioned the data into the four groups you asked for; whether they are real phenotypes needs checks the algorithm never saw, such as outcomes, stability across restarts and resamples, and robustness to scaling", correct: true }
+    - { text: "That there are four kinds of sepsis, because k-means finds the natural groups in the data", misconception: kmeans-clusters-are-real }
+    - { text: "That $K = 4$ is correct, because the clusters differ in lactate", misconception: kmeans-clusters-are-real }
+    - { text: "Nothing, because k-means cannot be applied to standardized data" }
+  explanation: |
+    k-means returns $K$ groups for any $K$, even on data with no group structure, and the groups differ on some feature by construction. A clustering is a hypothesis: validate it against something held out (the SEPSIS-4 case keeps 28-day mortality for this), check that restarts and resamples give the same groups, and check that it survives a change of scaling.
+
+- id: q-u8-l1-021
+  lesson: kmeans
+  concepts: [lloyds-algorithm, kmeans-objective, kmeans-update-step]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Which statement about Lloyd's algorithm on the objective $J(c, z) = \frac1n\sum_i \lVert x^{(i)} - c_{z^{(i)}} \rVert_2^2$ is true?
+  options:
+    - { text: "Each step minimizes $J$ exactly over one block of variables with the other held fixed, so $J$ never increases, but the stopping point can depend on the initialization", correct: true }
+    - { text: "Each step takes a gradient step on $J$ with a fixed learning rate" }
+    - { text: "It always reaches the global minimum of $J$, because each step is an exact minimization", misconception: kmeans-global-optimum }
+    - { text: "The update step moves each centroid to the median of its cluster", misconception: kmeans-unsquared-objective }
+  explanation: |
+    The assignment step is the exact minimizer over $z$ for fixed centroids (der-8-1-1) and the update step the exact minimizer over $c$ for fixed assignments, the cluster mean (der-8-1-2). That is coordinate descent: $J$ never increases (der-8-1-4), but a point that neither block can improve need not be the global minimum, as the rectangle example shows.

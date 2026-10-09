@@ -1,0 +1,16 @@
+---
+id: coordinate-descent
+term: Coordinate descent
+aliases: [block coordinate descent, alternating minimization, alternating optimization]
+field: calculus
+firstUsedIn: u8-unsupervised-learning-and-kmeans
+related: [gradient, convergence-criterion, local-minimum]
+---
+
+**What it is.** A way to minimize $F(u, v)$ when minimizing over all variables at once is hard but minimizing over one block with the others held fixed is easy. Alternate:
+
+$$u^{(t+1)} = \argmin_u F(u, v^{(t)}), \qquad v^{(t+1)} = \argmin_v F(u^{(t+1)}, v).$$
+
+Each move can only lower $F$ or leave it unchanged, so the sequence $F^{(t)}$ never increases. If $F$ is bounded below, the values converge. If the iterates stop changing (as in k-means) or converge (for continuous $F$), the result is a point that no single-block move can improve, which need not be a global minimum.
+
+**How ML uses it.** Lloyd's algorithm for k-means is coordinate descent on the objective $J(c, z)$: the assignment step minimizes over the assignments $z$, the update step over the centroids $c$. EM for Gaussian mixtures and alternating least squares for matrix factorization have the same two-block structure.

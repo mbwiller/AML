@@ -1,0 +1,16 @@
+---
+id: voronoi-partition
+term: Voronoi partition
+aliases: [Voronoi diagram, Voronoi cells, Voronoi tessellation, nearest-centroid regions]
+field: linear-algebra
+firstUsedIn: u8-unsupervised-learning-and-kmeans
+related: [euclidean-distance, argmax]
+---
+
+**What it is.** Given points $c_1, \dots, c_K \in \mathbb{R}^d$ (the sites), the Voronoi cell of $c_k$ is the set of inputs at least as close to $c_k$ as to any other site:
+
+$$V_k = \{x : \lVert x - c_k \rVert_2 \le \lVert x - c_l \rVert_2 \text{ for all } l\}.$$
+
+The cells cover $\mathbb{R}^d$ and, for distinct sites, overlap only on their boundaries. Each boundary piece lies on the perpendicular bisector of two sites, so every cell is an intersection of half-spaces: a convex polygon or polyhedron, possibly unbounded.
+
+**How ML uses it.** The assignment step of k-means sends every point to the Voronoi cell of its nearest centroid, so a k-means model is a Voronoi partition of feature space. Nearest-neighbor classifiers with one neighbor carve space the same way, with the training points as sites.

@@ -1,0 +1,12 @@
+---
+id: local-minimum
+term: Local minimum
+aliases: [local minimizer, local optimum]
+field: calculus
+firstUsedIn: u8-unsupervised-learning-and-kmeans
+related: [convex-function, hessian, coordinate-descent]
+---
+
+**What it is.** A point $u^\star$ is a local minimum of $F$ if no nearby point does better: $F(u^\star) \le F(u)$ for all $u$ in some neighborhood of $u^\star$. It is a global minimum if the inequality holds for every $u$. A convex function has no local minima other than global ones; a non-convex function can have many, at different heights.
+
+**How ML uses it.** Iterative methods that only ever move downhill, such as gradient descent and coordinate descent, stop at a local minimum (or another stationary point) and cannot tell whether a lower one exists. The k-means objective is non-convex, so Lloyd's algorithm can end in a poor clustering that depends on where it started; random restarts and k-means++ seeding are the standard remedies. For k-means, "nearby" includes changing one point's cluster.

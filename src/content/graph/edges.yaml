@@ -381,3 +381,44 @@
 - { from: stochastic-gradient-descent, to: pytorch-optimizer-loop, type: requires }
 - { from: condition-number, to: feature-scaling-conditioning, type: requires }
 - { from: z-score, to: feature-scaling-conditioning, type: requires }
+
+# ---------- Unit 8: Unsupervised learning and k-means ----------
+
+# Lesson 8.1: kmeans
+# Seed edges from docs/course-map/04-lectures-L8-L10.md, L10 "Concept-graph edges" (k-means half):
+#   Supervised learning -> Unsupervised learning (contrast); Unsupervised learning -> Clustering;
+#   Unsupervised learning -> Density estimation / outlier detection; -> Dimensionality reduction (future);
+#   Euclidean distance -> k-means objective; Model class/objective/optimizer -> k-means as an algorithm;
+#   k-means objective -> Lloyd's algorithm; Feature scaling (z-score) -> Reliable k-means;
+#   Lloyd's algorithm -> Local minima / initialization sensitivity; k-means -> GMM/EM (future, soft version).
+# Prerequisite -> concept edges (euclidean-distance, z-score, coordinate-descent, local-minimum,
+# voronoi-partition, gaussian-mixture, model-class, ...) are derived from the lesson frontmatter.
+- { from: supervised-dataset, to: unsupervised-learning, type: contrasts }
+- { from: unsupervised-learning, to: unsupervised-task-types, type: requires }
+- { from: unsupervised-learning, to: clustering, type: requires }
+- { from: unsupervised-learning, to: unsupervised-learning-components, type: requires }
+- { from: five-ml-components, to: unsupervised-learning-components, type: contrasts }
+- { from: clustering, to: kmeans-model, type: requires }
+- { from: unsupervised-learning-components, to: kmeans-model, type: requires }
+- { from: kmeans-model, to: kmeans-objective, type: requires }
+- { from: kmeans-objective, to: kmeans-assignment-step, type: requires }
+- { from: kmeans-objective, to: kmeans-update-step, type: requires }
+- { from: kmeans-assignment-step, to: lloyds-algorithm, type: requires }
+- { from: kmeans-update-step, to: lloyds-algorithm, type: requires }
+- { from: lloyds-algorithm, to: lloyds-monotone-termination, type: requires }
+- { from: kmeans-assignment-step, to: kmeans-voronoi-cells, type: requires }
+- { from: kmeans-objective, to: feature-scaling-kmeans, type: requires }
+- { from: lloyds-monotone-termination, to: kmeans-local-minima, type: requires }
+- { from: kmeans-local-minima, to: kmeans-plus-plus, type: requires }
+- { from: kmeans-objective, to: elbow-method, type: requires }
+- { from: lloyds-algorithm, to: kmeans-gmm-limit, type: requires }
+- { from: iris-dataset, to: kmeans-model, type: uses }
+# Explicit course-map seed edges: these target a specific node rather than the lesson.
+- { from: euclidean-distance, to: kmeans-objective, type: requires }
+- { from: z-score, to: feature-scaling-kmeans, type: requires }
+
+# Contrasts
+- { from: kmeans-update-step, to: kmeans-unsquared-geometric-median, type: contrasts }
+- { from: feature-scaling-conditioning, to: feature-scaling-kmeans, type: contrasts }
+- { from: gda-linear-boundary, to: kmeans-voronoi-cells, type: contrasts }
+- { from: gda-mle-mean, to: kmeans-update-step, type: contrasts }
