@@ -32,5 +32,3 @@ The question is the one every classifier in this course asks: given a patient's 
 Because we generate the cohort ourselves, the true model is known. The log-odds of an event are a linear function of the features (the model above), plus one deliberate kink at eGFR 30. That makes ADVERSE the course's classification backbone: logistic regression recovers the coefficients, evaluation at 6% prevalence shows why accuracy misleads, and Gaussian discriminant analysis on (age, eGFR) can be compared directly with logistic regression on the same patients.
 
 **Where it appears.** Lesson 6.1 (a generative and a discriminative view of the same event), lessons 7.1 and 7.2 (Gaussian class-conditionals and GDA on age and eGFR), and later the evaluation, regularization, and tree units.
-
-**The data.** A sample of patient records appears here once the dataset is generated.
