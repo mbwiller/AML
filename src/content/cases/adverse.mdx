@@ -11,7 +11,7 @@ variables:
   - { name: diabetes, description: "diabetes flag (0/1)" }
   - { name: event, symbol: "y", description: "1 if a hyperkalemia event occurs within 90 days" }
 generativeModel:
-  tex: "P(y = 1 \\mid x) = \\sigma\\big(-4.5 + 0.03(\\text{age} - 60) - 0.04(\\text{eGFR} - 70) + 1.2\\,\\text{NSAID} + 0.6\\,\\ind{K > 5.0} + 0.05\\,D\\big)"
+  tex: "P(y = 1 \\mid x) = \\sigma\\big(-4.5 + 0.03(\\text{age} - 60) - 0.04(\\text{eGFR} - 70) + 1.2\\,\\text{NSAID} + 0.6\\,\\ind{K > 5.0} + 0.05\\,D + 0.08\\max(0, 30 - \\text{eGFR})\\big)"
   parameters:
     n: 5000
     prevalence: "about 0.06"
@@ -21,6 +21,9 @@ usedIn:
   - generative-vs-discriminative
   - multivariate-gaussian-and-covariance
   - gaussian-discriminant-analysis
+  - classification-and-the-sigmoid
+  - maximum-likelihood-principle
+  - deriving-the-logistic-regression-objective
 ---
 
 {/* spec: docs/reference/pedagogy-and-curriculum.md Part C, C2. The data sample is added once scripts/gen-datasets writes src/data/adverse.json. */}
