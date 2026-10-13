@@ -1,0 +1,709 @@
+---
+title: "Deriving the logistic-regression objective"
+unit: u3-logistic-regression-and-mle
+order: 3
+slug: deriving-the-logistic-regression-objective
+summary: "Likelihood, log, drop P(x), negate: the logistic-regression loss is the average negative log-likelihood, which is binary cross-entropy. Its gradient is (1/n)Σ(σ(θᵀx) − y)x, it is convex, and it has no closed-form minimizer."
+lectures:
+  - { lecture: 5, pages: "38" }
+  - { lecture: 5, pages: "44-50" }
+  - { lecture: 6, pages: "6-7" }
+  - { lecture: 6, pages: "15" }
+  - { lecture: 6, pages: "20" }
+concepts:
+  - logistic-regression-model
+  - logistic-nll
+  - bernoulli-cross-entropy-equivalence
+  - logistic-gradient
+  - logistic-convexity
+  - logistic-no-closed-form
+prerequisites:
+  - sigmoid
+  - sigmoid-derivative
+  - log-odds
+  - mle-principle
+  - zero-one-loss-not-optimizable
+  - maximum-likelihood-estimation
+  - bernoulli
+  - iid
+  - chain-rule-probability
+  - conditional-probability
+  - likelihood-vs-probability
+  - log-likelihood
+  - log-rules
+  - argmax
+  - cross-entropy
+  - kl-divergence
+  - empirical-risk
+  - chain-rule-calculus
+  - gradient
+  - hessian
+  - quadratic-form
+  - positive-semidefinite
+  - convex-function
+  - first-order-condition
+  - design-matrix
+  - normal-equations
+  - mse-gradient
+  - least-squares-convexity
+  - gradient-descent
+cases: [adverse]
+companions:
+  - { notebook: "Code Companions/lecture4-code companion.ipynb", cells: "24-37" }
+estimatedMinutes: 60
+status: review
+authors: [jide]
+---
+
+{/* example-case: every ADVERSE number below was computed once from src/data/adverse.json (seed 2, n = 5,000) with numpy: per-patient values at the case's generating coefficients (linear part), the intercept-only and NSAID-only closed forms, and the full MLE by gradient descent on standardized features, cross-checked by Newton's method to 1e-12. HW3 (Naive Bayes and GDA) does not use ADVERSE or logistic regression. */}
+
+<Frame
+  data="labeled pairs $(x^{(i)}, y^{(i)})$ with $x^{(i)} \in \mathbb{R}^{d+1}$ ($x_0 = 1$) and $y^{(i)} \in \{0, 1\}$"
+  model="$y \mid x \sim \mathrm{Bernoulli}\big(\sigma(\theta^\top x)\big)$, so $P_\theta(y = 1 \mid x) = \sigma(\theta^\top x)$"
+  objective="minimize the average negative log-likelihood $\hat R(\theta) = -\frac1n\sum_i \big[y^{(i)}\log\sigma(\theta^\top x^{(i)}) + (1 - y^{(i)})\log(1 - \sigma(\theta^\top x^{(i)}))\big]$"
+  optimizer="gradient descent: there is no closed form, but the objective is convex"
+/>
+
+<Objectives>
+
+- Derive the logistic-regression objective from the likelihood of the data: factor, take logs, drop $\sum_i \log P(x^{(i)})$, and negate.
+- Show that the slides' additive Bernoulli form $y\hat p + (1-y)(1-\hat p)$ equals $\hat p^{y}(1-\hat p)^{1-y}$ on $\{0, 1\}$, so the objective is binary cross-entropy and, per example, a KL divergence.
+- Derive the gradient $\nabla_\theta \hat R(\theta) = \frac1n\sum_i \big(\sigma(\theta^\top x^{(i)}) - y^{(i)}\big)x^{(i)}$ with the chain rule.
+- Prove the objective is convex by showing its Hessian $\frac1n\sum_i \hat p^{(i)}(1 - \hat p^{(i)})\,x^{(i)}x^{(i)\top}$ is positive semi-definite.
+- Explain why setting the gradient to zero gives no closed-form solution, and why on separable data there is no minimizer at all.
+
+</Objectives>
+
+<Hook>
+
+In the ADVERSE cohort, 310 of 5,000 new users of an antihypertensive had a hyperkalemia event within 90 days. Patient ADV-0001, aged 75 with eGFR 65.4 on 10 mg and no NSAID, was one of them, although the case's own model gave this patient only a 3.3% risk.
+
+A logistic model hands every patient a probability $\sigma(\theta^\top x)$. Which $\theta$ makes these 5,000 outcomes, ADV-0001's surprise included, most probable? Once that question is written as a loss, can it be solved with one formula, as least squares was, or do we have to walk downhill?
+
+{/* hook-figure: the sigmoid-fit-1d widget in the Explore section serves as the hook's explorable */}
+
+</Hook>
+
+## Where lessons 3.1 and 3.2 left us
+
+Lesson 3.1 built the model: pass a linear score through the [[sigmoid]], $f_\theta(x) = \sigma(\theta^\top x) = \frac{1}{1 + e^{-\theta^\top x}}$ <SlideRef lecture={5} pages="25" />, and read the output as a probability, $P_\theta(y = 1 \mid x) = \sigma(\theta^\top x)$ <SlideRef lecture={5} pages="33" />. It also derived $\sigma'(z) = \sigma(z)\big(1 - \sigma(z)\big)$ <SlideRef lecture={5} pages="34" />, which this lesson uses twice. Lesson 3.2 showed that the 0/1 error is piecewise constant in $\theta$, so gradient descent cannot use it <SlideRef lecture={5} pages="35" />, and replaced it with the [[maximum-likelihood-estimation|maximum-likelihood principle]]: choose the parameters most likely to have generated the data <SlideRef lecture={5} pages="36-42" />.
+
+This lesson applies that principle to logistic regression, which is what L5 pp.44–50 and L6 pp.6–7 do, and then supplies what the slides state without derivation: the equivalence with cross-entropy, the gradient, convexity, and the reason there is no closed form.
+
+<Callout type="slide">
+
+**Notation.** The slides write examples as $(X_i, y_i)$, the score as $\theta^T X_i$, and the marginal of the inputs as $P(X_i)$. We write $(x^{(i)}, y^{(i)})$, $\theta^\top x^{(i)}$, and $P(x^{(i)})$, with the intercept absorbed as $x_0 = 1$, as in lesson 1.4. We abbreviate the model's probability of class 1 for example $i$ as $\hat p^{(i)} = \sigma(\theta^\top x^{(i)})$ and the [[log-odds|logit]] as $z^{(i)} = \theta^\top x^{(i)}$.
+
+**The Bernoulli likelihood.** The slides write the probability of a label as $y\,\sigma(\theta^\top x) + (1 - y)\big(1 - \sigma(\theta^\top x)\big)$ (L5 p.44, L6 p.6). The course convention is the product form $\sigma(\theta^\top x)^{y}\big(1 - \sigma(\theta^\top x)\big)^{1-y}$. The two are equal for $y \in \{0, 1\}$; der-3-3-2 proves it and shows why the product form is the one to take logs of.
+
+**The missing $\frac1n$.** The slides minimize a sum, $\sum_i -\log[\cdot]$ (L5 p.48). We keep the average $\frac1n\sum_i$, so the objective is an [[empirical-risk|empirical risk]] $\hat R(\theta)$. Dividing by $n$ does not move the minimizer; it scales the gradient and Hessian by $\frac1n$, which matters for the step size (lesson 2.5).
+
+</Callout>
+
+## Definitions
+
+<Definition id="def-3-3-1" title="Logistic regression (probabilistic model)" source="L5 p.25, p.33">
+
+For inputs $x \in \mathbb{R}^{d+1}$ with $x_0 = 1$ and labels $y \in \{0, 1\}$, logistic regression models the label as a [[bernoulli|Bernoulli]] variable whose success probability is the sigmoid of a linear score:
+
+$$y \mid x \sim \mathrm{Bernoulli}\big(\sigma(\theta^\top x)\big), \qquad P_\theta(y = 1 \mid x) = \sigma(\theta^\top x), \qquad P_\theta(y = 0 \mid x) = 1 - \sigma(\theta^\top x).$$
+
+It models only the conditional distribution of $y$ given $x$; it says nothing about how the inputs $x$ are distributed.
+
+Also written as: $f_\theta(x) = \sigma(\theta^\top x)$ (L5 p.25); the logit model.
+
+</Definition>
+
+<Definition id="def-3-3-2" title="Negative log-likelihood of logistic regression" source="L5 p.48, p.50 (as a sum, without 1/n)">
+
+The average negative log-likelihood (NLL) of $\theta$ on $\mathcal{D} = \{(x^{(i)}, y^{(i)})\}_{i=1}^{n}$ is
+
+$$\hat R(\theta) = -\frac1n\sum_{i=1}^{n}\log P_\theta(y^{(i)} \mid x^{(i)}) = -\frac1n\sum_{i=1}^{n}\Big[y^{(i)}\log\hat p^{(i)} + (1 - y^{(i)})\log\big(1 - \hat p^{(i)}\big)\Big], \qquad \hat p^{(i)} = \sigma(\theta^\top x^{(i)}).$$
+
+The per-example term $\ell(\hat p, y) = -[y\log\hat p + (1 - y)\log(1 - \hat p)]$ is the loss a patient contributes.
+
+Also written as: $\sum_i -\log[y_i\sigma(\theta^T X_i) + (1 - y_i)(1 - \sigma(\theta^T X_i))]$ (L5 p.48, a sum); the logistic loss; log loss.
+
+</Definition>
+
+<Definition id="def-3-3-3" title="Binary cross-entropy" source="beyond the slides (L5 p.50 names only the KL divergence)">
+
+For a distribution $p$ and a model distribution $q$ on the outcomes $\{0, 1\}$, the [[cross-entropy]] is
+
+$$H(p, q) = -\sum_{c \in \{0, 1\}} p(c)\log q(c).$$
+
+With $p$ the observed label (all mass on $y$) and $q$ the model's Bernoulli($\hat p$), it is $-[y\log\hat p + (1 - y)\log(1 - \hat p)]$, exactly the per-example loss of def-3-3-2.
+
+Also written as: BCE; `log_loss` (sklearn); `BCELoss` (PyTorch).
+
+</Definition>
+
+<Check ids={["q-u3-l3-001", "q-u3-l2-005"]} />
+
+<Intuition>
+
+Take one feature and no intercept, so $P_\theta(y = 1 \mid x) = \sigma(\theta x)$, and two tiny datasets.
+
+**Dataset A:** a positive at $x = 1$ and a negative at $x = -1$. The positive contributes $-\log\sigma(\theta)$ and the negative $-\log\big(1 - \sigma(-\theta)\big) = -\log\sigma(\theta)$, using $1 - \sigma(-z) = \sigma(z)$. The total is $-2\log\sigma(\theta)$, which falls every time $\theta$ grows: a steeper sigmoid fits both points better, forever. There is no best $\theta$. That is what happens whenever a line separates the classes perfectly, and der-3-3-6 proves it in general.
+
+**Dataset B:** add a second patient at $x = 1$ who is negative. Now steepening the sigmoid makes this patient ever more surprising. Then $n$ times the gradient (der-3-3-3) is $\sum_i (\sigma(\theta x^{(i)}) - y^{(i)})x^{(i)} = (\sigma(\theta) - 1) + \sigma(\theta) - (\sigma(-\theta) - 0) = 3\sigma(\theta) - 2$, using $\sigma(-\theta) = 1 - \sigma(\theta)$. It is zero at $\sigma(\theta) = \tfrac23$, that is $\theta = \log 2$. At $x = 1$ the model now says 2/3, between the two labels there, and at $x = -1$ it says 1/3. Overlap between the classes is what pins the parameters down.
+
+Each term of the gradient is a **residual**, prediction minus label, times the input. A positive patient the model under-predicts ($\hat p < 1$) pulls $\theta$ toward its own $x$; a negative patient over-predicted pulls it away. The fit stops where these pulls balance.
+
+</Intuition>
+
+## From the likelihood to the loss
+
+The question is the one L5 p.44 asks: which $\theta$ makes the observed labels most probable? We follow the slides' route, step by step, and add the justification for each move.
+
+<Derivation
+  id="der-3-3-1"
+  title="The logistic-regression MLE minimizes the average negative log-likelihood"
+  goalTex="\hat\theta = \argmax_\theta P_\theta(\mathcal{D}) \;\text{ as a minimization of a sum over examples}"
+  resultTex="\hat\theta = \argmin_\theta\; \hat R(\theta), \qquad \hat R(\theta) = -\frac1n\sum_{i=1}^{n}\log\Big[y^{(i)}\sigma(\theta^\top x^{(i)}) + (1 - y^{(i)})\big(1 - \sigma(\theta^\top x^{(i)})\big)\Big]"
+  source="L5 pp.44-48 (derived on the slides; repeated on L6 pp.6-7; justifications added)"
+>
+
+<Chunk title="Write the probability of the whole dataset">
+
+<Step justification="the maximum-likelihood principle (lesson 3.2): pick the parameters under which the observed data are most probable" sticky="maximum-likelihood-estimation">
+$$\hat\theta = \argmax_\theta\; P_\theta\big((x^{(1)}, y^{(1)}), \dots, (x^{(n)}, y^{(n)})\big)$$
+</Step>
+
+<Step justification="the examples are drawn independently, so the probability of the dataset is the product of the per-example probabilities (L5 p.44: 'assuming independence')" sticky="iid">
+$$P_\theta(\mathcal{D}) = \prod_{i=1}^{n} P_\theta(x^{(i)}, y^{(i)})$$
+</Step>
+
+<Step justification="product rule $P(x, y) = P(y \mid x)\,P(x)$; the model specifies only the conditional of the label (def-3-3-1), so the marginal of the inputs carries no $\theta$" sticky="chain-rule-probability">
+$$P_\theta(\mathcal{D}) = \prod_{i=1}^{n} P_\theta(y^{(i)} \mid x^{(i)})\,P(x^{(i)})$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Take logs so the product becomes a sum">
+
+<Step justification="log is strictly increasing, so it does not change where the maximum is (L5 p.45: 'linearize this by taking the logarithm')" sticky="argmax">
+$$\hat\theta = \argmax_\theta\; \log P_\theta(\mathcal{D})$$
+</Step>
+
+<Step justification="the log of a product is the sum of the logs (the handwritten step on L5 p.46)" sticky="log-rules" fadeable>
+$$\log P_\theta(\mathcal{D}) = \sum_{i=1}^{n}\log P_\theta(y^{(i)} \mid x^{(i)}) + \sum_{i=1}^{n}\log P(x^{(i)})$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Drop the constant, substitute the model, flip the sign">
+
+<Step justification="with the data fixed, the second sum does not depend on $\theta$ (L5 p.47 calls it a constant); adding a constant does not move the argmax" fadeable>
+$$\hat\theta = \argmax_\theta\; \sum_{i=1}^{n}\log P_\theta(y^{(i)} \mid x^{(i)})$$
+</Step>
+
+<Step justification="substitute the model in the slides' additive Bernoulli form, $P_\theta(y \mid x) = y\,\sigma(\theta^\top x) + (1 - y)(1 - \sigma(\theta^\top x))$" sticky="bernoulli">
+$$\hat\theta = \argmax_\theta\; \sum_{i=1}^{n}\log\Big[y^{(i)}\sigma(\theta^\top x^{(i)}) + (1 - y^{(i)})\big(1 - \sigma(\theta^\top x^{(i)})\big)\Big]$$
+</Step>
+
+<Step justification="maximizing a function is the same as minimizing its negative (L5 p.50: 'note argmin rather than argmax')" fadeable>
+$$\hat\theta = \argmin_\theta\; \sum_{i=1}^{n} -\log\Big[y^{(i)}\sigma(\theta^\top x^{(i)}) + (1 - y^{(i)})\big(1 - \sigma(\theta^\top x^{(i)})\big)\Big]$$
+</Step>
+
+<Step justification="dividing by the positive constant $n$ does not move the argmin; it turns the sum into an average, an empirical risk" sticky="empirical-risk">
+$$\hat\theta = \argmin_\theta\; -\frac1n\sum_{i=1}^{n}\log\Big[y^{(i)}\sigma(\theta^\top x^{(i)}) + (1 - y^{(i)})\big(1 - \sigma(\theta^\top x^{(i)})\big)\Big]$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+<Check ids={["q-u3-l3-014", "q-u3-l2-006", "q-u3-l3-016"]} />
+
+Step 6 is the modeling choice that makes logistic regression **discriminative**. The joint likelihood has a factor for the labels and a factor for the inputs, and the model only has parameters in the first. Lesson 6.1 builds models that also fit $P(x)$, and lesson 7.3 (der-7-3-6) shows that this one dropped term is exactly where Gaussian discriminant analysis and logistic regression part ways.
+
+<Callout type="slide">
+
+L5 p.48 and L6 p.7 write step 6 as $\hat\theta = \argmax_\theta \log P\big((y_1 \mid X_1), \dots, (y_n \mid X_n)\big)$. Read it as the conditional log-likelihood $\sum_i \log P_\theta(y^{(i)} \mid x^{(i)})$: the probability of all the labels given all the inputs, which factorizes by independence. "Focusing on the bits that invoke the parameters" is the reason the slide gives for dropping the input term; step 6 is that move.
+
+</Callout>
+
+## The slides' form is cross-entropy
+
+Step 7 takes the log of a **sum**, $\log[y\hat p + (1-y)(1-\hat p)]$, and log rules do not split a sum. The standard form of the loss, $-[y\log\hat p + (1-y)\log(1-\hat p)]$, has the log applied to each factor separately. The two must agree for the course's objective to be the familiar one, and the slides never show that they do (course map L5 gap 10). They agree because the label takes only two values.
+
+<Derivation
+  id="der-3-3-2"
+  title="For labels in {0, 1}, the logistic NLL is the binary cross-entropy"
+  goalTex="-\log\big[y\hat p + (1 - y)(1 - \hat p)\big] \;\text{ in terms of cross-entropy and KL}, \quad y \in \{0, 1\}"
+  resultTex="-\log\big[y\hat p + (1 - y)(1 - \hat p)\big] = -\big[y\log\hat p + (1 - y)\log(1 - \hat p)\big] = H(p_y, q_\theta) = D_{\mathrm{KL}}(p_y \,\|\, q_\theta)"
+  source="L5 p.44 and p.50, L6 p.15 (additive form and the KL claim stated; equivalence is course map L5 gap 10, L6 gap 1)"
+>
+
+<Chunk title="Check the two labels one at a time">
+
+<Step justification="set $y = 1$ in both forms; $a^0 = 1$">
+$$y = 1: \qquad y\hat p + (1 - y)(1 - \hat p) = \hat p, \qquad \hat p^{\,y}(1 - \hat p)^{1 - y} = \hat p$$
+</Step>
+
+<Step justification="set $y = 0$ in both forms" fadeable>
+$$y = 0: \qquad y\hat p + (1 - y)(1 - \hat p) = 1 - \hat p, \qquad \hat p^{\,y}(1 - \hat p)^{1 - y} = 1 - \hat p$$
+</Step>
+
+<Step justification="two functions of $y$ that agree at both points of $\{0, 1\}$ are the same function on $\{0, 1\}$" sticky="bernoulli">
+$$y\hat p + (1 - y)(1 - \hat p) = \hat p^{\,y}(1 - \hat p)^{1 - y} \quad \text{for } y \in \{0, 1\}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Take the log of the product form">
+
+<Step justification="replace the additive form by the equal product form from step 3">
+$$-\log\big[y\hat p + (1 - y)(1 - \hat p)\big] = -\log\big[\hat p^{\,y}(1 - \hat p)^{1 - y}\big]$$
+</Step>
+
+<Step justification="the log of a product is a sum of logs, and $\log a^b = b\log a$" sticky="log-rules" fadeable>
+$$-\log\big[\hat p^{\,y}(1 - \hat p)^{1 - y}\big] = -\big[y\log\hat p + (1 - y)\log(1 - \hat p)\big]$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Recognize a cross-entropy">
+
+<Step justification="write the observed label as a distribution on $\{0, 1\}$ with all its mass on the label that occurred, and the model's prediction as a Bernoulli distribution">
+$$p_y(1) = y, \quad p_y(0) = 1 - y; \qquad q_\theta(1) = \hat p, \quad q_\theta(0) = 1 - \hat p$$
+</Step>
+
+<Step justification="definition of cross-entropy (def-3-3-3), summing over the two outcomes $c = 1$ and $c = 0$" sticky="cross-entropy" fadeable>
+$$H(p_y, q_\theta) = -\big[p_y(1)\log q_\theta(1) + p_y(0)\log q_\theta(0)\big] = -\big[y\log\hat p + (1 - y)\log(1 - \hat p)\big]$$
+</Step>
+
+<Step justification="steps 5 and 7 end in the same expression; average over the examples, writing $q_\theta(\cdot \mid x^{(i)})$ for the model's distribution at $x^{(i)}$">
+$$\hat R(\theta) = \frac1n\sum_{i=1}^{n} H\big(p_{y^{(i)}},\, q_\theta(\cdot \mid x^{(i)})\big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Recognize a KL divergence (the claim on L5 p.50)">
+
+<Step justification="definition of the KL divergence; split the log of the quotient into a difference of logs" sticky="kl-divergence">
+$$D_{\mathrm{KL}}(p_y \,\|\, q_\theta) = \sum_{c \in \{0, 1\}} p_y(c)\log p_y(c) - \sum_{c \in \{0, 1\}} p_y(c)\log q_\theta(c)$$
+</Step>
+
+<Step justification="the first sum is zero for a point mass: one term is $1 \cdot \log 1 = 0$ and the other is $0 \cdot \log 0$, which is 0 by the convention $\lim_{t \to 0^+} t\log t = 0$">
+$$\sum_{c \in \{0, 1\}} p_y(c)\log p_y(c) = 0$$
+</Step>
+
+<Step justification="substitute step 10 into step 9; the remaining sum, negated, is the cross-entropy of step 7">
+$$D_{\mathrm{KL}}(p_y \,\|\, q_\theta) = H(p_y, q_\theta) = -\big[y\log\hat p + (1 - y)\log(1 - \hat p)\big]$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+So the course's objective, written either way, is
+
+$$
+\hat R(\theta) = -\frac1n\sum_{i=1}^{n}\Big[y^{(i)}\log\sigma(\theta^\top x^{(i)}) + (1 - y^{(i)})\log\big(1 - \sigma(\theta^\top x^{(i)})\big)\Big]. \tag{3.3.1} \htmlId{eq-3-3-1}{}
+$$
+
+L5 p.50 says the MLE is "identical to minimizing the KL divergence between the desired output $y$ and actual output $\sigma(\theta^\top X)$". Step 11 makes that exact: each patient's loss is the KL divergence from the point mass on their observed label to the model's Bernoulli($\hat p^{(i)}$), and <EqRef id="eq-3-3-1" /> is the average of these over patients. In [[kl-divergence|KL]] terms, lesson 3.4 proves the general version for any model, with the empirical distribution of the whole dataset in place of one label, and [[gibbs-inequality|Gibbs' inequality]] behind it.
+
+<Callout type="beyond">
+
+**The loss in terms of the logit.** Since $-\log\sigma(z) = \log(1 + e^{-z})$ and $-\log(1 - \sigma(z)) = \log(1 + e^{z})$ (der-3-3-6 steps 1–2), the per-example loss is $\ell = \log(1 + e^{z}) - yz$ with $z = \theta^\top x$. Libraries compute it in this form, from the logit rather than from $\hat p$ (PyTorch's `BCEWithLogitsLoss`), because $\log\hat p$ underflows to $-\infty$ when $\hat p$ rounds to 0 in floating point, while $\log(1 + e^{z})$ can be evaluated stably for any $z$.
+
+</Callout>
+
+<Check ids={["q-u3-l3-003"]} />
+
+## The gradient
+
+L5 p.50 says the objective "cannot be solved directly, needs gradient descent", and gradient descent needs the gradient. The slides never write it (course map L5 gap 11). The [[sigmoid]] derivative from lesson 3.1 does most of the work.
+
+<Derivation
+  id="der-3-3-3"
+  title="The gradient of the logistic NLL is the residual-weighted sum of inputs"
+  goalTex="\nabla_\theta \hat R(\theta) \;\text{ for } \hat R \text{ in equation 3.3.1}"
+  resultTex="\nabla_\theta \hat R(\theta) = \frac1n\sum_{i=1}^{n}\big(\sigma(\theta^\top x^{(i)}) - y^{(i)}\big)\,x^{(i)} = \frac1n X^\top\big(\sigma(X\theta) - y\big)"
+  source="beyond the slides (course map L5 gap 11, L6 gap 6; L5 p.34 supplies σ' = σ(1 − σ))"
+>
+
+<Chunk title="Differentiate one example's loss with respect to its logit">
+
+<Step justification="chain rule on $\log\sigma(z)$, then $\sigma'(z) = \sigma(z)(1 - \sigma(z))$ (lesson 3.1); the $\sigma(z)$ cancels" sticky="chain-rule-calculus">
+$$\frac{d}{dz}\log\sigma(z) = \frac{\sigma'(z)}{\sigma(z)} = 1 - \sigma(z)$$
+</Step>
+
+<Step justification="chain rule on $\log(1 - \sigma(z))$; the inner derivative is $-\sigma'(z)$ and the $1 - \sigma(z)$ cancels" sticky="chain-rule-calculus" fadeable>
+$$\frac{d}{dz}\log\big(1 - \sigma(z)\big) = \frac{-\sigma'(z)}{1 - \sigma(z)} = -\sigma(z)$$
+</Step>
+
+<Step justification="differentiate $\ell(z) = -[y\log\sigma(z) + (1 - y)\log(1 - \sigma(z))]$ term by term, using steps 1 and 2" fadeable>
+$$\frac{d\ell}{dz} = -\big[y\,(1 - \sigma(z)) - (1 - y)\,\sigma(z)\big]$$
+</Step>
+
+<Step justification="expand: $-y + y\sigma(z) + \sigma(z) - y\sigma(z)$; the $y\sigma(z)$ terms cancel">
+$$\frac{d\ell}{dz} = \sigma(z) - y$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Chain to θ and average">
+
+<Step justification="the logit $z = \theta^\top x$ is linear in $\theta$, so its gradient is the input vector" sticky="gradient">
+$$\nabla_\theta\,(\theta^\top x) = x$$
+</Step>
+
+<Step justification="chain rule: the gradient of $\ell(z(\theta))$ is $\frac{d\ell}{dz}\,\nabla_\theta z$; substitute steps 4 and 5 for example $i$" sticky="chain-rule-calculus">
+$$\nabla_\theta\,\ell\big(\sigma(\theta^\top x^{(i)}), y^{(i)}\big) = \big(\sigma(\theta^\top x^{(i)}) - y^{(i)}\big)\,x^{(i)}$$
+</Step>
+
+<Step justification="the gradient of an average is the average of the gradients (linearity)">
+$$\nabla_\theta \hat R(\theta) = \frac1n\sum_{i=1}^{n}\big(\sigma(\theta^\top x^{(i)}) - y^{(i)}\big)\,x^{(i)}$$
+</Step>
+
+<Step justification="stack the examples as the rows of the design matrix $X$; $\sigma(X\theta)$ applies $\sigma$ to each entry, and $X^\top v = \sum_i v_i\,x^{(i)}$" sticky="design-matrix">
+$$\nabla_\theta \hat R(\theta) = \frac1n X^\top\big(\sigma(X\theta) - y\big)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+\nabla_\theta \hat R(\theta) = \frac1n\sum_{i=1}^{n}\big(\hat p^{(i)} - y^{(i)}\big)\,x^{(i)} \tag{3.3.2} \htmlId{eq-3-3-2}{}
+$$
+
+Compare the least-squares gradient from lesson 2.4, $\frac{2}{n}\sum_i(\theta^\top x^{(i)} - y^{(i)})\,x^{(i)}$. Both are averages of *prediction minus label* times the input. Only the prediction changes: the raw score for linear regression, the sigmoid of the score for logistic regression. Softmax regression in lesson 3.5 has a gradient of the same shape.
+
+The residual $\hat p^{(i)} - y^{(i)}$ lies in $(-1, 1)$. A patient with an event ($y = 1$) whom the model rates as near-certain to be event-free ($\hat p \approx 0$) contributes almost the full input vector, with a minus sign, so gradient descent, which steps against the gradient, moves $\theta$ toward that patient's features. A patient already predicted well contributes almost nothing.
+
+With step size $\eta$, gradient descent (lesson 2.4) on <EqRef id="eq-3-3-1" /> is
+
+$$\theta^{(t+1)} = \theta^{(t)} - \eta\,\frac1n\sum_{i=1}^{n}\big(\sigma(\theta^{(t)\top} x^{(i)}) - y^{(i)}\big)\,x^{(i)}.$$
+
+<Check ids={["q-u3-l3-006", "q-u3-l3-007"]} />
+
+## Convexity
+
+Gradient descent finds a point where the gradient is (nearly) zero. That point is the answer only if the objective has no other stationary points to get stuck at. For least squares, lesson 1.4 showed the [[hessian|Hessian]] $\frac2n X^\top X$ is [[positive-semidefinite|positive semi-definite]]. The logistic Hessian is the same matrix with a positive weight on each example.
+
+<Derivation
+  id="der-3-3-4"
+  title="The logistic NLL is convex: its Hessian is a positively weighted sum of outer products"
+  goalTex="\nabla^2_\theta \hat R(\theta) \succeq 0 \;\text{ for every } \theta"
+  resultTex="\nabla^2_\theta \hat R(\theta) = \frac1n\sum_{i=1}^{n}\hat p^{(i)}\big(1 - \hat p^{(i)}\big)\,x^{(i)}x^{(i)\top} = \frac1n X^\top S X \succeq 0, \quad S = \mathrm{diag}\big(\hat p^{(i)}(1 - \hat p^{(i)})\big); \;\; \succ 0 \text{ if } X \text{ has full column rank}"
+  source="beyond the slides (course map L5 gap 12, L6 gap 6)"
+>
+
+<Chunk title="Differentiate the gradient once more">
+
+<Step justification="the Hessian is the Jacobian of the gradient; in example $i$'s term of equation 3.3.2 only $\sigma(\theta^\top x^{(i)})$ depends on $\theta$, and the gradient of a scalar times a fixed vector $x$ is $x$ times the scalar's gradient, transposed" sticky="hessian">
+$$\nabla^2_\theta\,\ell_i = x^{(i)}\,\big(\nabla_\theta\,\sigma(\theta^\top x^{(i)})\big)^\top$$
+</Step>
+
+<Step justification="chain rule with $\sigma' = \sigma(1 - \sigma)$ and $\nabla_\theta\,\theta^\top x = x$ (der-3-3-3 step 5)" sticky="chain-rule-calculus">
+$$\nabla_\theta\,\sigma(\theta^\top x^{(i)}) = \hat p^{(i)}\big(1 - \hat p^{(i)}\big)\,x^{(i)}$$
+</Step>
+
+<Step justification="substitute step 2 into step 1; the scalar weight moves to the front">
+$$\nabla^2_\theta\,\ell_i = \hat p^{(i)}\big(1 - \hat p^{(i)}\big)\,x^{(i)}x^{(i)\top}$$
+</Step>
+
+<Step justification="average over examples; collect the weights in the diagonal matrix $S$ and stack the $x^{(i)\top}$ as the rows of $X$" sticky="design-matrix">
+$$\nabla^2_\theta \hat R(\theta) = \frac1n\sum_{i=1}^{n}\hat p^{(i)}\big(1 - \hat p^{(i)}\big)\,x^{(i)}x^{(i)\top} = \frac1n X^\top S X$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Show every quadratic form is non-negative">
+
+<Step justification="for any direction $v$, $v^\top x\,x^\top v = (x^\top v)^2$" sticky="quadratic-form" fadeable>
+$$v^\top\,\nabla^2_\theta \hat R(\theta)\,v = \frac1n\sum_{i=1}^{n}\hat p^{(i)}\big(1 - \hat p^{(i)}\big)\,\big(x^{(i)\top}v\big)^2$$
+</Step>
+
+<Step justification="$\hat p^{(i)} \in (0, 1)$, so each weight is positive, and each square is non-negative" fadeable>
+$$v^\top\,\nabla^2_\theta \hat R(\theta)\,v \ge 0 \quad \text{for every } v$$
+</Step>
+
+<Step justification="a twice-differentiable function whose Hessian is positive semi-definite everywhere is convex" sticky="convex-function">
+$$\nabla^2_\theta \hat R(\theta) \succeq 0 \text{ for all } \theta \;\Longrightarrow\; \hat R \text{ is convex}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="When the inequality is strict">
+
+<Step justification="the weights in step 5 are strictly positive, so the sum is zero only if every $x^{(i)\top}v$ is zero, that is $Xv = 0$" sticky="positive-semidefinite">
+$$v^\top\,\nabla^2_\theta \hat R(\theta)\,v = 0 \iff Xv = 0$$
+</Step>
+
+<Step justification="if the columns of $X$ are linearly independent, $Xv = 0$ forces $v = 0$, so the Hessian is positive definite and $\hat R$ is strictly convex" sticky="linear-independence">
+$$\operatorname{rank} X = d + 1 \;\Longrightarrow\; \nabla^2_\theta \hat R(\theta) \succ 0 \text{ for all } \theta$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+\nabla^2_\theta \hat R(\theta) = \frac1n X^\top S X, \qquad S = \mathrm{diag}\big(\hat p^{(1)}(1 - \hat p^{(1)}), \dots, \hat p^{(n)}(1 - \hat p^{(n)})\big) \tag{3.3.3} \htmlId{eq-3-3-3}{}
+$$
+
+Two consequences. First, by the tangent-plane property of a [[convex-function|convex function]], any $\theta$ with zero gradient is a global minimizer, so gradient descent cannot be trapped in a bad local minimum. Second, with full column rank there is at most one minimizer. Notice the hedge "at most": convexity guarantees uniqueness, not existence, and der-3-3-6 shows when the minimum fails to exist.
+
+The weights $\hat p(1 - \hat p)$ are largest, $\tfrac14$, at $\hat p = \tfrac12$ and shrink toward 0 as predictions become confident. Patients near the boundary shape the curvature; patients far from it barely do. This also means the logistic Hessian is no larger than $\frac14 \cdot \frac1n X^\top X$, which bounds the safe step size (lesson 2.5).
+
+<Check ids={["q-u3-l3-008", "q-u3-l3-009"]} />
+
+## Why there is no closed form
+
+For least squares, setting the gradient to zero gave a linear system, and one matrix inverse solved it (lesson 1.4). Try the same move here.
+
+<Derivation
+  id="der-3-3-5"
+  title="Setting the logistic gradient to zero gives nonlinear moment-matching equations"
+  goalTex="\nabla_\theta \hat R(\theta) = 0 \;\text{ compared with the normal equations}"
+  resultTex="X^\top\sigma(X\hat\theta) = X^\top y \;\;(\text{nonlinear in } \hat\theta), \quad\text{vs.}\quad X^\top X\hat\theta = X^\top y \;\;(\text{linear}); \qquad \text{intercept only: } \hat\theta_0 = \log\frac{\bar y}{1 - \bar y}"
+  source="L5 p.50, L6 p.15 (stated: 'cannot be solved directly, needs gradient descent'; course map L5 gap 13)"
+>
+
+<Chunk title="Set the gradient to zero">
+
+<Step justification="first-order condition applied to equation 3.3.2" sticky="first-order-condition">
+$$\frac1n\sum_{i=1}^{n}\big(\sigma(\hat\theta^\top x^{(i)}) - y^{(i)}\big)\,x^{(i)} = 0$$
+</Step>
+
+<Step justification="multiply by $n$ and move the label terms to the right side" fadeable>
+$$\sum_{i=1}^{n}\sigma(\hat\theta^\top x^{(i)})\,x^{(i)} = \sum_{i=1}^{n}y^{(i)}\,x^{(i)}$$
+</Step>
+
+<Step justification="stack the rows of $X$; $\sigma$ acts entrywise on the vector $X\hat\theta$" sticky="design-matrix">
+$$X^\top\sigma(X\hat\theta) = X^\top y$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Compare with least squares">
+
+<Step justification="replace $\sigma$ by the identity, which turns the logistic stationarity condition into the linear model's (lesson 1.4)">
+$$X^\top X\hat\theta = X^\top y$$
+</Step>
+
+<Step justification="in step 4, $\hat\theta$ enters linearly and can be isolated with one inverse; in step 3 it sits inside $n$ different sigmoids, and no linear map undoes them all at once">
+$$\hat\theta = (X^\top X)^{-1}X^\top y \quad\text{but}\quad \hat\theta = \;?$$
+</Step>
+
+</Chunk>
+
+<Chunk title="The one case that does solve">
+
+<Step justification="with an intercept only, every $x^{(i)} = 1$ and step 2 has one unknown $\theta_0$">
+$$n\,\sigma(\hat\theta_0) = \sum_{i=1}^{n} y^{(i)}$$
+</Step>
+
+<Step justification="divide by $n$ to get the event rate $\bar y$, then invert the sigmoid with the logit (requires $0 < \bar y < 1$; if every label is the same the data are separable and no MLE exists, der-3-3-6)" sticky="log-odds" fadeable>
+$$\sigma(\hat\theta_0) = \bar y \;\Longrightarrow\; \hat\theta_0 = \log\frac{\bar y}{1 - \bar y}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 2 reads as **moment matching**. Its intercept component ($x_0 = 1$) says $\sum_i \hat p^{(i)} = \sum_i y^{(i)}$: at the MLE the model predicts exactly as many events in the training set as occurred. Each other component says the same for the feature-weighted totals. For a binary feature such as NSAID use, the predicted and observed event counts agree among the NSAID users.
+
+"No closed form" is a statement about the general case. When the inputs fall into a few groups and the model has one free parameter per group (an intercept only, or an intercept plus one binary feature), the equations of step 2 separate into one equation per group, each with a single sigmoid, and the logit solves each as in step 7. With a continuous feature, the $n$ sigmoids in step 3 all have different arguments, no algebraic rearrangement isolates $\hat\theta$, and we iterate. Because $\hat R$ is convex (der-3-3-4), iterating is safe.
+
+<Callout type="beyond">
+
+Gradient descent is the method the slides name. Statistical software usually fits logistic regression with Newton's method, $\theta^{(t+1)} = \theta^{(t)} - \big(\nabla^2\hat R\big)^{-1}\nabla\hat R$, using the Hessian of <EqRef id="eq-3-3-3" />. Written out, each Newton step solves a weighted least-squares problem with weights $S$, which is why it is also called iteratively reweighted least squares (IRLS). It converges in a handful of iterations, at the cost of solving a $(d+1) \times (d+1)$ linear system per step.
+
+</Callout>
+
+## When no minimizer exists
+
+Convexity says there is at most one minimizer. Dataset A in the intuition section had none. Here is the general reason.
+
+<Derivation
+  id="der-3-3-6"
+  title="On linearly separable data the logistic NLL has no minimizer"
+  goalTex="\text{if some } w \text{ separates the classes, then } \inf_\theta \hat R(\theta) \text{ is not attained}"
+  resultTex="s^{(i)} w^\top x^{(i)} > 0 \;\text{ for all } i \;(s^{(i)} = 2y^{(i)} - 1) \;\Longrightarrow\; \hat R(cw) \xrightarrow[c \to \infty]{} 0 = \inf_\theta \hat R(\theta), \quad \hat R(\theta) > 0 \;\text{ for every } \theta"
+  source="beyond the slides (pedagogy reference Part B (4): perfect separation makes the MLE diverge)"
+>
+
+<Chunk title="Write each loss in terms of the signed logit">
+
+<Step justification="$\sigma(z) = (1 + e^{-z})^{-1}$, and the log of a reciprocal is minus the log" sticky="sigmoid">
+$$-\log\sigma(z) = \log\big(1 + e^{-z}\big)$$
+</Step>
+
+<Step justification="symmetry $1 - \sigma(z) = \sigma(-z)$, then step 1 with $-z$ in place of $z$" fadeable>
+$$-\log\big(1 - \sigma(z)\big) = \log\big(1 + e^{z}\big)$$
+</Step>
+
+<Step justification="write $s^{(i)} = 2y^{(i)} - 1$, which is $+1$ for an event and $-1$ otherwise, so steps 1 and 2 become one formula">
+$$\ell_i(\theta) = \log\big(1 + e^{-s^{(i)}\,\theta^\top x^{(i)}}\big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Scale up a separating direction">
+
+<Step justification="separability: some $w$ puts every event on the positive side and every non-event on the negative side, so the signed logit is positive for all $i$">
+$$s^{(i)}\,w^\top x^{(i)} > 0 \quad \text{for all } i$$
+</Step>
+
+<Step justification="substitute $\theta = cw$ with $c > 0$ in step 3; as $c$ grows the exponent goes to $-\infty$, $e^{-\infty} = 0$, and $\log 1 = 0$" fadeable>
+$$\ell_i(cw) = \log\big(1 + e^{-c\,s^{(i)}w^\top x^{(i)}}\big) \xrightarrow[c \to \infty]{} 0$$
+</Step>
+
+<Step justification="a finite average of terms that each tend to zero tends to zero">
+$$\hat R(cw) \xrightarrow[c \to \infty]{} 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="But zero is never reached">
+
+<Step justification="$1 + e^{u} > 1$ for every real $u$, so its log is positive" fadeable>
+$$\ell_i(\theta) > 0 \;\text{ for every } \theta \text{ and } i \;\Longrightarrow\; \hat R(\theta) > 0$$
+</Step>
+
+<Step justification="steps 6 and 7: the infimum is 0 and no $\theta$ attains it, so gradient descent keeps lowering the loss by growing $\lVert\theta\rVert$ without bound">
+$$\inf_\theta \hat R(\theta) = 0, \qquad \hat R(\theta) \ne 0 \text{ for every } \theta$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+On separable data the fitted sigmoid becomes a step function and every predicted probability is pushed to 0 or 1: the model is overconfident in exactly the way the slides' 90/10 argument (L5 p.29) warned against. In practice gradient descent stops at some large $\theta$ set by the iteration budget, not by the data. Unit 5's regularization adds $\lambda\lVert\theta\rVert_2^2$ to $\hat R$, which grows with $\lVert\theta\rVert$ and restores a finite minimizer; sklearn's default `LogisticRegression(C=1.0)` does this. The L4 companion fits `LogisticRegression(C=1e5)`; `C` is the inverse of the penalty weight, so its penalty is small but not zero, and on separable data that small penalty is what keeps the coefficients finite.
+
+<Check ids={["q-u3-l3-010", "q-u3-l2-004", "q-u3-l3-011"]} />
+
+## Explore
+
+<Widget
+  name="sigmoid-fit-1d"
+  dataset="adverse"
+  feature="egfr"
+  showNll={true}
+  showGradient={true}
+  showLandscape={true}
+  challenge="Drag θ₁ to make the sigmoid steeper and watch the NLL. Then press 'step' to run gradient descent: does the gradient arrow always point back toward the bottom of the bowl? Switch to the separable toy data and find out why the bowl has no bottom."
+/>
+
+## Worked example
+
+<Example homeworkReviewed case="adverse" title="ADVERSE: losses, residuals, and the gradient for four patients, then the whole cohort">
+
+**Four patients at the case's coefficients.** Encode each patient as $x = \big(1,\ \text{age} - 60,\ \text{eGFR} - 70,\ \text{NSAID},\ \mathbb{1}[K > 5.0],\ D\big)$ and take the case's generating coefficients $\theta = (-4.5,\ 0.03,\ -0.04,\ 1.2,\ 0.6,\ 0.05)$. (The case also has a kink term for eGFR below 30; all four patients have eGFR above 30, so it is zero for them.)
+
+| Patient | $x$ | $z = \theta^\top x$ | $\hat p = \sigma(z)$ | $y$ | loss $\ell$ | residual $\hat p - y$ |
+|---|---|---|---|---|---|---|
+| ADV-0001 | $(1, 15, -4.6, 0, 0, 10)$ | $-3.366$ | 0.0334 | 1 | 3.400 | $-0.9666$ |
+| ADV-0002 | $(1, -5, -20.8, 0, 0, 5)$ | $-3.568$ | 0.0274 | 0 | 0.0278 | $0.0274$ |
+| ADV-0003 | $(1, 10, -4.1, 1, 0, 0)$ | $-2.836$ | 0.0554 | 0 | 0.0570 | $0.0554$ |
+| ADV-0004 | $(1, 1, -11.3, 0, 0, 10)$ | $-3.518$ | 0.0288 | 0 | 0.0292 | $0.0288$ |
+
+For ADV-0001, $z = -4.5 + 0.03 \cdot 15 - 0.04 \cdot (-4.6) + 0.05 \cdot 10 = -3.366$, and since $y = 1$ the loss is $-\log\sigma(-3.366) = \log(1 + e^{3.366}) = 3.400$ (der-3-3-6 step 1). The three event-free patients were predicted well and cost under 0.06 each; the one surprising event costs 3.40, and the average over the four is 0.879.
+
+The gradient (der-3-3-3 step 6) shows who is pulling. ADV-0001 contributes $-0.9666 \cdot x = (-0.967,\ -14.50,\ 4.45,\ 0,\ 0,\ -9.67)$; the other three together contribute $(0.112,\ 0.446,\ -1.123,\ 0.055,\ 0,\ 0.425)$. Averaged over the four, $\nabla\hat R = (-0.214,\ -3.513,\ 0.831,\ 0.014,\ 0,\ -2.310)$. A gradient step subtracts this, so it raises the age and dose coefficients and the intercept: on these four patients alone, one older patient on 10 mg with an event outweighs three without.
+
+**The whole cohort.** On all 5,000 patients (310 events):
+
+- At $\theta = 0$ every $\hat p = \tfrac12$ and $\hat R = \log 2 = 0.6931$.
+- With an intercept only, der-3-3-5 step 7 gives $\hat\theta_0 = \log\frac{0.062}{0.938} = -2.717$ and $\hat R = 0.2324$.
+- With an intercept and NSAID only, each group has its own closed form: event rates 171/3,807 $= 0.0449$ without an NSAID and 139/1,193 $= 0.1165$ with one, so $\hat\theta_0 = \log\frac{0.0449}{0.9551} = -3.057$ and $\hat\theta_0 + \hat\theta_{\text{NSAID}} = \log\frac{0.1165}{0.8835} = -2.026$, giving $\hat\theta_{\text{NSAID}} = 1.031$.
+- With all six parameters there is no closed form. Gradient descent on standardized features with $\eta = 4$ reaches a gradient norm below $10^{-6}$ after 151 iterations (with $\eta = 1$, 625 iterations), at
+
+| | intercept | age | eGFR | NSAID | $\mathbb{1}[K > 5]$ | dose |
+|---|---|---|---|---|---|---|
+| MLE $\hat\theta$ | $-4.436$ | 0.0347 | $-0.0464$ | 1.142 | 0.408 | 0.0447 |
+| generating $\theta$ | $-4.5$ | 0.03 | $-0.04$ | 1.2 | 0.6 | 0.05 |
+
+with $\hat R(\hat\theta) = 0.1810$. At the generating coefficients (the linear part, without the eGFR-30 kink) the same objective is 0.1819, slightly worse than the MLE. Within the model class this is always so, since the MLE minimizes $\hat R$ on these patients. The eGFR coefficient comes out more negative than the generating $-0.04$ partly because a linear model must absorb the case's extra risk below eGFR 30.
+
+At $\hat\theta$, the intercept component of der-3-3-5 step 2 holds: the fitted $\hat p^{(i)}$ sum to 310, the observed number of events, and among the 1,193 NSAID users they sum to 139. The Hessian of the summed NLL at $\hat\theta$ has eigenvalues from 8.93 to $2.31 \times 10^{5}$, all positive (der-3-3-4), so the minimizer is unique, but their ratio of about 26,000 is a [[condition-number|condition number]] that would make gradient descent on the raw features very slow (lesson 2.5). Standardizing the features first is what made 151 iterations enough.
+
+**Your turn.** For ADV-0003 ($y = 0$, $\hat p = 0.0554$), the loss is $-\log(1 - 0.0554)$ and the gradient contribution is $(\hat p - y)\,x$. Check yourself with the items below.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u3-l3-012", "q-u3-l3-013", "q-u3-l3-005"]} />
+
+## Pitfalls
+
+<Pitfall title="We minimize the negative log-likelihood; we do not maximize it" misconception="nll-maximize">
+
+The belief (statement (d) of the L6 p.20 poll): the MLE is found by maximizing the negative log-likelihood. The fix: maximum likelihood maximizes the log-likelihood, which is the same as **minimizing** its negative (der-3-3-1 step 8). Maximizing the NLL would search for the least likely parameters; on <EqRef id="eq-3-3-1" /> the supremum is $+\infty$, approached by making ever more confident wrong predictions.
+
+</Pitfall>
+
+<Pitfall title="The additive form equals the product form only on hard labels" misconception="lr-additive-form-soft-labels">
+
+The belief: $y\hat p + (1-y)(1-\hat p)$ and $\hat p^{y}(1-\hat p)^{1-y}$ are interchangeable, so one may take logs of either. The fix: they agree only for $y \in \{0, 1\}$ (der-3-3-2 step 3), and the log of the additive form cannot be split by log rules. With a soft label such as $y = 0.3$ (label smoothing, averaged annotations), the additive form $0.3\hat p + 0.7(1 - \hat p)$ is linear in $\hat p$ with slope $2y - 1 = -0.4$, so it is maximized at the endpoint $\hat p = 0$. The cross-entropy $-[0.3\log\hat p + 0.7\log(1 - \hat p)]$ has derivative $-\frac{0.3}{\hat p} + \frac{0.7}{1 - \hat p}$, which is zero at $\hat p = 0.3$. Use the product form, which is cross-entropy, whenever labels may be fractional.
+
+</Pitfall>
+
+<Pitfall title="Dropping the input term is a modeling choice, not an approximation" misconception="lr-dropped-px">
+
+The belief: $\sum_i \log P(x^{(i)})$ is dropped in der-3-3-1 step 6 because it is small, or because the features do not matter. The fix: it is dropped because the model has no parameters in it. Logistic regression models $P(y \mid x)$ only; the inputs still enter through every $\hat p^{(i)}$. A model that also parametrizes $P(x)$, such as GDA (lesson 7.2), keeps the term, and the two fits then differ (der-7-3-6).
+
+</Pitfall>
+
+<Pitfall title="No closed form does not mean an approximate or local answer" misconception="lr-no-closed-form-means-local">
+
+The belief: since logistic regression must be fit by gradient descent, the result is only a local minimum, or only an approximation to the "real" solution. The fix: the objective is convex (der-3-3-4), so every stationary point is a global minimizer, and with full column rank it is unique. Gradient descent converges to it to whatever tolerance you ask for; the ADVERSE fit reached gradient norm $10^{-6}$, and Newton's method, run to gradient norm $10^{-12}$, gave the same coefficients. What is missing is a formula, not a well-defined answer. And in special cases there is a formula (der-3-3-5 step 7).
+
+</Pitfall>
+
+<Pitfall title="The logistic MLE does not always exist" misconception="lr-mle-always-exists">
+
+The belief: convexity guarantees a minimizer. The fix: convexity guarantees that a minimizer, if one exists, is global and (with full rank) unique. On linearly separable data the infimum 0 is never attained, and $\lVert\theta\rVert$ grows without bound under gradient descent (der-3-3-6). The symptom is training loss creeping toward 0 while the coefficients keep growing. The remedy is a penalty $\lambda\lVert\theta\rVert_2^2$ (Unit 5) or early stopping.
+
+</Pitfall>
+
+<Pitfall title="Squared error on the sigmoid is not an equally good loss" misconception="lr-mse-on-sigmoid">
+
+The belief: one could just as well minimize $\frac1n\sum_i(\sigma(\theta^\top x^{(i)}) - y^{(i)})^2$. The fix: by the chain rule its derivative with respect to the logit is $2(\sigma(z) - y)\,\sigma(z)(1 - \sigma(z))$. For a patient with an event ($y = 1$) whom the model rates as near-certain to be event-free ($z \to -\infty$), the factor $\sigma(z)(1 - \sigma(z)) \to 0$, so the most wrong predictions produce almost no gradient. The cross-entropy derivative is $\sigma(z) - y \to -1$ there (der-3-3-3 step 4). Squared error on $\sigma$ is also not convex in $\theta$ in general. L7's "L2 or KL?" slides (Unit 5) return to this choice.
+
+</Pitfall>
+
+<Pitfall title="The gradient is prediction minus label, not label minus prediction" misconception="lr-gradient-sign">
+
+The belief: $\nabla_\theta\hat R = \frac1n\sum_i(y^{(i)} - \hat p^{(i)})\,x^{(i)}$. The fix: that is the gradient of the log-likelihood, which we maximize; the gradient of the NLL, which we minimize, is $\frac1n\sum_i(\hat p^{(i)} - y^{(i)})\,x^{(i)}$ (der-3-3-3 step 7). Gradient ascent on the first and gradient descent on the second take the same step. Mixing one gradient with the other update direction walks uphill, and the loss grows each iteration.
+
+</Pitfall>
+
+<Pitfall title="Logistic regression has no normal equations" misconception="mle-always-closed-form">
+
+The belief: like least squares, logistic regression's MLE comes from a formula. The fix: its first-order condition, $\sum_i \sigma(\theta^\top x^{(i)})\,x^{(i)} = \sum_i y^{(i)} x^{(i)}$ (der-3-3-5), puts $\theta$ inside a nonlinear $\sigma$ and cannot be solved for it in general. The intercept-only model is the exception that proves the rule: there the equation reduces to $\sigma(\theta_0) = \bar y$. Everything else needs an iterative method.
+
+</Pitfall>
+
+<Connections>
+
+- Before: 3.1 The sigmoid ($\sigma' = \sigma(1-\sigma)$, the logit); 3.2 The maximum-likelihood principle (the coin-flip MLE is the intercept-only case of der-3-3-5); 1.4 Least squares (the normal equations and the Hessian $\frac2n X^\top X$ that der-3-3-4 generalizes); 2.4 and 2.5 Gradient descent and step size (the update rule and the condition number in the worked example).
+- Companion: <Notebook path="Code Companions/lecture4-code companion.ipynb" cells="24-37" /> fits `LogisticRegression(C=1e5)` to the Setosa-versus-rest Iris task and plots its decision regions next to thresholded linear regression; the notebook calls sklearn rather than implementing <EqRef id="eq-3-3-2" />.
+- Next: 3.4 Least squares is Gaussian MLE, and MLE minimizes KL (the general version of der-3-3-2 chunk 4); 3.5 Softmax regression (the $K$-class NLL with the same residual-times-input gradient).
+- Later: Unit 4 evaluates the probabilities $\hat p^{(i)}$ as classifiers with a threshold; Unit 5 adds the penalty that fixes der-3-3-6; lesson 7.3 compares logistic regression with shared-covariance GDA (der-7-3-6).
+- Graph neighbors: [[sigmoid]], [[bernoulli]], [[cross-entropy]], [[convex-function]], [[hessian]].
+
+</Connections>
+
+{/* no-homework-bridge: no live homework uses this lesson's results. HW2 (past) used gradient descent; HW3 (live until 2026-10-19) covers Naive Bayes and GDA. */}
+
+<Summary>
+
+- **Model:** $y \mid x \sim \mathrm{Bernoulli}(\sigma(\theta^\top x))$; $\hat p^{(i)} = \sigma(\theta^\top x^{(i)})$.
+- **Objective:** likelihood $\prod_i P_\theta(y^{(i)} \mid x^{(i)})P(x^{(i)})$ → log → drop $\sum_i\log P(x^{(i)})$ (no $\theta$) → negate → average: $\hat R(\theta) = -\frac1n\sum_i\big[y^{(i)}\log\hat p^{(i)} + (1 - y^{(i)})\log(1 - \hat p^{(i)})\big]$.
+- **Slides' form:** $y\hat p + (1-y)(1-\hat p) = \hat p^{y}(1-\hat p)^{1-y}$ on $\{0, 1\}$ only; the loss is binary cross-entropy, and per example it equals $D_{\mathrm{KL}}(p_y \,\|\, q_\theta)$.
+- **Logit form:** $\ell = \log(1 + e^{-s z})$ with $s = 2y - 1$, $z = \theta^\top x$.
+- **Gradient:** $\nabla_\theta\hat R = \frac1n\sum_i(\hat p^{(i)} - y^{(i)})\,x^{(i)} = \frac1n X^\top(\sigma(X\theta) - y)$: residual times input, the same shape as least squares.
+- **Hessian:** $\frac1n X^\top S X$, $S = \mathrm{diag}(\hat p^{(i)}(1 - \hat p^{(i)}))$, positive semi-definite, so $\hat R$ is convex; strictly convex when $X$ has full column rank.
+- **No closed form:** $X^\top\sigma(X\hat\theta) = X^\top y$ is nonlinear in $\hat\theta$ (moment matching; least squares gives the linear $X^\top X\hat\theta = X^\top y$). Intercept only: $\hat\theta_0 = \log\frac{\bar y}{1 - \bar y}$.
+- **Separable data:** $\hat R(cw) \to 0$ but never reaches it, so no minimizer exists and $\lVert\theta\rVert \to \infty$.
+
+</Summary>

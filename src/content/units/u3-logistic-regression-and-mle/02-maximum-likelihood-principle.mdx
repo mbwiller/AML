@@ -1,0 +1,710 @@
+---
+title: "The maximum-likelihood principle"
+unit: u3-logistic-regression-and-mle
+order: 2
+slug: maximum-likelihood-principle
+summary: "Why a classifier should output P(Y=1|X), why the 0/1 error gives gradient descent nothing to follow, and maximum likelihood derived on a coin (fixing the slide's sign), a die, and a Gaussian."
+lectures:
+  - { lecture: 5, pages: "27-37, 39-43" }
+  - { lecture: 5, pages: "49" }
+  - { lecture: 6, pages: "4-5, 8-11" }
+  - { lecture: 6, pages: "20" }
+concepts:
+  - conditional-probability-window-estimate
+  - zero-one-loss-not-optimizable
+  - mle-principle
+  - maximum-likelihood-estimation
+  - mle-coin-flip
+  - mle-dice
+  - mle-gaussian
+prerequisites:
+  - classification-vs-regression
+  - sigmoid
+  - zero-one-loss
+  - gradient-descent
+  - gradient
+  - cauchy-schwarz-inequality
+  - conditional-probability
+  - expectation
+  - variance
+  - iid
+  - bernoulli
+  - categorical
+  - multinomial
+  - gaussian
+  - likelihood-vs-probability
+  - log-likelihood
+  - log-rules
+  - argmax
+  - chain-rule-calculus
+  - first-order-condition
+  - second-order-condition
+  - lagrange-multipliers
+  - convex-function
+cases: [adverse, tropo]
+estimatedMinutes: 60
+status: review
+authors: [jide]
+---
+
+{/* no-companion: neither the L4 nor the L5 code companion implements the MLE material of L5 pp.36-50 or L6 pp.4-11 (course map, "Slide correspondence"). */}
+
+<Frame
+  data="draws $x^{(i)}$ (coin flips, die rolls, lab values), or labeled pairs $(x^{(i)}, y^{(i)})$ with $y \in \{0, 1\}$"
+  model="a parametric family $P_\theta$; for classification, $P_\theta(y \mid x)$"
+  objective="maximize the log-likelihood $\sum_i \log P_\theta(x^{(i)})$, that is, minimize the negative log-likelihood"
+  optimizer="closed form in this lesson (count, average); gradient descent for logistic regression (lesson 3.3)"
+/>
+
+<Objectives>
+
+- Explain why a classifier should estimate $P(Y = 1 \mid X)$ rather than output a hard 0/1 label, and derive the mean and variance of the window-average estimate.
+- Prove that the 0/1 training error is piecewise constant in $\theta$, so its gradient is zero wherever it exists and gradient descent cannot move.
+- State the maximum-likelihood principle and show that taking logs, adding constants, and negating do not move the maximizer.
+- Derive the maximum-likelihood estimates for a coin ($\#H/(\#H + \#T)$), a die ($n_k/n$), and a Gaussian (sample mean and $\frac1n$ sample variance), and verify each is a maximum.
+- Spot and fix the sign error in the coin-flip derivative on L6 p.11.
+
+</Objectives>
+
+<Hook>
+
+Imagine two patients in the ADVERSE cohort with nearly the same age, kidney function, potassium, and dose. One develops hyperkalemia within 90 days; the other does not. A third patient with the same profile arrives. (These three are a thought experiment, not specific records.) A model that answers "event" or "no event" must be wrong about one of the first two, whatever it says. A model that answers with an event probability can be right about both.
+
+So the target is a probability. That raises the question this lesson answers: how do we score a probability against labels that are only ever 0 or 1, in a way gradient descent can use? Counting mistakes turns out to give it nothing to follow.
+
+{/* hook-figure: the coin-mle widget in the Explore section is the hook's explorable; a static figure of the ADVERSE eGFR windows is a candidate once figures exist */}
+
+</Hook>
+
+## What should a classifier output?
+
+Lesson 3.1 showed that thresholded linear regression is a poor classifier and introduced the [[sigmoid]] $\sigma(z) = (1 + e^{-z})^{-1}$, whose output lies in $(0, 1)$. L5 now asks what that output should mean. <SlideRef lecture={5} pages="27-32" />
+
+The slide's 1-D data have blue points (class 0) spread over $x \in [-4, 1.5]$ and red points (class 1) over $x \in [-1.5, 4]$. They overlap near the origin, so no threshold separates them: in one dimension a linear separator is a single threshold. A function that jumps between 0 and 1 to match every point is the "undesired" staircase of L5 p.28. It fits the training data and says nothing sensible about a new point near the overlap. <SlideRef lecture={5} pages="27-28" />
+
+L5 p.29 sharpens the point. Stack 90 red and 10 blue points at the same $x$. What should the model output there: 1, because red dominates, or 0.9, the average? A 0/1 output is wrong for 10 of the 100 points whatever it is. The average 0.9 is the fraction of class 1 at that $x$, an estimate of [[conditional-probability|the conditional probability]] $P(Y = 1 \mid X = x)$. <SlideRef lecture={5} pages="29" />
+
+<Definition id="def-3-2-1" title="Class-probability target" source="L5 p.29">
+
+For binary labels $y \in \{0, 1\}$, the **class-probability function** is
+
+$$p(x) = P(Y = 1 \mid X = x).$$
+
+A probabilistic classifier estimates $p(x)$ and leaves the hard decision (for example, $\hat y = \ind{p(x) \ge \tfrac12}$) to a separate, adjustable threshold. <SlideRef lecture={5} pages="29-33" />
+
+Also written as: $P(1 \mid X)$ (L5 p.30), $P_\theta(y = 1 \mid X) = \sigma(\theta^\top X)$ once a model is chosen (L5 p.33).
+
+</Definition>
+
+L5 p.30 asks the next question: should an infinitesimal nudge of one red point change the estimate entirely? If not, we cannot estimate $p(x)$ from the points at exactly $x$, because in real data no two inputs coincide. L5 p.31 answers with a window: at each $x$, average the labels of the points within a small window around $x$. The averages trace an S-shaped curve from 0 to 1. <SlideRef lecture={5} pages="30-31" />
+
+How good is that average? The slides leave it as a picture. We derive its mean and variance.
+
+<Derivation
+  id="der-3-2-1"
+  title="The window average of labels is an unbiased estimate of P(Y=1 | X in the window), with variance q(1−q)/m"
+  goalTex="\hat p_W = \frac{1}{m}\sum_{i \in I_W} y^{(i)} \ \text{ versus } \ P(Y = 1 \mid X \in W)"
+  resultTex="\mathbb{E}\big[\hat p_W \mid I_W\big] = q, \qquad \operatorname{Var}\big(\hat p_W \mid I_W\big) = \frac{q(1 - q)}{m}, \qquad q = P(Y = 1 \mid X \in W)"
+  source="L5 p.31 (stated as intuition: 'an approximation of the probability of Y=1 at that point'; mean and variance derived here)"
+>
+
+<Chunk title="Name the estimator and the distribution of each label in the window">
+
+<Step justification="definition: $W$ is a window (an interval) around $x_0$, $I_W = \{i : x^{(i)} \in W\}$ the indices of the points that fall in it, and $m = |I_W| \ge 1$ their number">
+$$\hat p_W = \frac{1}{m}\sum_{i \in I_W} y^{(i)}$$
+</Step>
+
+<Step justification="the pairs are i.i.d. draws from $P$; a draw that lands in $W$ is a draw from $P$ conditioned on $X \in W$, independently of the other draws, and a 0/1 label is Bernoulli" sticky="iid">
+$$y^{(i)} \mid i \in I_W \ \overset{\text{iid}}{\sim}\ \mathrm{Bernoulli}(q), \qquad q = P(Y = 1 \mid X \in W)$$
+</Step>
+
+<Step justification="expectation of a 0/1 variable: $1 \cdot P(\text{1}) + 0 \cdot P(\text{0})$" sticky="bernoulli">
+$$\mathbb{E}\big[y^{(i)} \mid i \in I_W\big] = 1 \cdot q + 0 \cdot (1 - q) = q$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Take the mean and the variance of the average">
+
+<Step justification="linearity of expectation, then step 3 for each of the $m$ terms" sticky="expectation" fadeable>
+$$\mathbb{E}\big[\hat p_W \mid I_W\big] = \frac{1}{m}\sum_{i \in I_W} \mathbb{E}\big[y^{(i)} \mid i \in I_W\big] = \frac{1}{m} \cdot m q = q$$
+</Step>
+
+<Step justification="$\operatorname{Var}(cZ) = c^2 \operatorname{Var}(Z)$, variances of independent terms add, and a Bernoulli$(q)$ has variance $q(1 - q)$" sticky="variance" fadeable>
+$$\operatorname{Var}\big(\hat p_W \mid I_W\big) = \frac{1}{m^2}\sum_{i \in I_W} q(1 - q) = \frac{q(1 - q)}{m}$$
+</Step>
+
+<Step justification="read the two results together: if $p(x)$ is continuous at $x_0$, shrinking $W$ to $x_0$ moves $q$ toward $p(x_0)$, but $m$ decreases, so the variance grows; with a window holding one point, $m = 1$ and the estimate is a single label, 0 or 1">
+$$W \downarrow \{x_0\}: \quad q \to p(x_0), \qquad m \downarrow$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 6 explains the staircase of L5 p.28: it is the window average with a window so small that each holds one point, an estimate with no bias at the training points and the largest possible variance. A wide window has small variance but averages $p(x)$ over a region where it changes. The windowed curve on L5 p.31 sits between the two. Logistic regression (L5 p.32) replaces the window with a smooth parametric curve, $f_\theta(x) = \sigma(\theta_0 + \theta_1 x)$, and must choose $\theta_0, \theta_1$ from the data. <SlideRef lecture={5} pages="32" />
+
+<Callout type="beyond">
+
+The bias–variance trade-off in step 6 is the same one that returns in Unit 5 for model complexity. Choosing the window width by validation is kernel smoothing, a nonparametric alternative to logistic regression that the course meets again with density estimation.
+
+</Callout>
+
+<Check ids={["q-u3-l2-013", "q-u3-l2-015"]} />
+
+## Why we cannot train on the 0/1 error
+
+Given a model $f_\theta(x) = \sigma(\theta^\top x)$, which objective should gradient descent minimize? The natural candidate is the number of mistakes. L5 p.35 rejects it: threshold the output to get $\hat y^{(i)}$, and the error $|\hat y^{(i)} - y^{(i)}|$ "is not continuous; small perturbation in the model parameter might not yield any change in the error". <SlideRef lecture={5} pages="35" />
+
+<Definition id="def-3-2-2" title="0/1 training error" source="L5 p.35">
+
+With predictions $\hat y^{(i)}(\theta) = \ind{\sigma(\theta^\top x^{(i)}) \ge \tfrac12}$, the **0/1 training error** is the average [[zero-one-loss|0/1 loss]]
+
+$$\hat E(\theta) = \frac{1}{n}\sum_{i=1}^{n} \ind{\hat y^{(i)}(\theta) \ne y^{(i)}}.$$
+
+For $y, \hat y \in \{0, 1\}$, $\ind{\hat y \ne y} = |\hat y - y|$, the slide's form. <SlideRef lecture={5} pages="35" />
+
+Also written as: $|\hat y_i - y_i|$ summed over examples (L5 p.35, without the $\frac1n$); the error rate; one minus the training accuracy.
+
+</Definition>
+
+<Intuition>
+
+Take two training points and a model with no intercept: $x^{(1)} = -1$ with $y^{(1)} = 0$, and $x^{(2)} = 2$ with $y^{(2)} = 1$. The prediction is $\hat y = \ind{\theta_1 x \ge 0}$.
+
+- For $\theta_1 > 0$, $\theta_1 x^{(1)} < 0$ and $\theta_1 x^{(2)} > 0$, so both predictions are right: $\hat E = 0$.
+- For $\theta_1 < 0$, both are wrong: $\hat E = 1$.
+- At $\theta_1 = 0$, both predictions are 1, so only the first is wrong: $\hat E = \tfrac12$.
+
+As a function of $\theta_1$, the error is a staircase: flat at 1, a single value of $\tfrac12$ at the origin, flat at 0. Start gradient descent at $\theta_1 = -3$. The slope there is 0, so the update $\theta_1 - \eta \cdot 0$ returns $-3$: the worst possible classifier, and the algorithm does not move.
+
+</Intuition>
+
+The derivation shows this happens for every dataset and every $\theta$ except a set of measure zero.
+
+<Derivation
+  id="der-3-2-2"
+  title="The 0/1 training error is piecewise constant in θ, so its gradient is zero wherever it exists"
+  goalTex="\nabla_\theta \hat E(\theta) \ \text{ for } \ \hat E(\theta) = \frac1n\sum_{i=1}^{n} \ind{\hat y^{(i)}(\theta) \ne y^{(i)}}"
+  resultTex="\nabla_\theta \hat E(\theta) = 0 \ \text{ for every } \theta \notin \bigcup_{i=1}^{n}\{\theta : \theta^\top x^{(i)} = 0\}, \qquad \theta^{(t+1)} = \theta^{(t)}"
+  source="L5 p.35 (stated: 'not continuous; small perturbation in the model parameter might not yield any change in the error')"
+>
+
+<Chunk title="Write each prediction as a sign test on θ">
+
+<Step justification="threshold the predicted probability at one half (L5 p.35, L5 p.23)">
+$$\hat y^{(i)}(\theta) = \ind{\sigma(\theta^\top x^{(i)}) \ge \tfrac12}$$
+</Step>
+
+<Step justification="$\sigma$ is strictly increasing with $\sigma(0) = \frac12$, so $\sigma(z) \ge \frac12$ exactly when $z \ge 0$ (lesson 3.1)" sticky="sigmoid">
+$$\hat y^{(i)}(\theta) = \ind{\theta^\top x^{(i)} \ge 0}$$
+</Step>
+
+<Step justification="with the intercept absorbed, $x^{(i)}_0 = 1$, so $x^{(i)} \ne 0$, and the parameters at which the sign test sits exactly on 0 form a hyperplane through the origin of parameter space">
+$$H_i = \{\theta : \theta^\top x^{(i)} = 0\} \ \text{ is a hyperplane in parameter space}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Off its hyperplane, each prediction is locally constant">
+
+<Step justification="Cauchy–Schwarz bounds how far a perturbation $\delta$ can move the score" sticky="cauchy-schwarz-inequality">
+$$\big|(\theta + \delta)^\top x^{(i)} - \theta^\top x^{(i)}\big| = |\delta^\top x^{(i)}| \le \lVert\delta\rVert_2\, \lVert x^{(i)}\rVert_2$$
+</Step>
+
+<Step justification="if $\theta \notin H_i$, set $r_i = |\theta^\top x^{(i)}| / \lVert x^{(i)}\rVert_2 > 0$; any $\delta$ with $\lVert\delta\rVert_2 < r_i$ moves the score by less than its distance from 0, so its sign does not change" fadeable>
+$$\lVert\delta\rVert_2 < r_i \ \Longrightarrow\ \sgn\big((\theta + \delta)^\top x^{(i)}\big) = \sgn\big(\theta^\top x^{(i)}\big)$$
+</Step>
+
+<Step justification="by step 2 the prediction depends on $\theta$ only through that sign">
+$$\lVert\delta\rVert_2 < r_i \ \Longrightarrow\ \hat y^{(i)}(\theta + \delta) = \hat y^{(i)}(\theta)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Assemble the error and take its gradient">
+
+<Step justification="if $\theta$ lies on none of the $n$ hyperplanes, the smallest radius $r = \min_i r_i$ is positive, and all $n$ predictions, hence all $n$ indicator terms, are constant on the ball of radius $r$" fadeable>
+$$\lVert\delta\rVert_2 < r \ \Longrightarrow\ \hat E(\theta + \delta) = \hat E(\theta)$$
+</Step>
+
+<Step justification="a function that is constant on an open ball around $\theta$ has every partial derivative equal to 0 at $\theta$" sticky="gradient">
+$$\nabla_\theta \hat E(\theta) = 0$$
+</Step>
+
+<Step justification="crossing $H_i$ flips $\hat y^{(i)}$, so $\hat E$ changes by a multiple of $\frac1n$ there (generically nonzero); where it jumps it has no gradient">
+$$\hat E \ \text{ jumps by multiples of } \tfrac1n \text{ across } H_1, \dots, H_n$$
+</Step>
+
+<Step justification="substitute step 8 into the gradient-descent update; the hyperplanes have zero volume, so an iterate almost never lands on one">
+$$\theta^{(t+1)} = \theta^{(t)} - \eta\, \nabla_\theta \hat E(\theta^{(t)}) = \theta^{(t)}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The gradient carries no information about which direction reduces the error: it is 0 almost everywhere and undefined where the error changes. We need an objective that is differentiable in $\theta$ and that rewards a predicted probability for being close to the observed label, not only for landing on the right side of $\tfrac12$. L5 p.36 names the replacement: "think about the likelihood of seeing this data given the model parameters instead". <SlideRef lecture={5} pages="36-37" />
+
+<Check ids={["q-u3-l2-011", "q-u3-l2-012"]} />
+
+## The maximum-likelihood principle
+
+L5 p.37 summarizes the plan: given a loss that is differentiable in the parameters, gradient descent can always optimize it, and the maximum-likelihood estimator "defined the loss function in many cases". The principle needs one object, the likelihood. <SlideRef lecture={5} pages="37" />
+
+<Definition id="def-3-2-3" title="Likelihood" source="L6 pp.8-9">
+
+For a dataset $\mathcal{D}$ and a family of distributions $P_\theta$, the **likelihood** is the probability (or density) of the observed data, read as a function of $\theta$:
+
+$$L(\theta) = P_\theta(\mathcal{D}).$$
+
+For [[iid|i.i.d.]] draws $\mathcal{D} = \{x^{(i)}\}_{i=1}^{n}$, $L(\theta) = \prod_{i=1}^{n} P_\theta(x^{(i)})$, and the [[log-likelihood]] is $\ell(\theta) = \log L(\theta) = \sum_{i} \log P_\theta(x^{(i)})$. <SlideRef lecture={6} pages="8-9" />
+
+Also written as: $P_\theta(\mathcal{D})$ (L6 p.9), $P((X_1, y_1), \dots, (X_n, y_n))$ (L5 p.44). It is not a distribution over $\theta$ ([[likelihood-vs-probability]]).
+
+</Definition>
+
+<Definition id="def-3-2-4" title="Maximum-likelihood estimate" source="L5 p.39">
+
+The [[maximum-likelihood-estimation|maximum-likelihood estimate]] is the parameter that makes the observed data most probable:
+
+$$
+\hat\theta = \argmax_\theta L(\theta) = \argmax_\theta \sum_{i=1}^{n} \log P_\theta(x^{(i)}) \tag{3.2.1} \htmlId{eq-3-2-1}{}
+$$
+
+For supervised learning, L5 p.39 and L6 p.4 choose a model $P_\theta(y \mid x)$ for the label given the input and maximize the **conditional likelihood** $\prod_i P_\theta(y^{(i)} \mid x^{(i)})$; lesson 3.3 derives why the factor $\prod_i P(x^{(i)})$ can be dropped. <SlideRef lecture={5} pages="39" /> <SlideRef lecture={6} pages="4" />
+
+Also written as: $\theta^*$ (L6 p.11), $\hat\theta_{\mathrm{MLE}}$ (textbooks).
+
+</Definition>
+
+Why should "most probable data" mean "best fit"? L5 p.42 states the assumption plainly: **the world is a boring place**. The data you observed are typical of the process that produced them, so the right distribution is one that gives them high probability. It should assign higher probability to frequent observations and lower probability to rare ones. The slide adds that this is "not necessarily true": a sample can be unrepresentative, and then the MLE faithfully fits the wrong thing. <SlideRef lecture={5} pages="42" /> <SlideRef lecture={6} pages="5" />
+
+<Intuition>
+
+L6 p.8 flips a biased coin six times and sees $\mathcal{D} = \{H, T, H, T, T, T\}$. Code heads as 1, so the probability of one flip is $\theta$ for heads and $1 - \theta$ for tails, and the likelihood of the sequence is $L(\theta) = \theta^2(1 - \theta)^4$. Evaluate it at four candidates:
+
+| $\theta$ | $\tfrac16$ | $\tfrac13$ | $\tfrac12$ | $\tfrac23$ |
+|---|---|---|---|---|
+| $L(\theta) = \theta^2(1 - \theta)^4$ | $\tfrac{625}{46656} \approx 0.0134$ | $\tfrac{16}{729} \approx 0.0219$ | $\tfrac{1}{64} \approx 0.0156$ | $\tfrac{4}{729} \approx 0.0055$ |
+
+The fair coin is not the best explanation of two heads in six; $\theta = \tfrac13$, the observed fraction of heads, is better than each neighbor shown. L6 p.10 plots the whole curve: one peak, at $\theta \approx 0.333$, height about 0.022. The peak is small because any particular sequence of six flips is improbable. Only the location of the peak matters.
+
+The dice and Gaussian examples of L5 pp.40–41 make the same picture with more parameters. A candidate distribution whose bars match the histogram of rolls, or a [[gaussian|Gaussian]] centered on the data with the data's spread, gives the observed sample a higher probability than one that is shifted or too wide. <SlideRef lecture={5} pages="40-41" />
+
+</Intuition>
+
+<Callout type="slide">
+
+Three notational repairs. The slides write datasets as $\{(X_i, y_i)\}$ and coin flips as $x_i$; we write $x^{(i)}$, $y^{(i)}$. L5 p.41 uses $\sigma^2$ for a Gaussian's variance while the same lecture uses $\sigma(\cdot)$ for the sigmoid; in this lesson $\sigma^2$ always means a variance, and the sigmoid appears only as the function $\sigma(z)$. And L5 p.44 writes the label probability as $y\,\sigma(\theta^\top x) + (1 - y)(1 - \sigma(\theta^\top x))$, while we write the [[bernoulli|Bernoulli]] in product form $p^{y}(1 - p)^{1 - y}$; the two are equal for $y \in \{0, 1\}$ (substitute $y = 1$ and $y = 0$), and lesson 3.3 uses that equality.
+
+</Callout>
+
+Every maximum-likelihood derivation below, and in lessons 3.3–3.5, takes a log and often flips a sign. Before using those moves, we check that they cannot change the answer.
+
+<Derivation
+  id="der-3-2-3"
+  title="Taking logs, adding a constant, and negating leave the maximum-likelihood estimate unchanged"
+  goalTex="\argmax_\theta L(\theta) \ \text{ versus } \ \argmin_\theta \big({-\log L(\theta)} + c\big)"
+  resultTex="\argmax_\theta L(\theta) = \argmax_\theta \log L(\theta) = \argmax_\theta \big(\log L(\theta) + c\big) = \argmin_\theta \big({-\log L(\theta)}\big)"
+  source="L5 pp.45–48 (used: 'linearize this by taking the logarithm'; 'note argmin rather than argmax')"
+>
+
+<Chunk title="Each move preserves the ordering of parameter values">
+
+<Step justification="definition of the maximizer, on the set where $L > 0$; points with $L = 0$ cannot be maximizers unless $L \equiv 0$" sticky="argmax">
+$$\hat\theta = \argmax_\theta L(\theta) \iff L(\hat\theta) \ge L(\theta) \ \text{ for all } \theta$$
+</Step>
+
+<Step justification="$\log$ is strictly increasing on $(0, \infty)$, so for $a, b > 0$, $a \ge b \iff \log a \ge \log b$" sticky="log-rules">
+$$L(\hat\theta) \ge L(\theta) \iff \log L(\hat\theta) \ge \log L(\theta)$$
+</Step>
+
+<Step justification="adding the same number $c$ (any term that does not depend on $\theta$, such as $\sum_i \log P(x^{(i)})$ in lesson 3.3) to both sides preserves an inequality" fadeable>
+$$\log L(\hat\theta) \ge \log L(\theta) \iff \log L(\hat\theta) + c \ge \log L(\theta) + c$$
+</Step>
+
+<Step justification="multiplying both sides by $-1$ reverses an inequality, so the maximizer of the log-likelihood is the minimizer of the negative log-likelihood" fadeable>
+$$\log L(\hat\theta) \ge \log L(\theta) \iff -\log L(\hat\theta) \le -\log L(\theta)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The negative log-likelihood (NLL) is the loss. "Maximum likelihood" and "minimum NLL" name one estimate; "maximize the NLL" names a different and wrong one (Pitfall below; L6 p.20 poll).
+
+<Check ids={["q-u3-l2-001", "q-u3-l2-002", "q-u3-l2-003", "q-u3-l2-005"]} />
+
+## The coin flip
+
+L6 pp.8–11 run the recipe on the six flips: write the likelihood, take the log, set the derivative to zero. <SlideRef lecture={6} pages="8-11" />
+
+<Derivation
+  id="der-3-2-4"
+  title="The coin-flip MLE is the empirical frequency of heads"
+  goalTex="\hat\theta = \argmax_{\theta \in [0, 1]} P_\theta(\mathcal{D}), \qquad \mathcal{D} = \{x^{(1)}, \dots, x^{(n)}\},\ x^{(i)} \in \{0, 1\}"
+  resultTex="\hat\theta = \frac{\#H}{\#H + \#T}"
+  source="L6 pp.8–11 (derived on the slides; p.11 writes the derivative with + #T/(1−θ), corrected here)"
+>
+
+<Chunk title="Write the likelihood">
+
+<Step justification="Bernoulli pmf in product form, with heads coded as 1" sticky="bernoulli">
+$$P_\theta(x) = \theta^{x}(1 - \theta)^{1 - x}, \qquad x \in \{0, 1\}$$
+</Step>
+
+<Step justification="the flips are independent and identically distributed, so the joint probability is the product" sticky="iid">
+$$L(\theta) = \prod_{i=1}^{n} \theta^{x^{(i)}}(1 - \theta)^{1 - x^{(i)}}$$
+</Step>
+
+<Step justification="collect exponents: $\sum_i x^{(i)} = \#H$ and $\sum_i (1 - x^{(i)}) = \#T$" fadeable>
+$$L(\theta) = \theta^{\#H}(1 - \theta)^{\#T}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Take logs so the product becomes a sum">
+
+<Step justification="$\log(ab) = \log a + \log b$ and $\log a^k = k\log a$; allowed by der-3-2-3" sticky="log-rules">
+$$\ell(\theta) = \#H\log\theta + \#T\log(1 - \theta)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Differentiate and solve">
+
+<Step justification="$\frac{d}{d\theta}\log\theta = \frac1\theta$; by the chain rule $\frac{d}{d\theta}\log(1 - \theta) = \frac{1}{1 - \theta}\cdot(-1)$, which is the minus sign L6 p.11 drops" sticky="chain-rule-calculus" fadeable>
+$$\ell'(\theta) = \frac{\#H}{\theta} - \frac{\#T}{1 - \theta}$$
+</Step>
+
+<Step justification="first-order condition for an interior maximum, $0 < \theta < 1$; multiply both sides by $\theta(1 - \theta) > 0$" sticky="first-order-condition">
+$$\frac{\#H}{\theta} = \frac{\#T}{1 - \theta} \iff \#H(1 - \theta) = \#T\,\theta$$
+</Step>
+
+<Step justification="expand and collect the $\theta$ terms: $\#H = (\#H + \#T)\,\theta$, then divide by $\#H + \#T = n \ge 1$" fadeable>
+$$\hat\theta = \frac{\#H}{\#H + \#T}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Check that it is the maximum, including the edges">
+
+<Step justification="differentiate step 5 again; both terms are negative on $(0, 1)$ when $\#H, \#T > 0$, so $\ell$ is strictly concave and its only critical point is the global maximum" sticky="second-order-condition">
+$$\ell''(\theta) = -\frac{\#H}{\theta^2} - \frac{\#T}{(1 - \theta)^2} < 0$$
+</Step>
+
+<Step justification="edge cases: if $\#T = 0$, then $L(\theta) = \theta^{\#H}$ is increasing on $[0, 1]$ and peaks at $\theta = 1$; if $\#H = 0$, $L(\theta) = (1 - \theta)^{\#T}$ peaks at $\theta = 0$; the formula of step 7 gives both values">
+$$\#T = 0 \Rightarrow \hat\theta = 1, \qquad \#H = 0 \Rightarrow \hat\theta = 0$$
+</Step>
+
+<Step justification="the slide's data: $\#H = 2$ and $\#T = 4$; the peak height is $(\frac13)^2(\frac23)^4 = \frac{16}{729}$, matching the L6 p.10 figure">
+$$\hat\theta = \frac{2}{2 + 4} = \frac13, \qquad L(\hat\theta) = \frac{16}{729} \approx 0.0219$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+L6 p.11 concludes: "Maximum likelihood of Bernoulli distribution is the empirical count", more precisely the empirical frequency. The same estimate answers the 90/10 question of L5 p.29: treat the 100 labels at that $x$ as coin flips, and the MLE of $P(Y = 1 \mid X = x)$ is $90/100 = 0.9$, the average, not the majority label.
+
+<Callout type="slide">
+
+L6 p.11 writes $\dfrac{\partial \log P_\theta(\mathcal{D})}{\partial\theta} = \dfrac{\#H}{\theta} + \dfrac{\#T}{1 - \theta} = 0$. With a plus sign the equation has no solution in $(0, 1)$, since both terms are positive there. The derivative of $\#T\log(1 - \theta)$ is $-\#T/(1 - \theta)$ (step 5). The slide's final answer, $\theta^* = \#H/(\#H + \#T)$, is right; only the intermediate sign is wrong.
+
+</Callout>
+
+<Check ids={["q-u3-l2-007", "q-u3-l2-008", "q-u3-l2-017", "q-u3-l2-018"]} />
+
+## The dice
+
+L5 p.40 rolls a die many times, tallies the counts $n_1, \dots, n_6$, and asks which of two candidate distributions is more likely to have produced them. Maximum likelihood answers the stronger question: which distribution is most likely? <SlideRef lecture={5} pages="40" />
+
+<Derivation
+  id="der-3-2-5"
+  title="The MLE of a die's face probabilities is the vector of empirical frequencies"
+  goalTex="\hat p = \argmax_{p}\ P_p(\mathcal{D}) \ \text{ subject to } \ \sum_{k=1}^{6} p_k = 1"
+  resultTex="\hat p_k = \frac{n_k}{n}, \qquad k = 1, \dots, 6"
+  source="L5 p.40 (posed as a question: 'Which of the two is more likely to be the distribution for the dice? Why?'; the estimate is not stated)"
+>
+
+<Chunk title="Write the likelihood of the rolls">
+
+<Step justification="one roll is categorical: face $k$ has probability $p_k$, and the probabilities sum to 1" sticky="categorical">
+$$P_p(x = k) = p_k, \qquad \sum_{k=1}^{6} p_k = 1$$
+</Step>
+
+<Step justification="i.i.d. rolls multiply; group the $n_k$ factors equal to $p_k$, where $n_k$ is the number of rolls showing face $k$ and $n = \sum_k n_k$" sticky="iid">
+$$L(p) = \prod_{i=1}^{n} p_{x^{(i)}} = \prod_{k=1}^{6} p_k^{\,n_k}$$
+</Step>
+
+<Step justification="log of a product is a sum of logs" sticky="log-rules">
+$$\ell(p) = \sum_{k=1}^{6} n_k \log p_k$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Maximize on the simplex with a Lagrange multiplier">
+
+<Step justification="the constraint $\sum_k p_k = 1$ couples the parameters; add it with a multiplier $\lambda$" sticky="lagrange-multipliers">
+$$\mathcal{L}(p, \lambda) = \sum_{k=1}^{6} n_k \log p_k + \lambda\Big(1 - \sum_{k=1}^{6} p_k\Big)$$
+</Step>
+
+<Step justification="set the partial derivative with respect to each $p_k$ to zero (for faces with $n_k > 0$)" fadeable>
+$$\frac{\partial \mathcal{L}}{\partial p_k} = \frac{n_k}{p_k} - \lambda = 0 \iff p_k = \frac{n_k}{\lambda}$$
+</Step>
+
+<Step justification="substitute into the constraint and solve for $\lambda$ (faces with $n_k = 0$ get $p_k = 0$, step 8)" fadeable>
+$$\sum_{k=1}^{6}\frac{n_k}{\lambda} = 1 \iff \lambda = \sum_{k=1}^{6} n_k = n$$
+</Step>
+
+<Step justification="substitute $\lambda = n$ back into step 5">
+$$\hat p_k = \frac{n_k}{n}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Confirm the maximum">
+
+<Step justification="each $n_k \log p_k$ is concave (the second derivative is $-n_k/p_k^2 \le 0$), a sum of concave functions is concave, and the constraint set is convex, so a stationary point of the Lagrangian is the global maximum; a face never rolled ($n_k = 0$) contributes nothing to $\ell$, so moving its probability to other faces raises $\ell$, and $\hat p_k = 0 = n_k/n$" sticky="convex-function">
+$$\ell(\hat p) \ge \ell(p) \ \text{ for every } p \text{ with } p_k \ge 0,\ \sum_k p_k = 1$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+With two outcomes this is the coin again: $\hat p_1 = n_1/(n_1 + n_2)$. Unit 6 reuses the same argument for the class prior of a generative classifier ($\hat\phi_k = n_k/n$, der-6-3-5).
+
+<Callout type="slide">
+
+L5 p.40 calls the die's distribution a multinomial. One roll is [[categorical]]; the counts $(n_1, \dots, n_6)$ of $n$ rolls are [[multinomial]], with probability $\frac{n!}{n_1!\cdots n_6!}\prod_k p_k^{n_k}$. The multinomial coefficient does not depend on $p$, so by der-3-2-3 step 3 (after taking logs) it does not move the maximizer: the counts and the ordered sequence of rolls give the same MLE.
+
+</Callout>
+
+<Check ids={["q-u3-l2-010", "q-u3-l2-016"]} />
+
+## The Gaussian
+
+L5 p.41 shows a bell-shaped histogram and three candidate Gaussians: one shifted left, one that matches, and one too wide. Which is most likely the density of the data? The [[gaussian]] has two parameters, so the likelihood is a surface over $(\mu, \sigma^2)$, and we maximize over each in turn. <SlideRef lecture={5} pages="41" />
+
+<Derivation
+  id="der-3-2-6"
+  title="The Gaussian MLE is the sample mean and the 1/n sample variance"
+  goalTex="(\hat\mu, \hat\sigma^2) = \argmax_{\mu,\ \sigma^2 > 0}\ \prod_{i=1}^{n} \mathcal{N}(x^{(i)};\, \mu, \sigma^2)"
+  resultTex="\hat\mu = \frac1n\sum_{i=1}^{n} x^{(i)}, \qquad \hat\sigma^2 = \frac1n\sum_{i=1}^{n}\big(x^{(i)} - \hat\mu\big)^2"
+  source="L5 p.41 (posed as a question: 'Which is most likely the actual PDF of the RV? Why?'; the estimates are not stated)"
+>
+
+<Chunk title="Write the log-likelihood">
+
+<Step justification="Gaussian density with mean $\mu$ and variance $\sigma^2$ (the second argument of $\mathcal{N}$ is a variance)" sticky="gaussian">
+$$p(x;\, \mu, \sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}}\exp\Big({-\frac{(x - \mu)^2}{2\sigma^2}}\Big)$$
+</Step>
+
+<Step justification="i.i.d. draws: the joint density is the product" sticky="iid">
+$$L(\mu, \sigma^2) = \prod_{i=1}^{n} \frac{1}{\sqrt{2\pi\sigma^2}}\exp\Big({-\frac{(x^{(i)} - \mu)^2}{2\sigma^2}}\Big)$$
+</Step>
+
+<Step justification="log of a product is a sum of logs; $\log\frac{1}{\sqrt{a}} = -\frac12\log a$ and $\log e^{u} = u$" sticky="log-rules" fadeable>
+$$\ell(\mu, \sigma^2) = -\frac{n}{2}\log(2\pi\sigma^2) - \frac{1}{2\sigma^2}\sum_{i=1}^{n}\big(x^{(i)} - \mu\big)^2$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Maximize over the mean">
+
+<Step justification="the first term does not involve $\mu$; chain rule on $(x^{(i)} - \mu)^2$ gives $-2(x^{(i)} - \mu)$" sticky="chain-rule-calculus">
+$$\frac{\partial\ell}{\partial\mu} = \frac{1}{\sigma^2}\sum_{i=1}^{n}\big(x^{(i)} - \mu\big)$$
+</Step>
+
+<Step justification="first-order condition: multiply by $\sigma^2 > 0$, then $\sum_i x^{(i)} - n\mu = 0$" sticky="first-order-condition" fadeable>
+$$\hat\mu = \frac{1}{n}\sum_{i=1}^{n} x^{(i)}$$
+</Step>
+
+<Step justification="the second derivative is negative and $\hat\mu$ does not depend on $\sigma^2$, so $\hat\mu$ maximizes $\ell$ for every value of $\sigma^2$" sticky="second-order-condition">
+$$\frac{\partial^2\ell}{\partial\mu^2} = -\frac{n}{\sigma^2} < 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Maximize over the variance">
+
+<Step justification="substitute $\hat\mu$ into step 3, writing $v = \sigma^2$ and $S = \sum_i (x^{(i)} - \hat\mu)^2$, and split $\log(2\pi v) = \log(2\pi) + \log v$ so the dependence on $v$ is explicit">
+$$\ell(\hat\mu, v) = -\frac{n}{2}\log(2\pi) - \frac{n}{2}\log v - \frac{S}{2v}$$
+</Step>
+
+<Step justification="$\frac{d}{dv}\log v = \frac1v$ and $\frac{d}{dv}\frac1v = -\frac{1}{v^2}$">
+$$\frac{\partial\ell}{\partial v} = -\frac{n}{2v} + \frac{S}{2v^2}$$
+</Step>
+
+<Step justification="first-order condition: multiply by $2v^2 > 0$ to get $-nv + S = 0$" fadeable>
+$$\hat\sigma^2 = \hat v = \frac{S}{n} = \frac1n\sum_{i=1}^{n}\big(x^{(i)} - \hat\mu\big)^2$$
+</Step>
+
+<Step justification="sign check (assuming not all $x^{(i)}$ are equal, so $S > 0$): $\frac{\partial\ell}{\partial v} = \frac{S - nv}{2v^2}$ is positive for $v < S/n$ and negative for $v > S/n$, so $\ell$ rises to $S/n$ and falls after it">
+$$\frac{\partial\ell}{\partial v} \gtrless 0 \iff v \lessgtr \frac{S}{n}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+So the "matching" curve on L5 p.41 is the one centered at the sample mean with the sample's spread. The shifted curve loses through the squared-distance term; the wide curve wins a little on that term and loses more through $-\frac n2\log\sigma^2$, which penalizes spreading probability where there are no data.
+
+<Callout type="beyond">
+
+The MLE divides by $n$. Its expectation is $\frac{n-1}{n}\sigma^2$, so it is biased (see [[unbiased-estimator]]); dividing by $n - 1$ removes the bias. Maximum likelihood does not promise unbiasedness. Lesson 3.4 reuses steps 1–3 with $\mu$ replaced by $\theta^\top x^{(i)}$, and the $\mu$-step becomes least squares.
+
+</Callout>
+
+<Check ids={["q-u3-l2-009", "q-u3-l2-014"]} />
+
+## Explore
+
+<Widget
+  name="coin-mle"
+  sequence="HTHTTT"
+  showLog={true}
+  challenge="Start from the slide's six flips. Where is the peak? Now append flips until the peak sits at 0.5 exactly. How many heads and tails did that take, and how did the curve's width change?"
+/>
+
+<Widget
+  name="likelihood-surface"
+  mode="gaussian"
+  challenge="Drag $\mu$ and $\sigma^2$ to maximize the log-likelihood of the histogram. Then reproduce the three candidates of L5 p.41: shifted left, matching, too wide. Which term of $\ell(\mu, \sigma^2)$ penalizes the wide one?"
+/>
+
+## Worked example
+
+<Example homeworkReviewed case="adverse" title="ADVERSE: event rates as coin flips, and windows over eGFR">
+
+All counts below are computed from `src/data/adverse.json`, the 5,000-patient ADVERSE cohort, in which each record has a 0/1 event label $y$ (hyperkalemia within 90 days) and the generating model's true probability $p$.
+
+**The whole cohort is one coin.** There are 310 events among $n = 5000$ patients. By der-3-2-4 the MLE of the event probability is
+
+$$\hat\theta = \frac{\#\text{events}}{n} = \frac{310}{5000} = 0.062.$$
+
+The log-likelihood $\ell(\theta) = 310\log\theta + 4690\log(1 - \theta)$ is $-1169.24$ at $\theta = 0.05$, $-1162.18$ at $\hat\theta = 0.062$, $-1174.04$ at $0.08$, and $-1207.94$ at $0.10$: largest at the empirical frequency, as the concavity of der-3-2-4 step 8 guarantees. The case specification says "about 0.06"; the average of the records' true $p$ is 0.0619.
+
+**A small sample hits the edge.** The ten patients ADV-0002 through ADV-0011 have no events. Fitted on them alone, the MLE is $\hat\theta = 0/10 = 0$ (der-3-2-4 step 9): the model would call an event impossible. That is the zero-count problem Unit 6 fixes with smoothing.
+
+**Windows over eGFR estimate $P(Y = 1 \mid X)$.** Group patients by kidney function and treat each group as a window (der-3-2-1):
+
+| eGFR window | patients $m$ | events | $\hat p_W$ | average generating $p$ in window |
+|---|---|---|---|---|
+| below 30 | 111 | 47 | 0.4234 | 0.4045 |
+| 30 to 45 | 352 | 53 | 0.1506 | 0.1615 |
+| 45 to 60 | 933 | 95 | 0.1018 | 0.0937 |
+| 60 to 75 | 1390 | 72 | 0.0518 | 0.0536 |
+| 75 to 90 | 1244 | 33 | 0.0265 | 0.0271 |
+| 90 and above | 970 | 10 | 0.0103 | 0.0124 |
+
+Each $\hat p_W$ is a coin-flip MLE within its window. The estimates fall with eGFR, the S-curve of L5 p.31 read from right to left. The errors track der-3-2-1 step 5: in the smallest window, $\sqrt{q(1 - q)/m} \approx \sqrt{0.40 \times 0.60/111} \approx 0.047$, and the estimate is off by about 0.02; in the 1,390-patient window the standard error is about 0.006 and the estimate is off by 0.002.
+
+</Example>
+
+<Example homeworkReviewed case="tropo" title="TROPO: fitting a Gaussian to log troponin">
+
+The TROPO case generates log troponin $t = \log T$ ($T$ in ng/L) for patients without a myocardial infarction from $\mathcal{N}(\log 8,\ 0.6^2)$, that is mean $2.0794$ and variance $0.36$. Computed from `src/data/tropo.json`, the 1,727 patients without an MI give, by der-3-2-6,
+
+$$\hat\mu = \frac{1}{1727}\sum_i t^{(i)} = 2.1222, \qquad \hat\sigma^2 = \frac{1}{1727}\sum_i \big(t^{(i)} - \hat\mu\big)^2 = 0.3478.$$
+
+On the original scale, $e^{\hat\mu} \approx 8.35$ ng/L, close to the specified median of 8. (The stored troponin values are rounded to 0.1 ng/L, which nudges the low values.)
+
+**L5 p.41's three candidates, scored.** Total log-likelihood of the same 1,727 values, and the average per patient:
+
+| candidate | $\mu$ | $\sigma^2$ | $\ell(\mu, \sigma^2)$ | per patient |
+|---|---|---|---|---|
+| shifted left | 1.0794 | 0.36 | $-4147.0$ | $-2.4013$ |
+| too wide | 2.0794 | 1.44 | $-2111.5$ | $-1.2227$ |
+| the specification | 2.0794 | 0.36 | $-1543.4$ | $-0.8937$ |
+| the MLE | 2.1222 | 0.3478 | $-1538.5$ | $-0.8909$ |
+
+The MLE beats even the true generating parameters on this sample, as it must: it is the maximizer of this sample's likelihood. That gap is small here (about 0.003 per patient) and is one face of the optimism of fitted models that Unit 5 studies.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u3-l2-004", "q-u3-l2-006", "q-u3-l2-019", "q-u3-l2-020"]} />
+
+## Pitfalls
+
+<Pitfall title="Spot the error: L6 p.11's + #T/(1−θ)" misconception="mle-coin-derivative-sign">
+
+L6 p.11 writes $\frac{\partial}{\partial\theta}\log P_\theta(\mathcal{D}) = \frac{\#H}{\theta} + \frac{\#T}{1 - \theta} = 0$. For $0 < \theta < 1$ both terms are positive, so this equation has no solution at all. The chain rule gives $\frac{d}{d\theta}\log(1 - \theta) = -\frac{1}{1 - \theta}$, so the condition is $\frac{\#H}{\theta} - \frac{\#T}{1 - \theta} = 0$ (der-3-2-4 step 5), which does give the slide's $\theta^* = \#H/(\#H + \#T)$.
+
+</Pitfall>
+
+<Pitfall title="Maximize the likelihood; minimize the negative log-likelihood" misconception="nll-maximize">
+
+The L6 p.20 poll offers "we do so by maximizing the negative log-likelihood". That finds the parameters under which the data are least probable. Negating turns a maximum into a minimum (der-3-2-3 step 4): maximize $\log L$, or equivalently minimize $-\log L$.
+
+</Pitfall>
+
+<Pitfall title="The 0/1 error is not only discontinuous; it is flat" misconception="zero-one-only-discontinuous">
+
+L5 p.35 says the 0/1 error is "not continuous". Smoothing the jumps would not rescue it: away from the jumps the error is constant, so its gradient is exactly zero (der-3-2-2 step 8), and gradient descent has no direction. A usable surrogate must change when a predicted probability moves toward or away from the label, even when the thresholded prediction does not.
+
+</Pitfall>
+
+<Pitfall title="The majority label is not the probability" misconception="predict-label-not-probability">
+
+At the L5 p.29 stack of 90 red and 10 blue points, "1, because red dominates" is the best hard label, but it is a poor estimate of $P(Y = 1 \mid X = x)$. The maximum-likelihood estimate is the frequency 0.9 (der-3-2-4 with $\#H = 90$, $\#T = 10$). Keeping the probability lets you change the threshold later without refitting, which matters when a missed event costs more than a false alarm.
+
+</Pitfall>
+
+<Pitfall title="The likelihood is not the probability of θ" misconception="likelihood-is-posterior">
+
+$L(\tfrac13) \approx 0.022$ for the six flips does not mean "$\theta = \tfrac13$ with probability 0.022". The likelihood is the probability of the data at a fixed $\theta$; as a function of $\theta$ it need not integrate to 1. The maximum-likelihood estimate answers "which $\theta$ makes these data most probable?", not "which $\theta$ is most probable?"; the second question needs a prior.
+
+</Pitfall>
+
+<Pitfall title="Few observations give extreme estimates" misconception="mle-small-sample-certainty">
+
+With no tails in the data, the coin MLE is $\hat\theta = 1$, and a model fitted to ADV-0002 through ADV-0011 says an event is impossible. The MLE is the frequency in the sample, so a small sample gives an estimate as extreme as the sample. The world-is-boring assumption of L5 p.42 is doing the work; it is weakest exactly when $n$ is small.
+
+</Pitfall>
+
+<Pitfall title="The Gaussian MLE of the variance divides by n" misconception="mle-variance-n-minus-1">
+
+der-3-2-6 step 9 gives $\hat\sigma^2 = \frac1n\sum_i (x^{(i)} - \hat\mu)^2$. The familiar $\frac{1}{n-1}$ version is the unbiased estimator, not the MLE. `np.var` divides by $n$ by default (`ddof=0`), as does the MLE; `pandas.Series.var` divides by $n - 1$.
+
+</Pitfall>
+
+<Pitfall title="σ is a sigmoid on one slide and a standard deviation on the next" misconception="sigma-clash">
+
+L5 uses $\sigma(\cdot)$ for the sigmoid (p.25) and $\sigma^2$ for a Gaussian's variance (p.41); L6 p.13 does the same with the noise in linear regression. They are unrelated. In this course, $\sigma(z)$ followed by a parenthesized argument is the sigmoid; $\sigma^2$ or $\sigma_\varepsilon$ is a spread.
+
+</Pitfall>
+
+<Pitfall title="Not every maximum-likelihood estimate has a closed form" misconception="mle-always-closed-form">
+
+The belief: the coin, die, and Gaussian estimates of this lesson are formulas, so every MLE is a formula. The fix: those first-order conditions happen to be solvable for $\theta$. For logistic regression they are not, and the estimate is found by gradient descent (L5 p.50; lesson 3.3).
+
+</Pitfall>
+
+<Connections>
+
+- Before: 3.1 The sigmoid (the model whose output this lesson interprets); 2.4 Gradient descent (why a zero gradient stops the algorithm).
+- Next: 3.3 Deriving the logistic-regression objective, which applies <EqRef id="eq-3-2-1" /> to $P_\theta(y \mid x) = \sigma(\theta^\top x)^{y}(1 - \sigma(\theta^\top x))^{1 - y}$, drops $\sum_i \log P(x^{(i)})$ by der-3-2-3 step 3, and finds that the result, unlike every estimate here, has no closed form.
+- Then: 3.4 Least squares is Gaussian MLE (der-3-2-6 with $\mu = \theta^\top x$), and MLE as minimizing [[kl-divergence|KL divergence]] to the empirical distribution.
+- Unit 6: the Naive Bayes estimates are der-3-2-4 once per word and class, and der-3-2-5 for the class prior. Unit 7: the GDA estimates are der-3-2-6 in $d$ dimensions.
+- Graph neighbors: [[bernoulli]], [[categorical]], [[gaussian]], [[log-likelihood]], [[zero-one-loss]].
+
+</Connections>
+
+{/* no-homework-bridge: HW2 (logistic regression) is past and has no bridge file; HW3 (live) draws on this lesson only through Units 6 and 7, whose bridges cover it. */}
+
+<Summary>
+
+- **Target:** a classifier should estimate $p(x) = P(Y = 1 \mid X = x)$. A window average of labels is unbiased for $P(Y = 1 \mid X \in W)$ with variance $q(1 - q)/m$.
+- **0/1 error:** $\hat E(\theta) = \frac1n\sum_i \ind{\hat y^{(i)}(\theta) \ne y^{(i)}}$ is piecewise constant in $\theta$; $\nabla_\theta \hat E = 0$ wherever it exists, so gradient descent cannot move.
+- **Likelihood:** $L(\theta) = P_\theta(\mathcal{D}) = \prod_i P_\theta(x^{(i)})$ for i.i.d. data; a function of $\theta$, not a distribution over it.
+- **MLE:** $\hat\theta = \argmax_\theta \sum_i \log P_\theta(x^{(i)}) = \argmin_\theta \big({-\sum_i \log P_\theta(x^{(i)})}\big)$. Logs, added constants, and a sign flip do not move it. Assumption: the data are typical ("the world is a boring place").
+- **Coin:** $\hat\theta = \#H/(\#H + \#T)$; the derivative is $\#H/\theta - \#T/(1 - \theta)$ (L6 p.11 has the sign wrong).
+- **Die:** $\hat p_k = n_k/n$ (Lagrange multiplier $\lambda = n$).
+- **Gaussian:** $\hat\mu = \frac1n\sum_i x^{(i)}$, $\hat\sigma^2 = \frac1n\sum_i (x^{(i)} - \hat\mu)^2$ (divides by $n$).
+
+</Summary>

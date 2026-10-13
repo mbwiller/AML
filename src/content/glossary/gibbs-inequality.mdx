@@ -1,0 +1,16 @@
+---
+id: gibbs-inequality
+term: Gibbs' inequality
+aliases: [KL is nonnegative, information inequality]
+field: information-theory
+firstUsedIn: u3-logistic-regression-and-mle
+related: [kl-divergence, entropy, log-rules, convex-function]
+---
+
+**What it is.** For any two distributions $p$ and $q$ on the same outcomes,
+
+$$D_{\mathrm{KL}}(p \,\|\, q) \ge 0, \quad \text{with equality if and only if } p = q.$$
+
+Equivalently, $-\sum_x p(x)\log q(x) \ge -\sum_x p(x)\log p(x)$: scoring draws from $p$ with any other distribution costs more on average. The proof applies $\log t \le t - 1$, with equality only at $t = 1$, to $t = q(x)/p(x)$ and sums over the outcomes; Jensen's inequality for the concave $\log$ gives the same result.
+
+**How ML uses it.** It is why "minimize the KL to the data" has the right answer: the best possible model is the data distribution itself, with divergence 0. It also guarantees that the expected log-likelihood of a model never exceeds that of the truth.

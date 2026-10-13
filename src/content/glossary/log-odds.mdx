@@ -1,0 +1,16 @@
+---
+id: log-odds
+term: Log-odds (logit)
+aliases: [logit, odds, log odds, inverse sigmoid]
+field: probability
+firstUsedIn: u3-logistic-regression-and-mle
+related: [sigmoid, bernoulli, log-rules]
+---
+
+**What it is.** For a probability $p \in (0, 1)$, the odds are $\frac{p}{1 - p}$ (a number in $(0, \infty)$; $p = 0.8$ gives odds 4, "4 to 1") and the log-odds, or logit, is
+
+$$\operatorname{logit}(p) = \log\frac{p}{1 - p} \in \mathbb{R}.$$
+
+It is 0 at $p = \tfrac12$, positive above, negative below, and $\operatorname{logit}(1 - p) = -\operatorname{logit}(p)$. It is the inverse of the sigmoid: $\sigma(z) = p \iff z = \operatorname{logit}(p)$.
+
+**How ML uses it.** Logistic regression says the log-odds of class 1 are linear, $\operatorname{logit}(P(y = 1 \mid x)) = \theta^\top x$, so raising feature $x_j$ by one unit multiplies the odds by $e^{\theta_j}$. Naive Bayes and shared-covariance GDA also produce log-odds that are linear in $x$.

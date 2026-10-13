@@ -1,0 +1,1530 @@
+# Quiz bank: Unit 3, Logistic regression and maximum likelihood.
+# Format: docs/CONTENT_AUTHORING.md §7. Poll items carry source "L<n> p.<k> poll" and the course
+# map's suggested key. The L6 p.20 poll lives in lesson 3.2's section; lesson 3.3's Checks reuse those items.
+# Numeric values are toy values or computed from src/data/*.json; none comes from HW3.
+
+# ---------- Lesson 3.1: classification-and-the-sigmoid ----------
+# Poll items carry source "L5 p.38 poll" (docs/course-map/02-lectures-L4-L5.md, L5 poll section).
+# The p.38 "select all correct statements" poll is split into one true/false item per statement.
+# Statements 1 and 2 (linear boundary; nonlinear boundaries via features) are here; statement 3
+# (no closed form) belongs to lesson 3.3. The p.12 poll is Unit 2's; the p.49 poll is lesson 3.2's.
+
+- id: q-u3-l1-001
+  lesson: classification-and-the-sigmoid
+  concepts: [log-odds-logit, sigmoid-function]
+  type: mc
+  difficulty: 1
+  source: "L5 p.38 poll"
+  prompt: |
+    True or false: logistic regression learns a linear decision boundary between 2 classes.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False", misconception: sigmoid-boundary-curved }
+  explanation: |
+    True (the course map's key). The sigmoid is strictly increasing with $\sigma(0) = \tfrac12$, so $\sigma(\theta^\top x) \ge \tfrac12$ exactly when $\theta^\top x \ge 0$ (der-3-1-7 step 2). The boundary $\theta^\top x = 0$ is a hyperplane in the features the model sees.
+  discriminates: [log-odds-logit, sigmoid-function]
+
+- id: q-u3-l1-002
+  lesson: classification-and-the-sigmoid
+  concepts: [log-odds-logit]
+  type: mc
+  difficulty: 2
+  source: "L5 p.38 poll"
+  prompt: |
+    True or false: logistic regression can also learn nonlinear decision boundaries (nonlinear with respect to the features).
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True, in the sense the course map's key gives: if the model is fed engineered features $\phi(x)$, such as $x_1^2$ or $x_1 x_2$, the boundary $\theta^\top \phi(x) = 0$ is a hyperplane in $\phi$-space but a curve in the original inputs. The sigmoid itself never bends the boundary (der-3-1-7); the curvature comes from the feature map.
+
+- id: q-u3-l1-003
+  lesson: classification-and-the-sigmoid
+  concepts: [thresholded-linear-regression-fails]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    You fit least squares to 0/1 labels and predict class 1 when the fitted value exceeds 0.5. Which statement is true for every such model whose slope vector $w = (\theta_1, \dots, \theta_d)$ is nonzero?
+  options:
+    - {
+        text: "Some inputs get fitted values above 1 and some get fitted values below 0.",
+        correct: true,
+      }
+    - {
+        text: "Fitted values stay in $[0, 1]$ because the labels are in $\\{0, 1\\}$.",
+        misconception: linreg-bounded-by-labels,
+      }
+    - {
+        text: "Fitted values can exceed 1 but never fall below 0.",
+        misconception: linreg-bounded-by-labels,
+      }
+    - {
+        text: "Clipping the fitted values to $[0, 1]$ fixes the boundary as well.",
+        misconception: threshold-linreg-only-bounds,
+      }
+  explanation: |
+    Along the direction $u = t\,w$ the score is $\theta_0 + t\lVert w \rVert_2^2$, a line in $t$ with positive slope, so it passes above 1 and below 0 (der-3-1-2). Clipping repairs the outputs but not the fit: squared error still lets far, correctly classified points drag the threshold (the lesson's Intuition).
+
+- id: q-u3-l1-004
+  lesson: classification-and-the-sigmoid
+  concepts: [classification-vs-regression]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    For a label $Y \in \{0, 1\}$, the predictor $h(x)$ that minimizes the expected squared error $\mathbb{E}[(Y - h(X))^2]$ is
+  options:
+    - { text: "$P(Y = 1 \\mid X = x)$", correct: true }
+    - {
+        text: "the most likely label at $x$, which is 0 or 1",
+      }
+    - { text: "$\\tfrac12$ for every $x$" }
+    - {
+        text: "$\\log\\frac{P(Y = 1 \\mid X = x)}{P(Y = 0 \\mid X = x)}$",
+      }
+  explanation: |
+    The minimizer is the conditional mean (der-2-1-5), and for a 0/1 label $\mathbb{E}[Y \mid X = x] = 0 \cdot P(Y = 0 \mid x) + 1 \cdot P(Y = 1 \mid x) = P(Y = 1 \mid x)$ (der-3-1-1). Squared error rewards hedging, so it targets the probability, not the hard label.
+
+- id: q-u3-l1-005
+  lesson: classification-and-the-sigmoid
+  concepts: [sigmoid-function]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A logistic model gives $\sigma(z) = s = 0.73$ for some score $z$. What is $\sigma(-z)$? Give two decimal places.
+  answer: 0.27
+  tolerance: 0.005
+  seeded: { s: [0.6, 0.73, 0.85, 0.9, 0.95] }
+  formula: "1 - s"
+  explanation: |
+    $\sigma(-z) = 1 - \sigma(z)$ (der-3-1-3 step 11). In logistic regression this is why $P_\theta(y = 0 \mid x) = \sigma(-\theta^\top x)$: swapping the labels negates $\theta$.
+
+- id: q-u3-l1-006
+  lesson: classification-and-the-sigmoid
+  concepts: [sigmoid-derivative]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    At some score $z$ the sigmoid equals $s = 0.2$. What is $\sigma'(z)$? Give two decimal places.
+  answer: 0.16
+  tolerance: 0.005
+  seeded: { s: [0.1, 0.2, 0.3, 0.5, 0.8] }
+  formula: "s * (1 - s)"
+  explanation: |
+    $\sigma'(z) = \sigma(z)(1 - \sigma(z)) = 0.2 \times 0.8 = 0.16$ (der-3-1-4 step 6). You never need $z$ itself; this is why the derivative is cheap once $\sigma(z)$ has been computed.
+
+- id: q-u3-l1-007
+  lesson: classification-and-the-sigmoid
+  concepts: [log-odds-logit]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Which score $z$ gives $\sigma(z) = p$ for $p = 0.8$? Give three decimal places.
+  answer: 1.386
+  tolerance: 0.0005
+  seeded: { p: [0.2, 0.5, 0.8, 0.9, 0.99] }
+  formula: "log(p / (1 - p))"
+  explanation: |
+    By der-3-1-5, $z = \log\frac{p}{1 - p} = \log 4 \approx 1.386$. Odds of 4 to 1 correspond to log-odds $\log 4$; $p = 0.5$ gives $z = 0$, and $p = 0.2$ gives $-\log 4$, by the symmetry of der-3-1-3.
+
+- id: q-u3-l1-008
+  lesson: classification-and-the-sigmoid
+  concepts: [sigmoid-derivative]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-3-1-4
+  corrupt:
+    {
+      step: 5,
+      replaceTex: '\frac{e^{-z}}{1 + e^{-z}} = \sigma(z)',
+      explanation: 'The fraction with $e^{-z}$ on top is $\sigma(-z)$, which equals $1 - \sigma(z)$ by der-3-1-3. With this error the result would read $\sigma'' = \sigma^2$, which is largest where $\sigma$ is near 1, but the sigmoid flattens there.',
+    }
+
+- id: q-u3-l1-009
+  lesson: classification-and-the-sigmoid
+  concepts: [log-odds-logit]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-3-1-5
+  corrupt:
+    {
+      step: 5,
+      replaceTex: 'z = \log\frac{1 - p}{p}',
+      explanation: 'Step 4 gives $-z = \log\frac{1-p}{p}$; multiplying by $-1$ flips the fraction inside the log. The corrupted version would give $z > 0$ for $p < \tfrac12$, contradicting $\sigma(z) > \tfrac12 \iff z > 0$.',
+    }
+
+- id: q-u3-l1-010
+  lesson: classification-and-the-sigmoid
+  concepts: [sigmoid-derivative]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of der-3-1-4 (the derivative of the sigmoid) in order.
+  items:
+    - 'Write $\sigma(z) = (1 + e^{-z})^{-1}$.'
+    - 'Apply the chain rule to the power $-1$: $\sigma''(z) = -(1 + e^{-z})^{-2} \cdot \frac{d}{dz}(1 + e^{-z})$.'
+    - "Differentiate $e^{-z}$ to $-e^{-z}$; the minus signs cancel, giving $e^{-z}/(1 + e^{-z})^2$."
+    - 'Split into $\frac{1}{1 + e^{-z}} \cdot \frac{e^{-z}}{1 + e^{-z}}$.'
+    - 'Recognize the factors as $\sigma(z)$ and $1 - \sigma(z)$.'
+  explanation: |
+    Differentiate first (chain rule twice), then rewrite in terms of $\sigma$ itself. The last move uses the symmetry $1 - \sigma(z) = \sigma(-z) = e^{-z}/(1 + e^{-z})$ from der-3-1-3.
+
+- id: q-u3-l1-011
+  lesson: classification-and-the-sigmoid
+  concepts: [log-odds-logit]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    In a fitted logistic regression the coefficient of a binary feature (NSAID use) is $\theta_j = 1.2$. For a patient who starts an NSAID, with every other feature unchanged, which statement is true?
+  options:
+    - {
+        text: "The odds of the event are multiplied by $e^{1.2} \\approx 3.32$, whatever the patient's other features.",
+        correct: true,
+      }
+    - {
+        text: "The probability of the event rises by 1.2.",
+        misconception: coef-is-probability-change,
+      }
+    - {
+        text: "The probability of the event is multiplied by $e^{1.2}$.",
+        misconception: odds-ratio-is-risk-ratio,
+      }
+    - {
+        text: "The probability rises by the same amount for every patient.",
+        misconception: coef-is-probability-change,
+      }
+  explanation: |
+    The log-odds are $\theta^\top x$, so adding 1 to $x_j$ adds $\theta_j$ to the log-odds and multiplies the odds by $e^{\theta_j}$ (der-3-1-6). The probability change is $\sigma'(\xi)\,\theta_j$ for some score $\xi$ between the two (the mean value theorem: the average slope equals the slope at some point in between); it depends on the patient and is at most $\lvert\theta_j\rvert / 4$. Multiplying a probability by 3.32 could exceed 1; multiplying odds cannot break anything.
+
+- id: q-u3-l1-012
+  lesson: classification-and-the-sigmoid
+  concepts: [log-odds-logit]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A logistic model has coefficient $b = 1.2$ on a binary feature. By what factor does switching that feature from 0 to 1 multiply a patient's odds of the event? Give two decimal places.
+  answer: 3.32
+  tolerance: 0.005
+  seeded: { b: [0.6, 1.2, 0.03, 0.05] }
+  formula: "exp(b)"
+  explanation: |
+    The odds ratio for a one-unit increase is $e^{b}$ (der-3-1-6), here $e^{1.2} \approx 3.320$. The lesson's worked example checks it on patient ADV-0023: odds $0.2118$ without and $0.7033$ with the NSAID. The other seeded values are ADVERSE's high-potassium, per-year-of-age, and per-milligram coefficients.
+
+- id: q-u3-l1-013
+  lesson: classification-and-the-sigmoid
+  concepts: [sigmoid-derivative]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Where is the sigmoid steepest, and how steep is it there?
+  options:
+    - { text: "At $z = 0$, with slope $\\tfrac14$", correct: true }
+    - { text: "At $z = 0$, with slope 1", misconception: sigmoid-slope-value-not-derivative }
+    - {
+        text: "At $z = 0$, with slope $\\tfrac12$",
+        misconception: sigmoid-slope-value-not-derivative,
+      }
+    - {
+        text: "It has no steepest point; the slope grows without bound as $z \\to \\infty$",
+      }
+  explanation: |
+    $\sigma'(z) = \sigma(1 - \sigma) = \tfrac14 - (\sigma - \tfrac12)^2 \le \tfrac14$, with equality only where $\sigma(z) = \tfrac12$, at $z = 0$ (der-3-1-4 steps 8 and 9). The value $\tfrac12$ is $\sigma(0)$, not its slope.
+
+- id: q-u3-l1-014
+  lesson: classification-and-the-sigmoid
+  concepts: [sigmoid-function]
+  type: predict
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Predict the output.
+    ```python
+    import numpy as np
+    z = np.array([0., 2., -2.])
+    print(np.round(1 / (1 + np.exp(-z)), 3))
+    ```
+  options:
+    - { text: "`[0.5   0.881 0.119]`", correct: true }
+    - { text: "`[0.    0.881 0.119]`" }
+    - { text: "`[0.5   0.119 0.881]`" }
+    - { text: "`[1.    1.    0.   ]`" }
+  explanation: |
+    $\sigma(0) = \tfrac12$ (der-3-1-3 step 4); $\sigma$ is increasing, so $\sigma(2) > \tfrac12$; and $\sigma(-2) = 1 - \sigma(2)$ by symmetry, so the last two entries sum to 1. The sigmoid never reaches exactly 0 or 1, so the last option is impossible even before rounding.
+
+- id: q-u3-l1-015
+  lesson: classification-and-the-sigmoid
+  concepts: [log-odds-logit]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    A safety team flags a patient when $\sigma(\theta^\top x) \ge t = 0.2$ instead of $0.5$. The new decision boundary is
+  options:
+    - {
+        text: "the hyperplane $\\theta^\\top x = \\log\\frac{0.2}{0.8} = -\\log 4$, parallel to $\\theta^\\top x = 0$",
+        correct: true,
+      }
+    - {
+        text: "the hyperplane $\\theta^\\top x = 0.2$",
+        misconception: threshold-on-score-scale,
+      }
+    - {
+        text: "a curved surface, because the sigmoid is nonlinear",
+        misconception: sigmoid-boundary-curved,
+      }
+    - {
+        text: "still $\\theta^\\top x = 0$; the threshold does not move the boundary",
+      }
+  explanation: |
+    $\sigma$ is strictly increasing, so $\sigma(\theta^\top x) \ge t \iff \theta^\top x \ge \sigma^{-1}(t) = \log\frac{t}{1 - t}$ (der-3-1-7 steps 4 and 5). Lowering $t$ slides the hyperplane toward the class-0 side, so more patients are flagged; Unit 4 chooses $t$ from the costs of missed events and false alarms.
+
+- id: q-u3-l1-016
+  lesson: classification-and-the-sigmoid
+  concepts: [sigmoid-function]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    For which real scores $z$ is $\sigma(z) = 1$ exactly?
+  options:
+    - {
+        text: "None; $\\sigma(z) < 1$ for every real $z$, and 1 is only the limit as $z \\to \\infty$.",
+        correct: true,
+      }
+    - {
+        text: "Every $z$ above about 40, where floating-point arithmetic rounds it to 1.",
+        misconception: sigmoid-reaches-0-1,
+      }
+    - { text: "Exactly $z = 1$" }
+    - { text: "Every $z \\ge 0$" }
+  explanation: |
+    $1 + e^{-z} > 1$ for every real $z$, so $\sigma(z) = 1/(1 + e^{-z}) < 1$ (der-3-1-3 steps 1 to 3 and 7). A computer may print 1.0 for large $z$, but that is rounding, not mathematics; it is also why careful code computes $\log\sigma(z)$ directly rather than taking the log of a rounded 1.0 or 0.0.
+
+# ---------- Lesson 3.2: maximum-likelihood-principle ----------
+# Poll items: L5 p.49 and L6 p.20 "Select all correct statements" (docs/course-map/02-lectures-L4-L5.md,
+# L5 poll section; docs/course-map/03-lectures-L6-L7.md, L6 poll section), split into one true/false item
+# per statement with the course map's key. The L5 p.38 poll (decision boundary, closed form) belongs to
+# lessons 3.1 and 3.3.
+
+- id: q-u3-l2-001
+  lesson: maximum-likelihood-principle
+  concepts: [mle-principle]
+  type: mc
+  difficulty: 1
+  source: "L5 p.49 poll"
+  prompt: |
+    True or false: maximum-likelihood estimation of probability distributions is based on the theory that the world is a terribly boring place.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True (the course map's key, following L5 p.42). The assumption is that the observed data are typical of the process that generated them, so a good distribution should give them high probability. The slide adds that this is "not necessarily true": an unrepresentative sample is fitted just as faithfully.
+  discriminates: [mle-principle, maximum-likelihood-estimation]
+
+- id: q-u3-l2-002
+  lesson: maximum-likelihood-principle
+  concepts: [maximum-likelihood-estimation]
+  type: mc
+  difficulty: 1
+  source: "L5 p.49 poll"
+  prompt: |
+    True or false: maximum-likelihood estimation estimates the values of the parameters of a probability distribution such that they maximize the probability of the training data.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False", misconception: likelihood-is-posterior }
+  explanation: |
+    True. $\hat\theta = \argmax_\theta P_\theta(\mathcal{D})$ (equation 3.2.1). Note what it does not say: it does not maximize the probability of $\theta$ given the data, which would need a prior.
+  discriminates: [maximum-likelihood-estimation, likelihood-vs-probability]
+
+- id: q-u3-l2-003
+  lesson: maximum-likelihood-principle
+  concepts: [mle-principle]
+  type: mc
+  difficulty: 1
+  source: "L6 p.20 poll"
+  prompt: |
+    True or false: MLE is a general principle for defining the objective (loss) of a supervised machine-learning problem; it works beyond logistic regression.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True. Any model that assigns a probability to the data defines a negative log-likelihood loss. In this lesson it gives estimates for a coin, a die, and a Gaussian; in lesson 3.4 it gives least squares; in Units 6 and 7 it fits Naive Bayes and GDA.
+  discriminates: [mle-principle]
+
+- id: q-u3-l2-004
+  lesson: maximum-likelihood-principle
+  concepts: [mle-principle, mle-coin-flip]
+  type: mc
+  difficulty: 2
+  source: "L6 p.20 poll"
+  prompt: |
+    True or false: the maximum-likelihood estimate can always be solved for directly, without gradient descent.
+  options:
+    - { text: "True", misconception: mle-always-closed-form }
+    - { text: "False", correct: true }
+  explanation: |
+    False. The coin, die, and Gaussian estimates of this lesson have closed forms (der-3-2-4, der-3-2-5, der-3-2-6), but the first-order condition for logistic regression cannot be solved for $\theta$ in closed form (lesson 3.3).
+  discriminates: [mle-principle, mle-coin-flip]
+
+- id: q-u3-l2-005
+  lesson: maximum-likelihood-principle
+  concepts: [mle-principle]
+  type: mc
+  difficulty: 1
+  source: "L6 p.20 poll"
+  prompt: |
+    True or false: when deriving the MLE we need to write down the likelihood of the data given the model parameters, under the modeling assumptions.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True. The likelihood is the first step of every derivation in this lesson, and it uses the assumptions explicitly: i.i.d. draws turn it into a product (der-3-2-4 step 2), and the chosen family (Bernoulli, categorical, Gaussian) supplies each factor.
+  discriminates: [mle-principle, iid]
+
+- id: q-u3-l2-006
+  lesson: maximum-likelihood-principle
+  concepts: [mle-principle]
+  type: mc
+  difficulty: 1
+  source: "L6 p.20 poll"
+  prompt: |
+    True or false: the goal of MLE is to find the parameters within the chosen model class that are most likely to generate the data, and we do so by maximizing the negative log-likelihood.
+  options:
+    - { text: "True", misconception: nll-maximize }
+    - { text: "False", correct: true }
+  explanation: |
+    False. The first half is right; the second has the sign backwards. Negating reverses the inequality (der-3-2-3 step 4), so we minimize the negative log-likelihood, or equivalently maximize the log-likelihood.
+  discriminates: [mle-principle, log-likelihood]
+
+- id: q-u3-l2-007
+  lesson: maximum-likelihood-principle
+  concepts: [mle-coin-flip]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A biased coin is flipped independently; you observe $H = 12$ heads and $T = 28$ tails. What is the maximum-likelihood estimate of the probability of heads? Give two decimals.
+  answer: 0.3
+  tolerance: 0.005
+  seeded: { H: [3, 7, 12, 18, 25], T: [5, 13, 28, 32] }
+  formula: "H / (H + T)"
+  explanation: |
+    By der-3-2-4, $\hat\theta = \#H/(\#H + \#T)$: the empirical frequency of heads.
+
+- id: q-u3-l2-008
+  lesson: maximum-likelihood-principle
+  concepts: [mle-coin-flip]
+  type: which-step
+  difficulty: 2
+  source: "L6 p.11 (slide error)"
+  derivation: der-3-2-4
+  corrupt:
+    {
+      step: 5,
+      replaceTex: '\ell''(\theta) = \frac{\#H}{\theta} + \frac{\#T}{1 - \theta}',
+      explanation: "This is the L6 p.11 sign error. The chain rule gives $\\frac{d}{d\\theta}\\log(1 - \\theta) = -\\frac{1}{1 - \\theta}$. With a plus sign, both terms are positive on $(0, 1)$, so the derivative could never be zero there.",
+    }
+
+- id: q-u3-l2-009
+  lesson: maximum-likelihood-principle
+  concepts: [mle-gaussian]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-3-2-6
+  corrupt:
+    {
+      step: 9,
+      replaceTex: '\hat\sigma^2 = \hat v = \frac{S}{n - 1} = \frac{1}{n - 1}\sum_{i=1}^{n}\big(x^{(i)} - \hat\mu\big)^2',
+      explanation: "Setting $-nv + S = 0$ gives $v = S/n$. Dividing by $n - 1$ gives the unbiased estimator, which is not the maximizer of the likelihood.",
+    }
+
+- id: q-u3-l2-010
+  lesson: maximum-likelihood-principle
+  concepts: [mle-dice]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A die is rolled $n = 60$ times and face 4 comes up $c = 15$ times. What is the maximum-likelihood estimate of $p_4$? Give two decimals.
+  answer: 0.25
+  tolerance: 0.005
+  seeded: { c: [6, 9, 15, 20], n: [40, 60, 80, 120] }
+  formula: "c / n"
+  explanation: |
+    By der-3-2-5, $\hat p_k = n_k/n$, so $\hat p_4 = c/n$. The other faces' counts do not matter for $\hat p_4$ beyond fixing the total $n$.
+
+- id: q-u3-l2-011
+  lesson: maximum-likelihood-principle
+  concepts: [zero-one-loss-not-optimizable]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Why can gradient descent not be run directly on the 0/1 training error $\hat E(\theta) = \frac1n\sum_i \ind{\hat y^{(i)}(\theta) \ne y^{(i)}}$?
+  options:
+    - {
+        text: "Its gradient is zero wherever it exists, so every update leaves $\\theta$ unchanged",
+        correct: true,
+      }
+    - {
+        text: "It is discontinuous, and gradient descent needs only continuity",
+        misconception: zero-one-only-discontinuous,
+      }
+    - { text: "It can be negative, so it has no minimum" }
+    - { text: "It is a convex function with many global minima" }
+  explanation: |
+    $\hat E$ is constant on a small ball around every $\theta$ that lies on none of the hyperplanes $\theta^\top x^{(i)} = 0$ (der-3-2-2 step 7), so $\nabla_\theta \hat E = 0$ there (step 8) and $\theta^{(t+1)} = \theta^{(t)}$ (step 10). On the hyperplanes it jumps and has no gradient at all.
+  discriminates: [zero-one-loss-not-optimizable, zero-one-loss]
+
+- id: q-u3-l2-012
+  lesson: maximum-likelihood-principle
+  concepts: [zero-one-loss-not-optimizable]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Two training points, $x^{(1)} = -1$ with $y^{(1)} = 0$ and $x^{(2)} = 2$ with $y^{(2)} = 1$, and a model with no intercept that predicts $\hat y = \ind{\theta_1 x \ge 0}$. What is the 0/1 training error $\hat E$ at $\theta_1 = 0$?
+  answer: 0.5
+  tolerance: 0.001
+  explanation: |
+    At $\theta_1 = 0$ both scores are 0, so both predictions are 1. The first point is wrong and the second right: $\hat E = \tfrac12$. For $\theta_1 > 0$ the error is 0 and for $\theta_1 < 0$ it is 1, a staircase with zero slope everywhere except at the jump.
+
+- id: q-u3-l2-013
+  lesson: maximum-likelihood-principle
+  concepts: [conditional-probability-window-estimate, mle-coin-flip]
+  type: mc
+  difficulty: 1
+  source: "L5 p.29 (discussion prompt)"
+  prompt: |
+    At one input $x$ there are 90 training points with $y = 1$ and 10 with $y = 0$. Treating the labels at $x$ as independent coin flips, what is the maximum-likelihood estimate of $P(Y = 1 \mid X = x)$?
+  options:
+    - { text: "0.9", correct: true }
+    - {
+        text: "1, because class 1 is the majority",
+        misconception: predict-label-not-probability,
+      }
+    - { text: "0.5, because there are two classes" }
+    - { text: "9, the odds of class 1" }
+  explanation: |
+    The coin-flip MLE is the empirical frequency, $90/(90 + 10) = 0.9$ (der-3-2-4). The majority label 1 is the best hard prediction, but it is not an estimate of the probability.
+  discriminates: [conditional-probability-window-estimate, mle-coin-flip]
+
+- id: q-u3-l2-014
+  lesson: maximum-likelihood-principle
+  concepts: [mle-gaussian]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Fit a Gaussian $\mathcal{N}(\mu, \sigma^2)$ by maximum likelihood to the three observations $2, 4, 9$. What is $\hat\sigma^2$? Give two decimals.
+  answer: 8.667
+  tolerance: 0.01
+  explanation: |
+    $\hat\mu = (2 + 4 + 9)/3 = 5$ (der-3-2-6 step 5). The squared deviations are $9, 1, 16$, so $\hat\sigma^2 = 26/3 \approx 8.67$ (step 9). Dividing by $n - 1 = 2$ would give 13, the unbiased estimate, not the MLE.
+
+- id: q-u3-l2-015
+  lesson: maximum-likelihood-principle
+  concepts: [conditional-probability-window-estimate]
+  type: mc
+  difficulty: 2
+  source: "L5 p.31 (extension)"
+  prompt: |
+    You estimate $P(Y = 1 \mid X \approx x_0)$ by averaging the labels of the training points in a window around $x_0$. What happens as you make the window narrower?
+  options:
+    - {
+        text: "The window's target probability moves toward $P(Y = 1 \\mid X = x_0)$, but fewer points fall in it, so the estimate's variance $q(1 - q)/m$ grows",
+        correct: true,
+      }
+    - {
+        text: "The estimate becomes exact, because the window contains only points at $x_0$",
+      }
+    - {
+        text: "The variance falls, because the points in the window are more similar",
+      }
+    - { text: "Nothing changes; the average is unbiased for any window" }
+  explanation: |
+    der-3-2-1 steps 5 and 6. The average is unbiased for $q = P(Y = 1 \mid X \in W)$, which approaches $p(x_0)$ as $W$ shrinks (if $p$ is continuous), but $m$ shrinks too. At $m = 1$ the estimate is a single label, 0 or 1: the staircase of L5 p.28.
+  discriminates: [conditional-probability-window-estimate]
+
+- id: q-u3-l2-016
+  lesson: maximum-likelihood-principle
+  concepts: [mle-dice]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-3-2-5
+  corrupt:
+    {
+      step: 6,
+      replaceTex: '\sum_{k=1}^{6}\frac{n_k}{\lambda} = 1 \iff \lambda = 6',
+      explanation: "Solving $\\sum_k n_k/\\lambda = 1$ gives $\\lambda = \\sum_k n_k = n$, the number of rolls, not the number of faces. With $\\lambda = 6$ the estimates would not sum to 1.",
+    }
+
+- id: q-u3-l2-017
+  lesson: maximum-likelihood-principle
+  concepts: [maximum-likelihood-estimation]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    For the flips $H, T, H, T, T, T$, the likelihood at $\theta = \tfrac13$ is $L(\tfrac13) = \tfrac{16}{729} \approx 0.022$. Which statement is correct?
+  options:
+    - {
+        text: "If the head probability were $\\tfrac13$, this exact sequence would occur with probability about 0.022",
+        correct: true,
+      }
+    - {
+        text: "The probability that $\\theta = \\tfrac13$, given these flips, is about 0.022",
+        misconception: likelihood-is-posterior,
+      }
+    - { text: "Since 0.022 is small, $\\theta = \\tfrac13$ is a poor estimate" }
+    - {
+        text: "The area under $L(\\theta)$ over $[0, 1]$ is 1, so 0.022 is a density value for $\\theta$",
+        misconception: likelihood-is-posterior,
+      }
+  explanation: |
+    The likelihood is the probability of the data at a fixed $\theta$. Every particular sequence of six flips is improbable, so the peak is low; only its location matters. $L(\theta)$ is not a distribution over $\theta$: here $\int_0^1 \theta^2(1-\theta)^4\,d\theta = 1/105$, not 1.
+  discriminates: [maximum-likelihood-estimation, likelihood-vs-probability]
+
+- id: q-u3-l2-018
+  lesson: maximum-likelihood-principle
+  concepts: [mle-coin-flip]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Ten patients in a cohort have no adverse events. Fitted to these ten alone, what does the maximum-likelihood estimate of the event probability say?
+  options:
+    - {
+        text: "$\\hat\\theta = 0$: an event is impossible, which is the sample's frequency taken literally",
+        correct: true,
+      }
+    - {
+        text: "$\\hat\\theta = 0.5$, because with no events the data carry no information",
+      }
+    - {
+        text: "The MLE does not exist, because the first-order condition has no solution",
+      }
+    - { text: "$\\hat\\theta = 1/10$, one pseudo-event per ten patients" }
+  explanation: |
+    With $\#H = 0$, $L(\theta) = (1 - \theta)^{10}$ is decreasing on $[0, 1]$, so the maximum is at the edge $\theta = 0$ (der-3-2-4 step 9); the formula $\#H/(\#H + \#T)$ still gives it. The derivative condition fails only because the maximum is on the boundary. Smoothing (Unit 6) is the fix for small counts.
+  discriminates: [mle-coin-flip]
+
+- id: q-u3-l2-019
+  lesson: maximum-likelihood-principle
+  concepts: [mle-principle]
+  type: order
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Put the steps of a maximum-likelihood derivation in order (L6 pp.8–11).
+  items:
+    - "Choose a family $P_\\theta$ for one observation."
+    - "Use the i.i.d. assumption to write the likelihood as a product $\\prod_i P_\\theta(x^{(i)})$."
+    - "Take logs so the product becomes a sum."
+    - "Differentiate with respect to $\\theta$ and set the derivative to zero."
+    - "Solve for $\\hat\\theta$."
+    - "Check the second derivative (or the boundary) to confirm a maximum."
+  explanation: |
+    This is the order of der-3-2-4. Taking logs is allowed because $\log$ is increasing (der-3-2-3), and the check matters: a critical point can be a minimum, and the maximum can sit on the boundary when a count is zero.
+
+- id: q-u3-l2-020
+  lesson: maximum-likelihood-principle
+  concepts: [mle-gaussian]
+  type: predict
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Predict the two printed values.
+    ```python
+    import numpy as np
+    x = np.array([2.0, 4.0, 9.0])
+    print(x.var(), x.var(ddof=1))
+    ```
+  options:
+    - { text: "`8.666666666666666 13.0`", correct: true }
+    - {
+        text: "`13.0 8.666666666666666`",
+        misconception: mle-variance-n-minus-1,
+      }
+    - { text: "`13.0 13.0`" }
+    - { text: "`26.0 13.0`" }
+  explanation: |
+    `np.var` divides by $n - \text{ddof}$, and `ddof` defaults to 0, so `x.var()` is the maximum-likelihood $\hat\sigma^2 = 26/3$ (der-3-2-6 step 9). `ddof=1` divides by $n - 1 = 2$, the unbiased estimate.
+
+# ---------- Lesson 3.3: deriving-the-logistic-regression-objective ----------
+# Poll items carry source "L<n> p.<k> poll" and the course map's suggested key
+# (docs/course-map/02-lectures-L4-L5.md, L5 poll section; 03-lectures-L6-L7.md, L6 poll section).
+# L5 p.38 statement 3 is item 010. The L6 p.20 poll lives in lesson 3.2's section; this lesson's Checks reuse those items.
+# L5 p.38 statements 1-2 (decision boundary) belong to lesson 3.1; L6 p.20 (a) and L5 p.49 to lesson 3.2.
+
+- id: q-u3-l3-001
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [logistic-regression-model]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    In logistic regression, $P_\theta(y = 1 \mid x) = \sigma(\theta^\top x)$. What does the model say about how the inputs $x$ are distributed?
+  options:
+    - {
+        text: "Nothing: it models only the conditional distribution of $y$ given $x$",
+        correct: true,
+      }
+    - {
+        text: "That $x$ is Gaussian within each class",
+        misconception: lr-dropped-px,
+      }
+    - {
+        text: "That $x$ is uniform, which is why $P(x)$ drops out of the likelihood",
+        misconception: lr-dropped-px,
+      }
+    - {
+        text: 'That $x$ follows a Bernoulli distribution with parameter $\sigma(\theta^\top x)$',
+      }
+  explanation: |
+    def-3-3-1 specifies $y \mid x \sim \mathrm{Bernoulli}(\sigma(\theta^\top x))$ and nothing else. That is why $\sum_i \log P(x^{(i)})$ carries no $\theta$ and can be dropped (der-3-3-1 step 6). It is the label, not the input, that is Bernoulli. A model that also assumes Gaussian inputs per class is GDA (Unit 7).
+  discriminates: [logistic-regression-model, discriminative-model]
+
+- id: q-u3-l3-003
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [bernoulli-cross-entropy-equivalence]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The slides write the probability of a label as $y\hat p + (1 - y)(1 - \hat p)$; the course convention is $\hat p^{\,y}(1 - \hat p)^{1-y}$. For which values of $y$ are the two equal for every $\hat p \in (0, 1)$?
+  options:
+    - { text: 'Exactly $y \in \{0, 1\}$', correct: true }
+    - {
+        text: 'Every $y \in [0, 1]$',
+        misconception: lr-additive-form-soft-labels,
+      }
+    - { text: "Only $y = 1$" }
+    - { text: "They are never equal; the slides use an approximation" }
+  explanation: |
+    der-3-3-2 steps 1–2 check $y = 1$ (both give $\hat p$) and $y = 0$ (both give $1 - \hat p$). For a fractional label they differ: at $y = \tfrac12$ the additive form is the constant $\tfrac12$, while the product form is $\sqrt{\hat p(1 - \hat p)}$.
+  discriminates: [bernoulli-cross-entropy-equivalence]
+
+- id: q-u3-l3-005
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [logistic-gradient]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    One patient has feature value $x_j = 15$ (age minus 60), label $y = 1$, and predicted probability $\hat p = 0.0334$. What is the $j$-th component of the gradient of this patient's loss, $\partial \ell / \partial \theta_j$? Give three decimal places.
+  answer: -14.499
+  tolerance: 0.0005
+  seeded:
+    { p: [0.0334, 0.1, 0.3, 0.7, 0.9], y: [0, 1], xj: [-20, -5, 2, 10, 15] }
+  formula: "(p - y) * xj"
+  explanation: |
+    der-3-3-3 step 6: $\nabla_\theta \ell = (\hat p - y)\,x$, so the $j$-th component is $(\hat p - y)\,x_j = (0.0334 - 1) \times 15 = -14.499$. This is ADV-0001's age component in the worked example. The negative sign means gradient descent increases $\theta_j$.
+
+- id: q-u3-l3-006
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [logistic-gradient]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-3-3-3
+  corrupt:
+    {
+      step: 4,
+      replaceTex: '\frac{d\ell}{dz} = y - \sigma(z)',
+      explanation: 'Expanding step 3 gives $-y + y\sigma(z) + \sigma(z) - y\sigma(z) = \sigma(z) - y$. The corrupted sign is the derivative of the log-likelihood, not of the loss; plugged into gradient descent it would walk uphill and make the loss grow.',
+    }
+
+- id: q-u3-l3-007
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [logistic-gradient]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The least-squares gradient is $\frac2n\sum_i(\theta^\top x^{(i)} - y^{(i)})\,x^{(i)}$ and the logistic gradient is $\frac1n\sum_i(\sigma(\theta^\top x^{(i)}) - y^{(i)})\,x^{(i)}$. What is the essential difference?
+  options:
+    - {
+        text: "The prediction inside the residual: the raw score for least squares, its sigmoid for logistic regression",
+        correct: true,
+      }
+    - {
+        text: 'Logistic regression weights each example by $\hat p(1 - \hat p)$ in the gradient',
+        misconception: lr-mse-on-sigmoid,
+      }
+    - {
+        text: "The sign: logistic regression uses label minus prediction",
+        misconception: lr-gradient-sign,
+      }
+    - { text: "Logistic regression has no input factor $x^{(i)}$" }
+  explanation: |
+    Both are averages of residual times input (der-3-3-3 step 7). The weights $\hat p(1 - \hat p)$ appear one derivative later, in the Hessian (der-3-3-4 step 3); they cancel out of the gradient because $\sigma'/\sigma = 1 - \sigma$ (der-3-3-3 step 1). The factor 2 is a constant from differentiating a square and does not change the minimizer.
+  discriminates: [logistic-gradient, mse-gradient]
+
+- id: q-u3-l3-008
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [logistic-convexity]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    The Hessian of the logistic NLL is $\frac1n\sum_i \hat p^{(i)}(1 - \hat p^{(i)})\,x^{(i)}x^{(i)\top}$. Why is it positive semi-definite?
+  options:
+    - {
+        text: 'For any $v$, $v^\top H v$ is a sum of positive weights times squares $(x^{(i)\top}v)^2$',
+        correct: true,
+      }
+    - { text: "Because every entry of the matrix is non-negative" }
+    - { text: "Because the sigmoid is convex" }
+    - { text: 'Because $\hat p^{(i)}(1 - \hat p^{(i)}) \le \tfrac14$' }
+  explanation: |
+    der-3-3-4 steps 5–6. Non-negative entries do not make a matrix PSD (and $x^{(i)}x^{(i)\top}$ can have negative entries). The sigmoid is not convex: it is convex for $z < 0$ and concave for $z > 0$. The bound $\tfrac14$ caps the curvature from above, which matters for the step size, not for convexity.
+  discriminates: [logistic-convexity, positive-semidefinite]
+
+- id: q-u3-l3-009
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [logistic-convexity]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Which statement about the logistic NLL $\hat R(\theta)$ is correct?
+  options:
+    - {
+        text: 'If $X$ has full column rank, $\hat R$ is strictly convex, so it has at most one minimizer',
+        correct: true,
+      }
+    - {
+        text: 'Because $\hat R$ is convex, it always has exactly one minimizer',
+        misconception: lr-mle-always-exists,
+      }
+    - {
+        text: 'Gradient descent can stop at a poor local minimum of $\hat R$',
+        misconception: lr-no-closed-form-means-local,
+      }
+    - { text: '$\hat R$ is convex only near its minimizer' }
+  explanation: |
+    der-3-3-4 step 9 gives a positive definite Hessian at every $\theta$ when $X$ has full column rank, so two minimizers cannot exist. Existence is a separate question: on separable data there is none (der-3-3-6). Convexity holds for all $\theta$, so every stationary point is global.
+  discriminates: [logistic-convexity, logistic-no-closed-form]
+
+- id: q-u3-l3-010
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [logistic-no-closed-form]
+  type: mc
+  difficulty: 1
+  source: "L5 p.38 poll"
+  prompt: |
+    True or false: we can derive the closed-form optimal parameter for logistic regression given data, just like in linear regression.
+  options:
+    - { text: "True", misconception: mle-always-closed-form }
+    - { text: "False", correct: true }
+  explanation: |
+    False (the course map's key). Setting the gradient to zero gives $X^\top\sigma(X\hat\theta) = X^\top y$ (der-3-3-5 step 3), with $\hat\theta$ inside $n$ different sigmoids; the linear normal equations $X^\top X\hat\theta = X^\top y$ have no such obstacle. The exceptions are models with one parameter per group of identical inputs, such as an intercept only (der-3-3-5 step 7).
+
+- id: q-u3-l3-011
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [logistic-no-closed-form]
+  type: predict
+  difficulty: 2
+  source: "original"
+  prompt: |
+    You run unregularized gradient descent on the logistic NLL for a dataset in which a line separates the events from the non-events perfectly. Predict what you see as the iterations continue.
+  options:
+    - {
+        text: 'The training loss keeps falling toward 0 and $\lVert\theta\rVert$ keeps growing; the iterates never settle',
+        correct: true,
+      }
+    - {
+        text: 'The loss reaches exactly 0 at a finite $\theta$ and gradient descent stops',
+        misconception: lr-mle-always-exists,
+      }
+    - {
+        text: "The iterates converge to the unique minimizer, since the NLL is convex",
+        misconception: lr-mle-always-exists,
+      }
+    - { text: 'The loss diverges to $+\infty$' }
+  explanation: |
+    der-3-3-6: along a separating direction $w$, $\hat R(cw) \to 0$ as $c \to \infty$, yet $\hat R(\theta) > 0$ for every $\theta$, so there is no minimizer to converge to. Convexity says a minimizer would be global and unique, not that one exists. A penalty $\lambda\lVert\theta\rVert_2^2$ (Unit 5) restores one.
+  discriminates: [logistic-no-closed-form, logistic-convexity]
+
+- id: q-u3-l3-012
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [logistic-nll, bernoulli-cross-entropy-equivalence]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    ADVERSE patient ADV-0003 had no event ($y = 0$) and predicted probability $\hat p = 0.0554$. What is this patient's cross-entropy loss, using the natural log? Give three decimal places.
+  answer: 0.057
+  tolerance: 0.0005
+  seeded: { p: [0.0554, 0.1, 0.25, 0.5, 0.8] }
+  formula: "-log(1 - p)"
+  explanation: |
+    With $y = 0$ only the second term of $-[y\log\hat p + (1 - y)\log(1 - \hat p)]$ survives, so the loss is $-\log(1 - \hat p) = -\log 0.9446 = 0.057$. Compare ADV-0001, who had an event at $\hat p = 0.0334$ and costs $-\log 0.0334 = 3.40$: surprises are expensive.
+
+- id: q-u3-l3-013
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [logistic-no-closed-form]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A cohort of $n = 5000$ patients has $k = 310$ events. Fit logistic regression with an intercept only. What is $\hat\theta_0$? Give three decimal places.
+  answer: -2.717
+  tolerance: 0.0005
+  seeded: { k: [50, 310, 500, 1000, 2500], n: [5000, 10000] }
+  formula: "log(k / (n - k))"
+  explanation: |
+    der-3-3-5 steps 6–7: with every $x^{(i)} = 1$ the stationarity condition is $n\,\sigma(\hat\theta_0) = k$, so $\sigma(\hat\theta_0) = \bar y = k/n$ and $\hat\theta_0 = \log\frac{\bar y}{1 - \bar y} = \log\frac{k}{n - k} = \log\frac{310}{4690} = -2.717$. The fitted probability is the event rate, as in the coin-flip MLE of lesson 3.2.
+
+- id: q-u3-l3-014
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [logistic-nll]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of der-3-3-1 (from the likelihood to the logistic-regression loss) in order.
+  items:
+    - "Write the probability of the dataset as a product over independent examples."
+    - 'Factor each term as $P_\theta(y^{(i)} \mid x^{(i)})\,P(x^{(i)})$.'
+    - "Take the log, turning the product into a sum."
+    - 'Drop $\sum_i \log P(x^{(i)})$, which does not depend on $\theta$.'
+    - "Negate, turning the argmax into an argmin, and divide by $n$."
+  explanation: |
+    Independence, product rule, log, drop the constant, negate (L5 pp.44–48). Taking the log before factoring would also work, but dropping the input term needs the factorization first: only after step 3 is the $\theta$-free part a separate factor.
+
+- id: q-u3-l3-016
+  lesson: deriving-the-logistic-regression-objective
+  concepts: [logistic-nll]
+  type: which-step
+  difficulty: 1
+  source: "original"
+  derivation: der-3-3-1
+  corrupt:
+    {
+      step: 8,
+      replaceTex: '\hat\theta = \argmin_\theta\; \sum_{i=1}^{n} \log\Big[y^{(i)}\sigma(\theta^\top x^{(i)}) + (1 - y^{(i)})\big(1 - \sigma(\theta^\top x^{(i)})\big)\Big]',
+      explanation: "The argmax became an argmin but the objective was not negated. Minimizing the log-likelihood finds the least likely parameters. Maximizing $f$ is minimizing $-f$, so both the operator and the sign must change together.",
+    }
+
+# ---------- Lesson 3.4: gaussian-mle-and-kl-divergence ----------
+# The L6 p.20 poll falls in this lesson's pages (L6 pp.12-21) but all four statements are already
+# in the lesson 3.2 fragment (and b, c, d again in the 3.3 fragment), so none is repeated here.
+# The lesson's Pitfalls cite statements (b) and (d). All items below are originals.
+
+- id: q-u3-l4-001
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [least-squares-gaussian-mle]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    Linear regression with Gaussian noise of standard deviation $\sigma_\varepsilon = s$, where $s = 8$. L6 p.14 writes the negative log-likelihood as $c_1 \sum_i (y^{(i)} - \theta^\top x^{(i)})^2 + c_2$. What is $c_1$? Give five decimal places.
+  answer: 0.0078125
+  tolerance: 0.000005
+  seeded: { s: [2, 4, 5, 8, 10] }
+  formula: "1 / (2 * s * s)"
+  explanation: |
+    $c_1 = \frac{1}{2\sigma_\varepsilon^2}$ (der-3-4-1 step 10): the Gaussian exponent is $-(y - \theta^\top x)^2 / (2\sigma_\varepsilon^2)$, and negating the log keeps the factor. With $\sigma_\varepsilon = 8$, $c_1 = 1/128$.
+
+- id: q-u3-l4-002
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [least-squares-gaussian-mle]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    You fit a line by maximum likelihood assuming Gaussian noise with $\sigma_\varepsilon = 8$ mmHg. A colleague refits the same data assuming $\sigma_\varepsilon = 16$ mmHg. What changes?
+  options:
+    - {
+        text: "The fitted $\\hat\\theta$ stays the same; the value of the negative log-likelihood changes",
+        correct: true,
+      }
+    - {
+        text: "The fitted line becomes flatter, because wider noise makes every slope plausible",
+        misconception: mle-needs-sigma,
+      }
+    - {
+        text: "Nothing at all: $\\sigma_\\varepsilon$ does not appear in the likelihood",
+        misconception: mle-needs-sigma,
+      }
+    - {
+        text: "The fitted $\\hat\\theta$ changes, because $c_1$ changes",
+        misconception: mle-needs-sigma,
+      }
+  explanation: |
+    $\sigma_\varepsilon$ enters only through $c_1 = 1/(2\sigma_\varepsilon^2) > 0$ and $c_2 = \frac n2\log(2\pi\sigma_\varepsilon^2)$ (equation 3.4.2). A positive scale and an added constant change the NLL's values but not its minimizer (der-3-4-2 steps 3 and 4). The VASCO worked example shows the NLL gap between two lines growing fourfold when $\sigma_\varepsilon$ halves, with the order unchanged.
+  discriminates: [least-squares-gaussian-mle]
+
+- id: q-u3-l4-003
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [least-squares-gaussian-mle]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A least-squares fit to $n = 40$ patients leaves a residual sum of squares $S = 2600\ \text{mmHg}^2$. Under the Gaussian-noise model, what is the maximum-likelihood estimate of the noise variance $\sigma_\varepsilon^2$, in $\text{mmHg}^2$? Give one decimal place.
+  answer: 65
+  tolerance: 0.05
+  seeded: { n: [20, 40, 50, 100], S: [1600, 2600, 3200] }
+  formula: "S / n"
+  explanation: |
+    $\hat\sigma_\varepsilon^2 = S/n$, the mean squared residual (der-3-4-3 step 4). It divides by $n$, so like every training error it is biased low; lesson 2.2 computed the factor $\frac{n-1}{n}$ for the constant model.
+
+- id: q-u3-l4-004
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [kl-divergence-def]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-3-4-4
+  corrupt:
+    {
+      step: 5,
+      replaceTex: '-D_{\mathrm{KL}}(p\,\|\,q) \ge \sum_{x \in S_p} p(x)\Big(\frac{q(x)}{p(x)} - 1\Big)',
+      explanation: 'Step 3 says $\log t \le t - 1$, so each term $p(x)\log\frac{q(x)}{p(x)}$ is at most $p(x)\big(\frac{q(x)}{p(x)} - 1\big)$; the inequality points the other way. With $\ge$ the chain would end at $-D_{\mathrm{KL}} \ge \dots$, which bounds nothing.',
+    }
+
+- id: q-u3-l4-005
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [kl-divergence-def]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Compute $D_{\mathrm{KL}}\big(\mathrm{Bernoulli}(a)\,\|\,\mathrm{Bernoulli}(b)\big)$ in nats (natural log) for $a = 0.1$ and $b = 0.5$. Give four decimal places.
+  answer: 0.3681
+  tolerance: 0.0005
+  seeded: { a: [0.1, 0.2, 0.3], b: [0.5, 0.6, 0.8] }
+  formula: "a * log(a / b) + (1 - a) * log((1 - a) / (1 - b))"
+  explanation: |
+    Two outcomes, so equation 3.4.3 has two terms: $a\log\frac{a}{b} + (1-a)\log\frac{1-a}{1-b}$. For $a = 0.1$, $b = 0.5$: $0.1\log 0.2 + 0.9\log 1.8 = 0.3681$. Swap the arguments and you get $0.5108$; the divergence is not symmetric.
+
+- id: q-u3-l4-006
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [kl-divergence-def]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    L6 p.16 calls the KL divergence a measure of "the distance between two distributions". Which statement about $D_{\mathrm{KL}}(p\,\|\,q)$ is true?
+  options:
+    - {
+        text: "It is nonnegative and zero only when $p = q$, but in general $D_{\\mathrm{KL}}(p\\,\\|\\,q) \\ne D_{\\mathrm{KL}}(q\\,\\|\\,p)$",
+        correct: true,
+      }
+    - {
+        text: "It is a metric: symmetric, nonnegative, and it satisfies the triangle inequality",
+        misconception: kl-is-a-metric,
+      }
+    - {
+        text: "It can be negative when $q$ puts more mass than $p$ on some outcomes",
+        misconception: kl-integrand-sign,
+      }
+    - {
+        text: "It is symmetric, but it can violate the triangle inequality",
+        misconception: kl-is-a-metric,
+      }
+  explanation: |
+    Gibbs' inequality (der-3-4-4) gives nonnegativity and the equality case. The integrand $p\log(p/q)$ can be negative at some outcomes (the L6 p.17 figure), but the total cannot. Symmetry fails: $0.3681$ versus $0.5108$ for $\mathrm{Bern}(0.1)$ and $\mathrm{Bern}(0.5)$ in the two orders.
+  discriminates: [kl-divergence-def]
+
+- id: q-u3-l4-007
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [conditional-kl-nll]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of der-3-4-7 (the conditional version of MLE as KL minimization, the L6 p.19 "see homework" item) in order.
+  items:
+    - 'Complete the conditional model with the data''s input distribution: $q_\theta(x, y) = p(x)\,q_\theta(y \mid x)$.'
+    - 'Write $D_{\mathrm{KL}}(p\,\|\,q_\theta)$ as an expectation under $p$ and expand $p(x, y) = p(x)\,p(y \mid x)$.'
+    - 'Cancel $p(X)$, leaving $\mathbb{E}\big[\log p(Y \mid X) / q_\theta(Y \mid X)\big]$.'
+    - 'Condition on $X$: the KL is $\mathbb{E}_X\big[D_{\mathrm{KL}}(p(\cdot \mid X)\,\|\,q_\theta(\cdot \mid X))\big]$.'
+    - 'Drop $\mathbb{E}[\log p(Y \mid X)]$, which does not involve $\theta$, and replace $p$ by $\hat p$ to get the average conditional NLL.'
+  explanation: |
+    Complete, expand, cancel, condition, then drop the constant and use the sample. The cancellation of $p(X)$ is the KL-side version of dropping $\sum_i \log P(X_i)$ from the joint likelihood on L6 p.7.
+
+- id: q-u3-l4-008
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [conditional-kl-nll]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A logistic model predicts $q_\theta(y = 1 \mid x^{(i)}) = 0.8$ for a patient whose observed label is $y^{(i)} = 0$. The target is the one-hot distribution on the observed label. What is $D_{\mathrm{KL}}\big(\delta_{y^{(i)}}\,\|\,q_\theta(\cdot \mid x^{(i)})\big)$?
+  options:
+    - { text: "$-\\log 0.2$", correct: true }
+    - { text: "$-\\log 0.8$", misconception: kl-is-entropy }
+    - {
+        text: "$-0.8\\log 0.8 - 0.2\\log 0.2$, the entropy of the prediction",
+        misconception: kl-is-entropy,
+      }
+    - {
+        text: "$0$, because a one-hot target has zero entropy",
+        misconception: kl-is-entropy,
+      }
+  explanation: |
+    For a point mass the KL keeps one term (der-3-4-8 steps 3 and 4): $-\log q_\theta(y^{(i)} \mid x^{(i)})$. The observed label is 0, and $q_\theta(0 \mid x^{(i)}) = 1 - 0.8 = 0.2$, so the answer is $-\log 0.2 \approx 1.609$ nats. The target's zero entropy is why KL and cross-entropy agree here, not a reason for the KL to vanish.
+  discriminates: [conditional-kl-nll, kl-divergence-def]
+
+- id: q-u3-l4-009
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [conditional-kl-nll]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-3-4-7
+  corrupt:
+    {
+      step: 4,
+      replaceTex: 'D_{\mathrm{KL}}(p\,\|\,q_\theta) = \mathbb{E}\Big[\log\frac{p(X, Y)}{q_\theta(Y \mid X)}\Big]',
+      explanation: 'Only one $p(X)$ was removed, from the denominator, so the corrupted line is not equal to step 3. Both factors of $p(X)$ must cancel together, which leaves $p(Y \mid X)$ in the numerator, not the joint $p(X, Y)$.',
+    }
+
+- id: q-u3-l4-010
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [mle-minimizes-kl, kl-divergence-def]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A classifier assigns probability exactly 0 to the label that one training patient actually has. What happens to $D_{\mathrm{KL}}(\hat p\,\|\,q_\theta)$ and to the training NLL?
+  options:
+    - {
+        text: "Both are $+\\infty$: the model gave zero probability to something that happened",
+        correct: true,
+      }
+    - {
+        text: "Nothing special: that patient's term is $0 \\log 0 = 0$",
+        misconception: kl-direction,
+      }
+    - {
+        text: "The KL is $+\\infty$, but the NLL is finite because the other patients dominate the sum",
+        misconception: kl-direction,
+      }
+    - {
+        text: "Both are 0, because one patient out of many does not matter in the limit",
+        misconception: kl-direction,
+      }
+  explanation: |
+    The convention $0\log 0 = 0$ covers outcomes with $\hat p(z) = 0$. Here $\hat p > 0$ and $q_\theta = 0$, so the term is $\hat p\log(\hat p / 0) = +\infty$ (def-3-4-2), and the NLL term $-\log 0$ is also $+\infty$. By der-3-4-5 step 6 the two differ by the finite constant $H(\hat p)$, so they are infinite together. This is why the forward KL punishes overconfident models.
+  discriminates: [kl-divergence-def, mle-minimizes-kl]
+
+- id: q-u3-l4-011
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [least-squares-gaussian-mle]
+  type: predict
+  difficulty: 3
+  source: "original"
+  prompt: |
+    Replace the Gaussian noise of def-3-4-1 with Laplace noise, density $\frac{1}{2b}\exp(-\lvert\varepsilon\rvert / b)$. Predict the maximum-likelihood objective for $\theta$.
+  options:
+    - {
+        text: "Minimize the sum of absolute residuals $\\sum_i \\lvert y^{(i)} - \\theta^\\top x^{(i)}\\rvert$",
+        correct: true,
+      }
+    - {
+        text: "Still least squares: maximum likelihood with additive noise always gives the squared error",
+        misconception: mle-always-squared,
+      }
+    - {
+        text: "Minimize the largest absolute residual",
+      }
+    - {
+        text: "It depends on $b$: small $b$ gives absolute error, large $b$ gives squared error",
+        misconception: mle-needs-sigma,
+      }
+  explanation: |
+    Take logs of the product of Laplace densities and negate: $-\sum_i \log p_\theta = \frac1b\sum_i \lvert y^{(i)} - \theta^\top x^{(i)}\rvert + n\log(2b)$ (the "beyond the slides" callout). As with $\sigma_\varepsilon$, $b$ only scales and shifts, so the minimizer is the least-absolute-deviations fit, whose loss is the MAE of lesson 1.3.
+
+- id: q-u3-l4-012
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [least-squares-gaussian-mle]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Which statement about least squares and Gaussian noise is correct?
+  options:
+    - {
+        text: "If the noise is Gaussian, least squares is the maximum-likelihood fit; least squares is still a well-defined fit when it is not",
+        correct: true,
+      }
+    - {
+        text: "Least squares is only valid when the noise is Gaussian",
+        misconception: ls-needs-gaussian,
+      }
+    - {
+        text: "Least squares is the maximum-likelihood fit whatever the noise distribution",
+        misconception: mle-always-squared,
+      }
+    - {
+        text: "Gaussian noise is needed for the normal equations to have a solution",
+        misconception: ls-needs-gaussian,
+      }
+  explanation: |
+    Der-3-4-1 and der-3-4-2 show that Gaussian noise is sufficient for least squares to be maximum likelihood. The normal equations (lesson 1.4) make no distributional assumption at all; under other noise models, such as Laplace, the maximum-likelihood fit is a different one.
+  discriminates: [least-squares-gaussian-mle]
+
+- id: q-u3-l4-013
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [conditional-kl-nll]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Logistic regression models only $q_\theta(y \mid x)$. When its joint is completed as $q_\theta(x, y) = p(x)\,q_\theta(y \mid x)$, what does $D_{\mathrm{KL}}\big(p(x, y)\,\|\,q_\theta(x, y)\big)$ measure?
+  options:
+    - { text: "The average over inputs $X \\sim p$ of the KL between the true and predicted label distributions at $X$", correct: true }
+    - { text: "How well the model predicts the inputs $x$ as well as the labels", misconception: discriminative-models-x }
+    - { text: "Nothing useful: a conditional model has no joint, so the KL is undefined", misconception: discriminative-models-x }
+    - { text: "The KL between the label marginals $p(y)$ and $q_\\theta(y)$ only", misconception: discriminative-models-x }
+  explanation: |
+    The two copies of $p(X)$ cancel (der-3-4-7 step 4), and conditioning on $X$ turns the joint KL into $\mathbb{E}_X\big[D_{\mathrm{KL}}(p(\cdot \mid X)\,\|\,q_\theta(\cdot \mid X))\big]$ (step 6). A discriminative model is judged only on its label distributions, input by input, weighted by how often each input occurs.
+  discriminates: [conditional-kl-nll, mle-minimizes-kl]
+
+- id: q-u3-l4-014
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [mle-minimizes-kl]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    A model's average training NLL is $a = 0.70$ nats, and the entropy of the empirical distribution of the (discrete) training data is $h = 0.64$ nats. What is $D_{\mathrm{KL}}(\hat p\,\|\,q_\theta)$, in nats? Give two decimal places.
+  answer: 0.06
+  tolerance: 0.005
+  seeded: { a: [0.70, 0.75, 0.90], h: [0.50, 0.64, 0.69] }
+  formula: "a - h"
+  explanation: |
+    By der-3-4-5 step 6, $D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = -H(\hat p) - \frac1n\sum_i \log q_\theta(z^{(i)})$: the average NLL minus the entropy. The average NLL can never be below $h$ (Gibbs' inequality), and it equals $h$ only for a model that reproduces the empirical frequencies.
+
+- id: q-u3-l4-015
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [mle-minimizes-kl]
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-3-4-5
+  corrupt: { step: 8, replaceTex: '\argmin_\theta D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = \argmin_\theta \sum_{i=1}^{n}\log q_\theta(z^{(i)})', explanation: 'Dropping the minus sign is only allowed if argmin becomes argmax. As written, the line selects the parameters under which the data are least likely, the opposite of maximum likelihood.' }
+
+- id: q-u3-l4-016
+  lesson: gaussian-mle-and-kl-divergence
+  concepts: [mle-minimizes-kl]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Fix $\theta$ before seeing any data, and draw a large i.i.d. sample from the true distribution $p$. The average negative log-likelihood $-\frac1n\sum_i \log q_\theta(z^{(i)})$ is close to which quantity?
+  options:
+    - { text: "$H(p) + D_{\\mathrm{KL}}(p\\,\\|\\,q_\\theta)$, the cross-entropy $H(p, q_\\theta)$", correct: true }
+    - { text: "$D_{\\mathrm{KL}}(p\\,\\|\\,q_\\theta)$ alone", misconception: kl-is-entropy }
+    - { text: "$D_{\\mathrm{KL}}(q_\\theta\\,\\|\\,p)$", misconception: kl-direction }
+    - { text: "$H(q_\\theta)$, the entropy of the model", misconception: kl-is-entropy }
+  explanation: |
+    The log loss has true risk $\mathbb{E}_{Z\sim p}[-\log q_\theta(Z)] = H(p) + D_{\mathrm{KL}}(p\,\|\,q_\theta)$ (der-3-4-6 step 3), and the sample average is unbiased for it and converges to it (steps 4 and 5). The entropy $H(p)$ does not depend on $\theta$, so minimizing the average NLL targets the KL, but the number itself includes the entropy. At a $\hat\theta$ trained on the same sample the average is optimistic (lesson 2.2).
+  discriminates: [mle-minimizes-kl, kl-divergence-def]
+
+# ---------- Lesson 3.5: softmax-regression ----------
+# Poll items carry source "L6 p.24 poll" and the course map's suggested key
+# (docs/course-map/03-lectures-L6-L7.md). Every numeric value is a toy value; none comes from a homework.
+
+- id: q-u3-l5-001
+  lesson: softmax-regression
+  concepts: [softmax-regression, softmax-reduces-to-sigmoid]
+  type: mc
+  difficulty: 1
+  source: "L6 p.24 poll"
+  prompt: |
+    True or false: softmax regression generalizes logistic regression from binary to multiclass classification.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False", misconception: softmax-binary-richer }
+  explanation: |
+    With $K = 2$, softmax regression gives $p(y = 1 \mid x) = \sigma\big((\theta_1 - \theta_0)^\top x\big)$, which is logistic regression with $\theta = \theta_1 - \theta_0$ (der-3-5-3). For $K > 2$ it is a new model with the same ingredients: linear scores, a normalized exponential, and maximum likelihood.
+
+- id: q-u3-l5-002
+  lesson: softmax-regression
+  concepts: [softmax-nll-gradient]
+  type: mc
+  difficulty: 1
+  source: "L6 p.24 poll"
+  prompt: |
+    True or false: we can write down the objective (loss) of softmax regression in the same way as we did for logistic regression.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    Same recipe: conditional likelihood of the labels, log, negate. With the categorical pmf $\prod_k p_k(x)^{\mathbb{1}[y = k]}$ this gives $\hat R(\Theta) = -\frac1n\sum_i \log p_{y^{(i)}}(x^{(i)})$, the cross-entropy with one-hot labels (der-3-5-4).
+
+- id: q-u3-l5-003
+  lesson: softmax-regression
+  concepts: [softmax-nll-gradient, softmax-convexity]
+  type: mc
+  difficulty: 1
+  source: "L6 p.24 poll"
+  prompt: |
+    True or false: we can optimize the parameters of softmax regression using gradient descent.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    The loss is differentiable with gradient $\nabla_{\theta_k}\hat R = \frac1n\sum_i\big(p_k(x^{(i)}) - \mathbb{1}[y^{(i)} = k]\big)x^{(i)}$ (der-3-5-5), and it is convex (der-3-5-6), so gradient descent has no spurious local minima to get stuck in. There is no closed-form solution, so an iterative method is needed.
+
+- id: q-u3-l5-004
+  lesson: softmax-regression
+  concepts: [softmax-regression]
+  type: mc
+  difficulty: 1
+  source: "original (L6 p.22)"
+  prompt: |
+    L6 p.22 passes each linear score $z_k = \theta_k^\top x$ through $e^{z}$ before normalizing. Why not divide the scores by their sum directly, $z_k / \sum_j z_j$?
+  options:
+    - {
+        text: "Scores can be negative or sum to zero, so the ratios need not lie in $[0, 1]$; $e^{z}$ is always positive",
+        correct: true,
+      }
+    - {
+        text: "Dividing by the sum would change which class has the largest score",
+        misconception: softmax-normalize-logits,
+      }
+    - { text: "The exponential makes the model linear in $x$" }
+    - {
+        text: "Without the exponential the outputs would not sum to 1",
+        misconception: softmax-normalize-logits,
+      }
+  explanation: |
+    $z_k / \sum_j z_j$ does sum to 1, but with $z = (2, 1, -1)$ it gives $(1, 0.5, -0.5)$, which is not a distribution. Exponentiating first makes every entry positive (der-3-5-1 step 1), and the normalization then puts each in $(0, 1)$.
+  discriminates: [softmax-regression]
+
+- id: q-u3-l5-005
+  lesson: softmax-regression
+  concepts: [softmax-regression]
+  type: numeric
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A three-class softmax model has logits $z = (2, 1, -1)$ for some input. Compute $p_1 = \mathrm{softmax}(z)_1$ to three decimals.
+  answer: 0.705
+  tolerance: 0.001
+  seeded: { a: [1, 2, 3], b: [0, 1], c: [-2, -1] }
+  formula: "exp(a) / (exp(a) + exp(b) + exp(c))"
+  explanation: |
+    $p_1 = \dfrac{e^{a}}{e^{a} + e^{b} + e^{c}}$ with $(a, b, c) = (z_1, z_2, z_3)$. For $(2, 1, -1)$: $7.3891 / 10.4752 \approx 0.705$. Subtracting the largest logit first gives the same answer with smaller numbers: $1 / (1 + e^{-1} + e^{-3}) \approx 0.705$ (der-3-5-2 step 8).
+
+- id: q-u3-l5-006
+  lesson: softmax-regression
+  concepts: [softmax-shift-invariance]
+  type: mc
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Which change to the parameters of a softmax regression model leaves $p_\Theta(y = k \mid x)$ unchanged for every input $x$ and every class $k$?
+  options:
+    - {
+        text: "Replace every $\\theta_k$ by $\\theta_k + c$, with the same vector $c$ for all classes",
+        correct: true,
+      }
+    - {
+        text: "Replace every $\\theta_k$ by $2\\theta_k$",
+      }
+    - { text: "Replace $\\theta_1$ alone by $\\theta_1 + c$" }
+    - {
+        text: "Replace every $\\theta_k$ by $\\theta_k + c_k$, with a different vector for each class",
+      }
+  explanation: |
+    A common shift adds $c^\top x$ to every logit, and that factor cancels between numerator and denominator (der-3-5-2). Doubling every $\theta_k$ doubles every gap $z_k - z_l$, which sharpens the distribution: the largest probability moves toward 1. Shifting only some classes changes their gaps to the others.
+  discriminates: [softmax-shift-invariance]
+
+- id: q-u3-l5-007
+  lesson: softmax-regression
+  concepts: [softmax-reduces-to-sigmoid]
+  type: mc
+  difficulty: 2
+  source: "original (L6 p.25)"
+  prompt: |
+    A two-class softmax model has parameter vectors $\theta_0$ (class 0) and $\theta_1$ (class 1). Which logistic-regression parameter $\theta$ gives exactly the same $p(y = 1 \mid x) = \sigma(\theta^\top x)$ for every $x$?
+  options:
+    - { text: "$\\theta = \\theta_1 - \\theta_0$", correct: true }
+    - { text: "$\\theta = \\theta_1$", misconception: softmax-params-unique }
+    - { text: "$\\theta = \\theta_0 - \\theta_1$" }
+    - { text: "$\\theta = \\theta_1 + \\theta_0$" }
+  explanation: |
+    Shift both vectors by $c = \theta_0$ (der-3-5-2): $\tilde\theta_0 = 0$, $\tilde\theta_1 = \theta_1 - \theta_0$, and then $p(y = 1 \mid x) = e^{\tilde\theta_1^\top x}/(1 + e^{\tilde\theta_1^\top x}) = \sigma(\tilde\theta_1^\top x)$ (der-3-5-3). $\theta_1$ alone is right only when $\theta_0 = 0$; $\theta_0 - \theta_1$ gives $p(y = 0 \mid x)$.
+
+- id: q-u3-l5-008
+  lesson: softmax-regression
+  concepts: [softmax-nll-gradient]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    One example has logits $z = (2, 1, -1)$ and true class $y = 2$. Its loss is $\ell(z) = -z_y + \log\sum_j e^{z_j}$. Compute $\partial\ell/\partial z_2$ to three decimals.
+  answer: -0.741
+  tolerance: 0.001
+  seeded: { a: [1, 2, 3], b: [0, 1], c: [-2, -1] }
+  formula: "exp(b) / (exp(a) + exp(b) + exp(c)) - 1"
+  explanation: |
+    $\partial\ell/\partial z_l = p_l - \mathbb{1}[y = l]$ (der-3-5-6 step 1, the logit form of der-3-5-5 step 6). For the true class $l = 2$: $p_2 - 1 = 0.2595 - 1 \approx -0.741$. The derivative is negative, so gradient descent raises $z_2$.
+
+- id: q-u3-l5-009
+  lesson: softmax-regression
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-3-5-5
+  corrupt:
+    {
+      step: 6,
+      replaceTex: '\nabla_{\theta_k}\ell = \big(\mathbb{1}[y = k] - p_k(x)\big)\,x',
+      explanation: 'Step 1 is $-\theta_y^\top x + \log S$, so the indicator term enters with a minus sign and the log-sum-exp term with a plus: $p_k(x)\,x - \mathbb{1}[y = k]\,x$. The flipped sign is the gradient of the log-likelihood, not of the loss; descending it would push the true class down. Check with $K = 2$: step 10 must give lesson 3.3''s $(\sigma - y)\,x$.',
+    }
+
+- id: q-u3-l5-010
+  lesson: softmax-regression
+  concepts: [softmax-nll-gradient]
+  type: order
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Put the moves of the softmax negative log-likelihood derivation (der-3-5-4) in order.
+  items:
+    - 'Write the conditional likelihood $\prod_i p_\Theta(y^{(i)} \mid x^{(i)})$, dropping the $P(x^{(i)})$ factors.'
+    - 'Write the categorical pmf in product form, $\prod_k p_k(x)^{\mathbb{1}[y = k]}$.'
+    - 'Take logs, turning the products into sums of $\mathbb{1}[y^{(i)} = k]\log p_k(x^{(i)})$.'
+    - "Negate and divide by $n$ to get the cross-entropy with one-hot labels."
+    - 'Keep the one surviving term per example, $-\log p_{y^{(i)}}(x^{(i)})$.'
+    - 'Substitute the softmax and split the log of the quotient into $-\theta_{y^{(i)}}^\top x^{(i)} + \log\sum_j e^{\theta_j^\top x^{(i)}}$.'
+  explanation: |
+    Likelihood, product form, log, negate and average, simplify with the one-hot label, then expand the softmax. The same order as lesson 3.3's logistic derivation, with a categorical pmf in place of the Bernoulli.
+
+- id: q-u3-l5-011
+  lesson: softmax-regression
+  concepts: [softmax-shift-invariance]
+  type: predict
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Predict the output (NumPy, float64; ignore any warning).
+    ```python
+    z = np.array([1000.0, 1000.0])
+    print(np.exp(z) / np.exp(z).sum())
+    ```
+  options:
+    - { text: "`[nan nan]`", correct: true }
+    - { text: "`[0.5 0.5]`", misconception: softmax-overflow }
+    - { text: "`[inf inf]`", misconception: softmax-overflow }
+    - { text: "`[1. 1.]`" }
+  explanation: |
+    $e^{1000}$ overflows float64 (the largest finite value is about $e^{709.8}$), so `np.exp(z)` is `[inf inf]` and `inf / inf` is `nan`. The mathematical answer is $(0.5, 0.5)$; computing `np.exp(z - z.max())` first gives it, because subtracting the same number from every logit changes nothing (der-3-5-2 step 8).
+
+- id: q-u3-l5-012
+  lesson: softmax-regression
+  concepts: [softmax-shift-invariance]
+  type: numeric
+  difficulty: 2
+  source: "original"
+  prompt: |
+    Softmax regression with $K = 4$ classes on feature vectors of length $d = 11$ (the intercept included) stores $Kd = 44$ parameters. How many of them can the likelihood actually pin down, that is, how many remain after fixing one class as the reference?
+  answer: 33
+  tolerance: 0
+  seeded: { K: [3, 4, 5, 10], d: [3, 5, 11, 785] }
+  formula: "(K - 1) * d"
+  explanation: |
+    Shifting every $\theta_k$ by the same $c \in \mathbb{R}^d$ changes nothing (der-3-5-2), so $d$ directions are invisible to the likelihood. Fixing $\theta_K = 0$ removes exactly those, leaving $(K - 1)d$. With $K = 2$ this is $d$, the size of logistic regression's $\theta$.
+
+- id: q-u3-l5-013
+  lesson: softmax-regression
+  concepts: [softmax-nll-gradient, softmax-shift-invariance]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    For a single example, the per-class gradients of the softmax loss satisfy $\sum_{k=1}^{K}\nabla_{\theta_k}\ell = 0$. Which statement explains why?
+  options:
+    - {
+        text: "Both the predicted probabilities and the one-hot label sum to 1 over the classes, so the factors $p_k - \\mathbb{1}[y = k]$ sum to 0",
+        correct: true,
+      }
+    - {
+        text: "At the minimum every gradient is zero",
+      }
+    - {
+        text: "Only the true class has a nonzero gradient, and it is zero on average",
+        misconception: softmax-grad-true-class-only,
+      }
+    - { text: "The loss is convex" }
+  explanation: |
+    der-3-5-5 step 9: $\sum_k (p_k - \mathbb{1}[y = k])\,x = (1 - 1)\,x = 0$ at every $\Theta$, not just at a minimum. It is the gradient's view of shift invariance: moving every $\theta_k$ by the same $c$ changes the loss at rate $\sum_k c^\top\nabla_{\theta_k}\ell = 0$.
+
+- id: q-u3-l5-014
+  lesson: softmax-regression
+  concepts: [softmax-convexity]
+  type: mc
+  difficulty: 3
+  source: "original"
+  prompt: |
+    Suppose $\hat\Theta$ minimizes the unpenalized softmax loss $\hat R(\Theta)$ on some dataset. Which statement is true?
+  options:
+    - {
+        text: "$\\hat\\Theta + c\\mathbf{1}^\\top$ (every $\\hat\\theta_k$ shifted by the same $c$) is also a minimizer, so the minimizer is not unique",
+        correct: true,
+      }
+    - {
+        text: "$\\hat\\Theta$ is the unique minimizer, because $\\hat R$ is convex",
+        misconception: softmax-params-unique,
+      }
+    - { text: "$\\hat R$ may have other local minima with higher loss" }
+    - {
+        text: "$\\hat\\Theta$ can be found in closed form from the stationarity equations",
+      }
+  explanation: |
+    $\hat R$ is convex, so every stationary point is a global minimum and there are no worse local minima (der-3-5-6). It is not strictly convex: along the shift direction its second derivative is 0 (der-3-5-6 step 8), and by der-3-5-2 the loss is exactly constant there. The stationarity equations $\sum_i p_k(x^{(i)})x^{(i)} = \sum_{i:\,y^{(i)} = k}x^{(i)}$ are nonlinear in $\Theta$, so there is no closed form.
+
+- id: q-u3-l5-015
+  lesson: softmax-regression
+  concepts: [softmax-regression]
+  type: mc
+  difficulty: 1
+  source: "original"
+  prompt: |
+    A softmax regression model has logits $z = (0.3, 2.1, -4.0, 2.0)$ for a new patient. Which class does it predict, and do you need to compute any exponentials to decide?
+  options:
+    - {
+        text: "Class 2; no, the largest logit has the largest probability",
+        correct: true,
+      }
+    - {
+        text: "Class 2; yes, the probabilities must be computed before taking the argmax",
+      }
+    - { text: "Class 3; the most negative logit has the largest magnitude" }
+    - { text: "It cannot be decided without the true label" }
+  explanation: |
+    $p_k / p_l = e^{z_k - z_l}$, so $p_k > p_l$ exactly when $z_k > z_l$ (der-3-5-1 step 6). The exponentials matter for how confident the model is ($p_2$ and $p_4$ are close here), not for which class wins.
+
+- id: q-u3-l5-016
+  lesson: softmax-regression
+  type: which-step
+  difficulty: 2
+  source: "original"
+  derivation: der-3-5-2
+  corrupt:
+    {
+      step: 9,
+      replaceTex: '\log\sum_{j=1}^{K} e^{z_j} = \log\sum_{j=1}^{K} e^{z_j - m}',
+      explanation: 'Factoring $e^{m}$ out of the sum leaves $\log\big(e^{m}\sum_j e^{z_j - m}\big) = m + \log\sum_j e^{z_j - m}$. The softmax itself is unchanged by the shift (step 8) because $e^{m}$ cancels between numerator and denominator, but the log-normalizer alone has no denominator to cancel it, so $m$ must be added back.',
+    }

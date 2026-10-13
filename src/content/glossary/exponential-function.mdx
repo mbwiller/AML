@@ -1,0 +1,12 @@
+---
+id: exponential-function
+term: Exponential function
+aliases: [exp, e to the z, natural exponential]
+field: calculus
+firstUsedIn: u3-logistic-regression-and-mle
+related: [log-rules, derivative, chain-rule-calculus, sigmoid]
+---
+
+**What it is.** $e^{z} = \exp(z)$, with $e \approx 2.718$. For every real $z$ it is strictly positive and strictly increasing, with $e^{0} = 1$, $e^{a + b} = e^{a} e^{b}$, $e^{-z} = 1/e^{z}$, and $\frac{d}{dz} e^{z} = e^{z}$ (so $\frac{d}{dz} e^{-z} = -e^{-z}$ by the chain rule). It tends to $+\infty$ as $z \to +\infty$ and to $0$ as $z \to -\infty$, without reaching 0. It is the inverse of the natural log: $\log e^{z} = z$.
+
+**How ML uses it.** It turns any real score into a positive number. The sigmoid $\sigma(z) = 1/(1 + e^{-z})$ and the softmax are built from it, and positivity plus the two limits are why the sigmoid stays strictly between 0 and 1.

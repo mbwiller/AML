@@ -1,0 +1,828 @@
+---
+title: "Least squares as Gaussian MLE, and MLE as KL minimization"
+unit: u3-logistic-regression-and-mle
+order: 4
+slug: gaussian-mle-and-kl-divergence
+summary: "Gaussian noise turns maximum likelihood into least squares, with constants we write out. Then KL divergence, Gibbs' inequality, and the proof that MLE minimizes the KL from the data to the model, conditional version included."
+lectures:
+  - { lecture: 5, pages: "50" }
+  - { lecture: 6, pages: "12-21" }
+concepts:
+  - least-squares-gaussian-mle
+  - kl-divergence-def
+  - mle-minimizes-kl
+  - conditional-kl-nll
+prerequisites:
+  - mle-principle
+  - logistic-nll
+  - least-squares-problem
+  - true-risk
+  - empirical-risk-unbiased
+  - maximum-likelihood-estimation
+  - cross-entropy
+  - log-likelihood
+  - gaussian
+  - bernoulli
+  - sigmoid
+  - iid
+  - expectation
+  - law-of-total-expectation
+  - law-of-large-numbers
+  - chain-rule-probability
+  - indicator-function
+  - log-rules
+  - argmax
+  - derivative
+  - first-order-condition
+  - design-matrix
+estimatedMinutes: 65
+status: review
+authors: [jide]
+---
+
+{/* no-case-frontmatter: the hook and the first worked example use the VASCO placebo arm (docs/reference/pedagogy-and-curriculum.md Part C, C1). Its data are generated (src/data/vasco.json, seed 1) but src/content/cases/vasco.mdx does not exist yet, so the case is not listed in frontmatter or on <Example>; add `cases: [vasco]` and `case="vasco"` when the page lands. Every VASCO number below was computed by script from src/data/vasco.json (records cited by id). The second example uses the coin flips of L6 p.8. */}
+
+<Frame
+  data="pairs $(x^{(i)}, y^{(i)})$, drawn i.i.d. from an unknown distribution $p$; a real-valued target in the first half, a label in the second"
+  model="a conditional distribution $q_\theta(y \mid x)$: $\mathcal{N}(\theta^\top x, \sigma_\varepsilon^2)$ for regression, $\mathrm{Bernoulli}(\sigma(\theta^\top x))$ for classification"
+  objective="the negative log-likelihood $-\sum_i \log q_\theta(y^{(i)} \mid x^{(i)})$, which is least squares plus constants, and KL to the data plus a constant"
+  optimizer="closed form for least squares (lesson 1.4); gradient descent for logistic regression (lesson 3.3)"
+/>
+
+<Objectives>
+
+- Derive the negative log-likelihood of linear regression with Gaussian noise, and write out the constants $c_1 = 1/(2\sigma_\varepsilon^2)$ and $c_2 = \frac n2 \log(2\pi\sigma_\varepsilon^2)$ that L6 p.14 leaves hidden.
+- Explain why the maximum-likelihood $\theta$ does not depend on the noise level, and derive the maximum-likelihood noise variance.
+- Define the KL divergence and entropy, prove Gibbs' inequality, and show that KL is not a metric.
+- Prove that maximum likelihood minimizes the KL divergence from the empirical distribution to the model, and that the average negative log-likelihood estimates the KL to the true distribution plus a constant.
+- Derive the conditional version the professor assigned as homework, and show that with one-hot targets it is exactly the logistic-regression objective.
+
+</Objectives>
+
+<Hook>
+
+In the VASCO trial, each placebo patient's 8-week change in systolic blood pressure scatters around a line in baseline pressure, with noise of standard deviation about 8 mmHg. Analyst A fits the line by least squares, as in lesson 1.4. Analyst B never mentions squares: she asks which line makes the 50 observed changes most probable, assuming [[gaussian|Gaussian noise]].
+
+Do they report the same line? If B had assumed noise twice as large, would her line move? And when she moves to the ADVERSE cohort, where the outcome is yes or no, what is she minimizing then? One idea answers all three: a divergence between the data and the model.
+
+{/* hook-figure: the gaussian-noise-least-squares widget in the explorable section is the hook's figure */}
+
+</Hook>
+
+## Least squares is a maximum-likelihood fit
+
+Lesson 1.4 chose the squared error because it is convenient: it is differentiable, convex, and solved by the normal equations. Lesson 3.2 introduced a different rule for choosing an objective, the [[maximum-likelihood-estimation|maximum-likelihood principle]]: pick the parameters under which the observed data are most probable. L6 pp.12–14 ask what that principle says about linear regression <SlideRef lecture={6} pages="12-14" />. To answer, the model has to say how probable each target is, so we first make it probabilistic.
+
+<Definition id="def-3-4-1" title="Linear regression with Gaussian noise" source="L6 pp.12-13">
+
+The target is a linear function of the features plus independent Gaussian noise:
+
+$$
+y = \theta^\top x + \varepsilon, \qquad \varepsilon \sim \mathcal{N}(0, \sigma_\varepsilon^2), \quad \varepsilon \text{ independent of } x. \tag{3.4.1} \htmlId{eq-3-4-1}{}
+$$
+
+The second argument of $\mathcal{N}$ is a variance, so $\sigma_\varepsilon$ is the noise standard deviation. The intercept is absorbed as $x_0 = 1$. <SlideRef lecture={6} pages="12-13" />
+
+Also written as: $y = \theta^T X + \epsilon$, $\epsilon \sim \mathcal{N}(0, \sigma^2)$ (L6 p.13); $y \mid x \sim \mathcal{N}(\theta^\top x, \sigma_\varepsilon^2)$; the linear-Gaussian model.
+
+</Definition>
+
+<Callout type="slide">
+
+Four normalizations on L6 pp.12–14. The slide writes the noise standard deviation as $\sigma$, the same letter as the [[sigmoid]] $\sigma(\cdot)$ of this unit; we write $\sigma_\varepsilon$. In the PDF the $\epsilon$ and $\mathcal{N}$ glyphs of the model line do not render (a font issue); the intended line is <EqRef id="eq-3-4-1" />. The slide indexes examples as $X_i, y_i$; we write $x^{(i)}, y^{(i)}$. And it writes the result as $-\log P_\theta(y \mid X; \mathcal{D}) = \sum_i c_1 (y_i - \theta^T X_i)^2 + c_2$ "for some positive $c_1$", without giving $c_1$ or $c_2$; der-3-4-1 finds both.
+
+</Callout>
+
+<Intuition>
+
+Picture the slide's figure on L6 p.12: a fitted line, and at each training input $x^{(i)}$ a bell curve standing upright on the line, centered at the prediction $\theta^\top x^{(i)}$, all with the same width $\sigma_\varepsilon$. The observed $y^{(i)}$ sits somewhere on its bell. Its likelihood is the height of the bell at that point.
+
+The height of a Gaussian falls off as $\exp(-r^2 / (2\sigma_\varepsilon^2))$, where $r$ is the vertical distance from the center: the residual. Multiplying the heights over patients multiplies these exponentials, which adds their exponents. So the product of heights is largest exactly when the sum of squared residuals is smallest. Moving the line to raise one bell's height at its point lowers another's, and the squared residual is the exchange rate.
+
+What does the width do? Changing $\sigma_\varepsilon$ changes every likelihood, but after taking logs it changes them all in the same way: every candidate line's [[log-likelihood]] is the same offset minus the same positive multiple of its own sum of squared residuals. A common offset and a common positive scale cannot reorder the candidates, so the best line cannot depend on $\sigma_\varepsilon$. The two derivations below make each of these sentences an equation.
+
+</Intuition>
+
+<Derivation
+  id="der-3-4-1"
+  title="Under Gaussian noise, the negative log-likelihood of linear regression is c₁ times the squared error plus c₂, with c₁ = 1/(2σ_ε²)"
+  goalTex="-\sum_{i=1}^{n} \log p_\theta(y^{(i)} \mid x^{(i)}) = c_1 \lVert X\theta - y\rVert_2^2 + c_2 \text{ with explicit } c_1 > 0 \text{ and } c_2"
+  resultTex="-\sum_{i=1}^{n} \log p_\theta(y^{(i)} \mid x^{(i)}) = \frac{1}{2\sigma_\varepsilon^2}\lVert X\theta - y\rVert_2^2 + \frac{n}{2}\log(2\pi\sigma_\varepsilon^2)"
+  source="L6 pp.12-14 (stated with hidden constants c_1, c_2)"
+>
+
+<Chunk title="Turn the noise model into a density for y">
+
+<Step justification="the model of def-3-4-1: given $x$, the only randomness in $y$ is the noise">
+$$y = \theta^\top x + \varepsilon, \qquad \varepsilon \sim \mathcal{N}(0, \sigma_\varepsilon^2) \text{ independent of } x$$
+</Step>
+
+<Step justification="adding the constant $\theta^\top x$ to a Gaussian shifts its mean by that constant and leaves its variance unchanged" sticky="gaussian">
+$$y \mid x \sim \mathcal{N}(\theta^\top x,\ \sigma_\varepsilon^2)$$
+</Step>
+
+<Step justification="the Gaussian density with mean $\theta^\top x$ and variance $\sigma_\varepsilon^2$, evaluated at $y$" sticky="gaussian">
+$$p_\theta(y \mid x) = \frac{1}{\sqrt{2\pi\sigma_\varepsilon^2}} \exp\Big(-\frac{(y - \theta^\top x)^2}{2\sigma_\varepsilon^2}\Big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Multiply over examples, then take logs">
+
+<Step justification="the examples are i.i.d., so the labels are conditionally independent given the inputs and the conditional likelihood factorizes (L6 p.7 drops the $\theta$-free $p(x^{(i)})$ factors to reach this form)" sticky="iid">
+$$p_\theta\big(y^{(1)}, \dots, y^{(n)} \mid x^{(1)}, \dots, x^{(n)}\big) = \prod_{i=1}^{n} p_\theta(y^{(i)} \mid x^{(i)})$$
+</Step>
+
+<Step justification="the log of a product is the sum of the logs" sticky="log-rules">
+$$\log \prod_{i=1}^{n} p_\theta(y^{(i)} \mid x^{(i)}) = \sum_{i=1}^{n} \log p_\theta(y^{(i)} \mid x^{(i)})$$
+</Step>
+
+<Step justification="log of step 3: $\log(a\,e^{b}) = \log a + b$, and $\log\big(1/\sqrt{2\pi\sigma_\varepsilon^2}\big) = -\tfrac12\log(2\pi\sigma_\varepsilon^2)$" sticky="log-rules" fadeable>
+$$\log p_\theta(y^{(i)} \mid x^{(i)}) = -\frac12\log(2\pi\sigma_\varepsilon^2) - \frac{(y^{(i)} - \theta^\top x^{(i)})^2}{2\sigma_\varepsilon^2}$$
+</Step>
+
+<Step justification="sum step 6 over $i$: the first term is the same for every example, so it appears $n$ times" fadeable>
+$$\sum_{i=1}^{n} \log p_\theta(y^{(i)} \mid x^{(i)}) = -\frac{n}{2}\log(2\pi\sigma_\varepsilon^2) - \frac{1}{2\sigma_\varepsilon^2}\sum_{i=1}^{n}(y^{(i)} - \theta^\top x^{(i)})^2$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Negate and name the constants">
+
+<Step justification="multiply both sides by $-1$">
+$$-\sum_{i=1}^{n} \log p_\theta(y^{(i)} \mid x^{(i)}) = \frac{1}{2\sigma_\varepsilon^2}\sum_{i=1}^{n}(y^{(i)} - \theta^\top x^{(i)})^2 + \frac{n}{2}\log(2\pi\sigma_\varepsilon^2)$$
+</Step>
+
+<Step justification="the rows of $X$ are $(x^{(i)})^\top$, so entry $i$ of $X\theta - y$ is $\theta^\top x^{(i)} - y^{(i)}$; its square equals $(y^{(i)} - \theta^\top x^{(i)})^2$, and a sum of squared entries is a squared Euclidean norm" sticky="design-matrix">
+$$\sum_{i=1}^{n}(y^{(i)} - \theta^\top x^{(i)})^2 = \lVert X\theta - y\rVert_2^2$$
+</Step>
+
+<Step justification="substitute step 9 into step 8 and match L6 p.14's form $c_1(\cdot)^2 + c_2$; note $\frac n2\log(2\pi\sigma_\varepsilon^2) = n\log(\sqrt{2\pi}\,\sigma_\varepsilon)$">
+$$-\sum_{i=1}^{n} \log p_\theta(y^{(i)} \mid x^{(i)}) = c_1\lVert X\theta - y\rVert_2^2 + c_2, \qquad c_1 = \frac{1}{2\sigma_\varepsilon^2} > 0,\quad c_2 = \frac{n}{2}\log(2\pi\sigma_\varepsilon^2)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+-\sum_{i=1}^{n} \log p_\theta(y^{(i)} \mid x^{(i)}) = \frac{1}{2\sigma_\varepsilon^2}\lVert X\theta - y\rVert_2^2 + \frac{n}{2}\log(2\pi\sigma_\varepsilon^2) \tag{3.4.2} \htmlId{eq-3-4-2}{}
+$$
+
+Both constants depend on the noise level and neither depends on $\theta$. That is all the next derivation needs.
+
+<Derivation
+  id="der-3-4-2"
+  title="The Gaussian MLE of θ is the least-squares solution, for every noise level σ_ε"
+  goalTex="\hat\theta_{\mathrm{MLE}} = \argmax_\theta \sum_{i} \log p_\theta(y^{(i)} \mid x^{(i)}) \text{ in terms of the squared error}"
+  resultTex="\hat\theta_{\mathrm{MLE}} = \argmin_\theta \frac1n\lVert X\theta - y\rVert_2^2 = (X^\top X)^{-1}X^\top y \text{ when } X \text{ has full column rank}"
+  source="L6 p.14 ('This is the least square objective!', stated)"
+>
+
+<Chunk title="Swap the maximum for a minimum and substitute">
+
+<Step justification="maximizing a function and minimizing its negative pick the same point" sticky="argmax">
+$$\hat\theta_{\mathrm{MLE}} = \argmax_\theta \sum_{i} \log p_\theta(y^{(i)} \mid x^{(i)}) = \argmin_\theta \Big(-\sum_{i} \log p_\theta(y^{(i)} \mid x^{(i)})\Big)$$
+</Step>
+
+<Step justification="substitute equation 3.4.2 (der-3-4-1 step 10)">
+$$\hat\theta_{\mathrm{MLE}} = \argmin_\theta \big(c_1\lVert X\theta - y\rVert_2^2 + c_2\big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Constants do not move a minimizer">
+
+<Step justification="adding the constant $c_2$ shifts every candidate's value by the same amount, so the order of candidates, and the minimizer, are unchanged" fadeable>
+$$\hat\theta_{\mathrm{MLE}} = \argmin_\theta c_1\lVert X\theta - y\rVert_2^2$$
+</Step>
+
+<Step justification="multiplying by a positive number preserves order; replace $c_1 = 1/(2\sigma_\varepsilon^2) > 0$ by $1/n > 0$" fadeable>
+$$\hat\theta_{\mathrm{MLE}} = \argmin_\theta \frac1n\lVert X\theta - y\rVert_2^2$$
+</Step>
+
+<Step justification="this is the least-squares problem of lesson 1.4 (equation 1.4.1), solved by the normal equations when $X^\top X$ is invertible (equation 1.4.3)">
+$$\hat\theta_{\mathrm{MLE}} = (X^\top X)^{-1}X^\top y$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+So the two analysts of the hook report the same line, and analyst B's line would not move if she doubled her guess of $\sigma_\varepsilon$: the noise level enters only through $c_1$ and $c_2$, and steps 3 and 4 removed both. What the noise level does change is the value of the likelihood, and so how confident the model is about any one prediction. That value has its own maximum-likelihood estimate.
+
+<Derivation
+  id="der-3-4-3"
+  title="The MLE of the noise variance is the mean squared residual of the least-squares fit"
+  goalTex="\hat\sigma_\varepsilon^2 = \argmin_{v > 0}\Big(-\sum_{i} \log p_{\hat\theta, v}(y^{(i)} \mid x^{(i)})\Big), \quad v = \sigma_\varepsilon^2"
+  resultTex="\hat\sigma_\varepsilon^2 = \frac1n\lVert X\hat\theta - y\rVert_2^2 = \frac1n\sum_{i=1}^{n}\big(y^{(i)} - \hat\theta^\top x^{(i)}\big)^2"
+  source="not on the slides; course map L6 derivation gap 3"
+>
+
+<Chunk title="Fix θ at the least-squares fit and write the NLL as a function of the variance">
+
+<Step justification="der-3-4-2: the best $\theta$ is $\hat\theta$ whatever the variance, so we can maximize over $\theta$ first; write $v = \sigma_\varepsilon^2$ and $S = \lVert X\hat\theta - y\rVert_2^2$ in equation 3.4.2">
+$$g(v) = \frac{S}{2v} + \frac{n}{2}\log(2\pi v), \qquad v > 0$$
+</Step>
+
+<Step justification="differentiate in $v$: $\frac{d}{dv}\frac1v = -\frac{1}{v^2}$, and $\frac{d}{dv}\log(2\pi v) = \frac1v$" sticky="derivative">
+$$g'(v) = -\frac{S}{2v^2} + \frac{n}{2v}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Solve the first-order condition and check it is the minimum">
+
+<Step justification="set $g'(v) = 0$ and multiply by $2v^2 > 0$" sticky="first-order-condition" fadeable>
+$$-S + n v = 0$$
+</Step>
+
+<Step justification="solve for $v$" fadeable>
+$$\hat v = \frac{S}{n}$$
+</Step>
+
+<Step justification="put step 2 over a common denominator: the sign of $g'$ is the sign of $nv - S$, so $g$ decreases before $S/n$ and increases after it, which makes $\hat v$ the global minimizer on $v > 0$ (when $S > 0$)">
+$$g'(v) = \frac{n v - S}{2v^2} \quad\begin{cases} < 0 & \text{for } v < S/n \\ > 0 & \text{for } v > S/n \end{cases}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+<Callout type="beyond">
+
+Two facts the slides do not include. First, $\hat\sigma_\varepsilon^2$ divides by $n$, and like every training-set error it is optimistic: for the constant model $f_\theta(x) = \theta$, lesson 2.2 (der-2-2-5) proved that its expectation is $\frac{n-1}{n}\sigma_\varepsilon^2$. Fitting more parameters makes the shortfall larger, which is why statistics packages report a variance with a smaller divisor.
+
+Second, the squared error came from the exponent of the Gaussian. Other noise models give other losses. With Laplace noise, density $\frac{1}{2b}\exp(-\lvert\varepsilon\rvert / b)$, the same steps (log of a product is a sum of logs, then negate) give
+
+$$-\sum_{i=1}^{n} \log p_\theta(y^{(i)} \mid x^{(i)}) = \frac1b \sum_{i=1}^{n} \big\lvert y^{(i)} - \theta^\top x^{(i)}\big\rvert + n\log(2b),$$
+
+so the maximum-likelihood fit minimizes the mean absolute error of lesson 1.3. Heavier tails in the noise model make the fit less sensitive to outliers.
+
+</Callout>
+
+<Check ids={["q-u3-l4-001", "q-u3-l4-002", "q-u3-l4-003"]} />
+
+## KL divergence and Gibbs' inequality
+
+L5 p.50 and L6 p.15 make a claim about logistic regression: maximum likelihood is "identical to minimizing the KL divergence between the desired output $y$ and actual output $\sigma(\theta^T X)$" <SlideRef lecture={5} pages="50" /> <SlideRef lecture={6} pages="15" />. To check it, we need the divergence itself and its one essential property, [[gibbs-inequality|Gibbs' inequality]].
+
+<Definition id="def-3-4-2" title="KL divergence" source="L6 p.16">
+
+For two distributions $p$ and $q$ on the same discrete set of outcomes, the [[kl-divergence|Kullback–Leibler divergence]] of $q$ from $p$ is
+
+$$
+D_{\mathrm{KL}}(p \,\|\, q) = \sum_x p(x)\log\frac{p(x)}{q(x)} = \mathbb{E}_{X\sim p}\Big[\log\frac{p(X)}{q(X)}\Big], \tag{3.4.3} \htmlId{eq-3-4-3}{}
+$$
+
+with the natural log and the convention $0\log 0 = 0$. If $q(x) = 0$ at some $x$ with $p(x) > 0$, the divergence is $+\infty$. For densities the sum becomes an integral. <SlideRef lecture={6} pages="16" />
+
+Also written as: $D(p|q)$ (L6 p.16); $D_{KL}(P\|Q)$ (the figure on L6 p.17); relative entropy.
+
+</Definition>
+
+<Definition id="def-3-4-3" title="Entropy and cross-entropy" source="beyond the slides (implicit on L6 pp.15-19)">
+
+The [[entropy]] of a discrete distribution $p$ and the [[cross-entropy]] of $q$ relative to $p$ are
+
+$$H(p) = -\sum_x p(x)\log p(x), \qquad H(p, q) = -\sum_x p(x)\log q(x),$$
+
+so that, splitting the log of the ratio in <EqRef id="eq-3-4-3" />, $D_{\mathrm{KL}}(p\,\|\,q) = H(p, q) - H(p)$.
+
+Also written as: expected surprise (entropy); expected log loss (cross-entropy).
+
+</Definition>
+
+<Callout type="slide">
+
+L6 p.16 writes the divergence with a single bar, $D(p|q)$, which reads like a conditional probability; we write $D_{\mathrm{KL}}(p\,\|\,q)$. The slide calls it a measure of "the distance between two distributions". It is not a distance in the mathematical sense: it is not symmetric and it can violate the triangle inequality (the second worked example shows both). It is a divergence: nonnegative, and zero only when the two distributions agree. The slide states those two properties without proof; Gibbs' inequality is the proof.
+
+</Callout>
+
+<Theorem id="thm-3-4-1" title="Gibbs' inequality" source="L6 p.16 (stated without proof)">
+
+For any two distributions $p$ and $q$ on the same discrete outcomes, $D_{\mathrm{KL}}(p\,\|\,q) \ge 0$, with equality if and only if $p = q$.
+
+</Theorem>
+
+Write $S_p = \{x : p(x) > 0\}$ for the outcomes $p$ can produce. If $q(x) = 0$ for some $x \in S_p$, the divergence is $+\infty$ and there is nothing to prove, so assume $q > 0$ on $S_p$. The proof rests on one inequality about the logarithm: the line $t - 1$, tangent to $\log t$ at $t = 1$, lies above it.
+
+<Derivation
+  id="der-3-4-4"
+  title="Gibbs' inequality: the KL divergence is nonnegative, and zero only when p = q"
+  goalTex="D_{\mathrm{KL}}(p\,\|\,q) \ge 0, \text{ with equality iff } p = q"
+  resultTex="D_{\mathrm{KL}}(p\,\|\,q) \ge 0, \quad D_{\mathrm{KL}}(p\,\|\,q) = 0 \iff p = q"
+  source="L6 p.16 (properties stated: non-negative, zero iff p = q; no proof)"
+>
+
+<Chunk title="The tangent line at t = 1 lies above the log">
+
+<Step justification="define the gap $h$ between the line $t - 1$ and $\log t$ on $t > 0$; the derivative of $\log t$ is $1/t$" sticky="derivative">
+$$h(t) = t - 1 - \log t, \qquad h'(t) = 1 - \frac{1}{t}$$
+</Step>
+
+<Step justification="$h'(t) < 0$ on $(0, 1)$ and $h'(t) > 0$ on $(1, \infty)$, so $h$ strictly decreases up to $t = 1$ and strictly increases after it">
+$$h(t) > h(1) \quad \text{for every } t > 0,\ t \ne 1$$
+</Step>
+
+<Step justification="$h(1) = 1 - 1 - \log 1 = 0$; rearrange $h(t) \ge 0$" fadeable>
+$$\log t \le t - 1, \quad \text{with equality if and only if } t = 1$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Apply it to the ratio q/p, weighted by p">
+
+<Step justification="drop the terms with $p(x) = 0$ (they are 0 by the convention $0 \log 0 = 0$), negate, and flip each ratio with $-\log\frac{a}{b} = \log\frac{b}{a}$" sticky="log-rules">
+$$-D_{\mathrm{KL}}(p\,\|\,q) = \sum_{x \in S_p} p(x)\log\frac{q(x)}{p(x)}$$
+</Step>
+
+<Step justification="step 3 with $t = q(x)/p(x) > 0$ in each term; the weights $p(x)$ are positive, so the inequality survives multiplying and summing" fadeable>
+$$-D_{\mathrm{KL}}(p\,\|\,q) \le \sum_{x \in S_p} p(x)\Big(\frac{q(x)}{p(x)} - 1\Big)$$
+</Step>
+
+<Step justification="cancel $p(x)$ in the first term and distribute the sum">
+$$-D_{\mathrm{KL}}(p\,\|\,q) \le \sum_{x \in S_p} q(x) - \sum_{x \in S_p} p(x)$$
+</Step>
+
+<Step justification="$p$ puts all of its mass on $S_p$, so the second sum is 1">
+$$-D_{\mathrm{KL}}(p\,\|\,q) \le \sum_{x \in S_p} q(x) - 1$$
+</Step>
+
+<Step justification="$q$ is a distribution, so its mass on the subset $S_p$ is at most its total mass, 1">
+$$-D_{\mathrm{KL}}(p\,\|\,q) \le 0$$
+</Step>
+
+<Step justification="multiply by $-1$, which reverses the inequality" fadeable>
+$$D_{\mathrm{KL}}(p\,\|\,q) \ge 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="When the bound is tight">
+
+<Step justification="if $D_{\mathrm{KL}} = 0$, step 5 must hold with equality, so step 3 must hold with equality in every term: $t = q(x)/p(x) = 1$">
+$$D_{\mathrm{KL}}(p\,\|\,q) = 0 \implies q(x) = p(x) \text{ for every } x \in S_p$$
+</Step>
+
+<Step justification="equality in step 8 also needs $\sum_{x \in S_p} q(x) = 1$, so $q$ has no mass outside $S_p$, where $p$ is 0">
+$$D_{\mathrm{KL}}(p\,\|\,q) = 0 \implies q(x) = 0 = p(x) \text{ for every } x \notin S_p$$
+</Step>
+
+<Step justification="conversely, if $q = p$ every ratio in equation 3.4.3 is 1 and $\log 1 = 0$">
+$$q = p \implies D_{\mathrm{KL}}(p\,\|\,q) = 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+In words: scoring draws from $p$ with the log-probabilities of any other distribution $q$ costs more, on average, than scoring them with $p$ itself, $H(p, q) \ge H(p)$. That is Gibbs' inequality. The same argument with integrals proves it for densities. Jensen's inequality for the concave $\log$ is the other standard proof; the tangent line in steps 1 to 3 is the special case of Jensen that the proof needs.
+
+The slide's figure on L6 p.17 shows what the inequality does not say <SlideRef lecture={6} pages="17" />. The integrand $p(x)\log\frac{p(x)}{q(x)}$ is negative wherever $q$ exceeds $p$; only the total is guaranteed nonnegative. And as $q$ slides away from $p$, the total grows.
+
+<Check ids={["q-u3-l4-004", "q-u3-l4-005", "q-u3-l4-006", "q-u3-l4-010"]} />
+
+## Maximum likelihood minimizes the KL to the data
+
+L6 pp.18–19 substitute the data for $p$ and the model for $q$ <SlideRef lecture={6} pages="18-19" />. Which distribution plays "the data"? The handwritten note on p.19 labels it the empirical distribution.
+
+<Definition id="def-3-4-4" title="Empirical distribution" source="L6 p.19 (named, handwritten)">
+
+The empirical distribution of a sample $z^{(1)}, \dots, z^{(n)}$ puts mass $\frac1n$ on each observation:
+
+$$
+\hat p(z) = \frac1n\sum_{i=1}^{n} \mathbb{1}\big[z^{(i)} = z\big]. \tag{3.4.4} \htmlId{eq-3-4-4}{}
+$$
+
+A value observed $k$ times gets mass $k/n$. For a supervised dataset, $z^{(i)} = (x^{(i)}, y^{(i)})$. <SlideRef lecture={6} pages="19" />
+
+Also written as: $P_{y,x}$ (L6 p.19); $p_{\text{data}}$.
+
+</Definition>
+
+<Theorem id="thm-3-4-2" title="Maximum likelihood minimizes the KL divergence from the empirical distribution" source="L6 pp.18-19 (partially derived)">
+
+For a model family $q_\theta$ on discrete outcomes,
+
+$$
+D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = -H(\hat p) - \frac1n\sum_{i=1}^{n}\log q_\theta(z^{(i)}), \qquad \argmin_\theta D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = \hat\theta_{\mathrm{MLE}}. \tag{3.4.5} \htmlId{eq-3-4-5}{}
+$$
+
+</Theorem>
+
+<Derivation
+  id="der-3-4-5"
+  title="Minimizing the KL divergence from the empirical distribution to the model is maximum likelihood"
+  goalTex="\argmin_\theta D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) \text{ in terms of the log-likelihood } \sum_i \log q_\theta(z^{(i)})"
+  resultTex="\argmin_\theta D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = \argmax_\theta \sum_{i=1}^{n} \log q_\theta(z^{(i)}) = \hat\theta_{\mathrm{MLE}}"
+  source="L6 pp.18-19 (handwritten; the sample average and the 1/N are asserted, not derived)"
+>
+
+<Chunk title="Split the divergence into a data part and a model part">
+
+<Step justification="def-3-4-2 with $p = \hat p$, then $\log\frac{a}{b} = \log a - \log b$ and split the sum (assume $q_\theta > 0$ on the observed outcomes; otherwise both sides are $+\infty$)" sticky="log-rules">
+$$D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = \sum_z \hat p(z)\log\hat p(z) - \sum_z \hat p(z)\log q_\theta(z)$$
+</Step>
+
+<Step justification="the first sum is minus the entropy of $\hat p$ (def-3-4-3)" sticky="entropy">
+$$D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = -H(\hat p) - \sum_z \hat p(z)\log q_\theta(z)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="An expectation under the empirical distribution is a sample average">
+
+<Step justification="substitute the definition of $\hat p$, equation 3.4.4">
+$$\sum_z \hat p(z)\log q_\theta(z) = \sum_z \frac1n\sum_{i=1}^{n}\mathbb{1}\big[z^{(i)} = z\big]\log q_\theta(z)$$
+</Step>
+
+<Step justification="exchange the order of the two sums">
+$$\sum_z \hat p(z)\log q_\theta(z) = \frac1n\sum_{i=1}^{n}\sum_z \mathbb{1}\big[z^{(i)} = z\big]\log q_\theta(z)$$
+</Step>
+
+<Step justification="for each $i$ the indicator is 1 only at $z = z^{(i)}$, so the inner sum keeps exactly one term" sticky="indicator-function" fadeable>
+$$\sum_z \hat p(z)\log q_\theta(z) = \frac1n\sum_{i=1}^{n}\log q_\theta(z^{(i)})$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Drop what θ cannot change">
+
+<Step justification="substitute step 5 into step 2">
+$$D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = -H(\hat p) - \frac1n\sum_{i=1}^{n}\log q_\theta(z^{(i)})$$
+</Step>
+
+<Step justification="$H(\hat p)$ is computed from the data alone and does not depend on $\theta$, so it does not move the minimizer" fadeable>
+$$\argmin_\theta D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = \argmin_\theta \Big(-\frac1n\sum_{i=1}^{n}\log q_\theta(z^{(i)})\Big)$$
+</Step>
+
+<Step justification="minimizing a negative is maximizing, and the positive factor $\frac1n$ does not move the maximizer; the result is the log-likelihood of lesson 3.2" sticky="log-likelihood" fadeable>
+$$\argmin_\theta D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = \argmax_\theta \sum_{i=1}^{n}\log q_\theta(z^{(i)}) = \hat\theta_{\mathrm{MLE}}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 6 is a sentence worth reading slowly. The average negative log-likelihood is the cross-entropy $H(\hat p, q_\theta)$, and it equals the entropy of the data plus the KL divergence: $H(\hat p, q_\theta) = H(\hat p) + D_{\mathrm{KL}}(\hat p\,\|\,q_\theta)$. The entropy is the part of the loss no model can remove. Gibbs' inequality says the rest is nonnegative, so the average NLL can never go below $H(\hat p)$, and it reaches it only if the model reproduces the empirical frequencies exactly.
+
+<Callout type="slide">
+
+On L6 p.19 the professor writes the sample average as $\sum_{(y_i, X_i)\sim P_{y,x}} \frac{1}{N}\big(\log p(y_i, X_i) - \log q_\theta(y_i, X_i)\big)$, with $N$ the number of data points and the $\frac1N$ added by hand. We write $n$, as everywhere in the course. The step from "sum over all possible values, weighted by $p(y,x)$" to "average over the sample" is an exact identity when $p$ is the empirical distribution (der-3-4-5 steps 3 to 5), and an approximation when $p$ is the true distribution. The next derivation makes the second reading precise.
+
+</Callout>
+
+The slide's handwritten gloss, "sample from distribution $p(y,x)$ and take the average", suggests the second reading: $p$ is the true data-generating distribution, and the sample average approximates an expectation under it. This is the [[empirical-risk|empirical risk]] of Unit 2 in disguise, with the per-example loss $\ell = -\log q_\theta(z)$, the log loss.
+
+<Derivation
+  id="der-3-4-6"
+  title="With the log loss, the true risk is the cross-entropy H(p) + D_KL(p‖q_θ), and the average NLL estimates it"
+  goalTex="R(\theta) = \mathbb{E}_{Z\sim p}\big[-\log q_\theta(Z)\big] \text{ in terms of } D_{\mathrm{KL}}(p\,\|\,q_\theta)"
+  resultTex="R(\theta) = H(p) + D_{\mathrm{KL}}(p\,\|\,q_\theta), \qquad \mathbb{E}\Big[-\frac1n\sum_{i=1}^{n}\log q_\theta(Z^{(i)})\Big] = R(\theta)"
+  source="L6 p.19 (handwritten: 'sample from distribution p(y,x) and take the average'; not derived)"
+>
+
+<Chunk title="The true risk of the log loss is entropy plus KL">
+
+<Step justification="the true risk (def-2-2-1) with the per-example loss $\ell = -\log q_\theta(z)$; an expectation under a discrete $p$ is a $p$-weighted sum" sticky="expectation">
+$$R(\theta) = \mathbb{E}_{Z\sim p}\big[-\log q_\theta(Z)\big] = -\sum_z p(z)\log q_\theta(z)$$
+</Step>
+
+<Step justification="add and subtract $\sum_z p(z)\log p(z)$">
+$$R(\theta) = -\sum_z p(z)\log p(z) + \sum_z p(z)\log p(z) - \sum_z p(z)\log q_\theta(z)$$
+</Step>
+
+<Step justification="the first sum is $H(p)$; combine the other two with $\log a - \log b = \log\frac{a}{b}$, which is def-3-4-2" sticky="kl-divergence" fadeable>
+$$R(\theta) = H(p) + D_{\mathrm{KL}}(p\,\|\,q_\theta)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="The sample average estimates it">
+
+<Step justification="for a $\theta$ fixed before the data are drawn, the average loss over i.i.d. draws is an unbiased estimate of the true risk (der-2-2-2)" sticky="empirical-risk">
+$$\mathbb{E}\Big[-\frac1n\sum_{i=1}^{n}\log q_\theta(Z^{(i)})\Big] = R(\theta) = H(p) + D_{\mathrm{KL}}(p\,\|\,q_\theta)$$
+</Step>
+
+<Step justification="the law of large numbers (der-2-2-3) at each fixed $\theta$, assuming $\log q_\theta(Z)$ has finite variance" sticky="law-of-large-numbers">
+$$P\Big(\Big\lvert -\frac1n\sum_{i=1}^{n}\log q_\theta(Z^{(i)}) - \big(H(p) + D_{\mathrm{KL}}(p\,\|\,q_\theta)\big)\Big\rvert \ge \epsilon\Big) \xrightarrow[n\to\infty]{} 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Put the two derivations side by side. Maximum likelihood minimizes the KL divergence from the empirical distribution exactly (der-3-4-5), and that objective is, up to the constant $H(p)$, an unbiased and consistent ([[law-of-large-numbers|law of large numbers]]) estimate of the KL divergence from the true distribution (der-3-4-6). The fitted model is the member of the model class that the data say is closest to the truth, with "closest" measured by $D_{\mathrm{KL}}(p\,\|\,q_\theta)$. Lesson 2.2's caveat applies unchanged: at the trained $\hat\theta$, the training NLL is optimistic.
+
+<Callout type="note">
+
+For a continuous outcome, such as VASCO's blood-pressure change, $\hat p$ is a set of spikes with no density, so $D_{\mathrm{KL}}(\hat p\,\|\,q_\theta)$ in der-3-4-5 is not defined as written. Der-3-4-6 needs no such object: with integrals in place of sums, the average Gaussian NLL of <EqRef id="eq-3-4-2" /> estimates $\mathbb{E}_X\big[H(p(\cdot\mid X))\big] + \mathbb{E}_X\big[D_{\mathrm{KL}}(p(\cdot\mid X)\,\|\,q_\theta(\cdot\mid X))\big]$ (der-3-4-7), where the conditional entropy is now an integral that can be negative. So least squares also minimizes an estimated KL divergence, to the true conditional distribution of the target.
+
+</Callout>
+
+<Check ids={["q-u3-l4-014", "q-u3-l4-015", "q-u3-l4-016"]} />
+
+## The conditional version
+
+There is a gap in the argument as stated so far. Logistic regression does not model the pair $(x, y)$; it models only $q_\theta(y \mid x)$. L6 p.18 nonetheless writes a joint $q_\theta(y, x)$, described as the "joint distribution of $\hat y$ given the feature $x$ and model parameter $\theta$", and the yellow box on p.19 says: "To make the same argument for the conditional expectation $p(y|x)$, it is better to use expectations than sum → see homework." Here is that argument.
+
+<Proposition id="prop-3-4-1" title="Maximum conditional likelihood minimizes the expected conditional KL divergence" source="L6 p.19 (assigned as homework; not derived)">
+
+Complete a conditional model with the data's own input distribution, $q_\theta(x, y) = p(x)\,q_\theta(y \mid x)$. Then
+
+$$
+D_{\mathrm{KL}}\big(p(x,y)\,\|\,q_\theta(x,y)\big) = \mathbb{E}_{X\sim p}\Big[D_{\mathrm{KL}}\big(p(\cdot \mid X)\,\|\,q_\theta(\cdot \mid X)\big)\Big], \tag{3.4.6} \htmlId{eq-3-4-6}{}
+$$
+
+and with $p = \hat p$ its minimizer is the maximizer of the conditional log-likelihood $\sum_i \log q_\theta(y^{(i)} \mid x^{(i)})$.
+
+</Proposition>
+
+<Derivation
+  id="der-3-4-7"
+  title="With the model's joint completed by p(x), the KL becomes an average of conditional KLs, minimized by maximum conditional likelihood"
+  goalTex="\argmin_\theta D_{\mathrm{KL}}\big(p(x,y)\,\|\,p(x)\,q_\theta(y\mid x)\big) \text{ in terms of the conditional likelihood}"
+  resultTex="D_{\mathrm{KL}}\big(p\,\|\,q_\theta\big) = \mathbb{E}_{X}\Big[D_{\mathrm{KL}}\big(p(\cdot\mid X)\,\|\,q_\theta(\cdot\mid X)\big)\Big], \quad \argmin_\theta D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = \argmin_\theta \Big(-\frac1n\sum_{i=1}^{n}\log q_\theta(y^{(i)}\mid x^{(i)})\Big)"
+  source="L6 p.19 (yellow box: 'to make the same argument for the conditional ... see homework'; not derived)"
+>
+
+<Chunk title="Complete the conditional model and cancel p(x)">
+
+<Step justification="a conditional model says nothing about $x$; pair it with the data's input distribution to get the joint that L6 p.18 calls $q_\theta(y, x)$">
+$$q_\theta(x, y) = p(x)\,q_\theta(y \mid x)$$
+</Step>
+
+<Step justification="def-3-4-2, written as an expectation under $p$" sticky="expectation">
+$$D_{\mathrm{KL}}(p\,\|\,q_\theta) = \mathbb{E}_{(X,Y)\sim p}\Big[\log\frac{p(X, Y)}{p(X)\,q_\theta(Y \mid X)}\Big]$$
+</Step>
+
+<Step justification="chain rule of probability in the numerator, $p(x, y) = p(x)\,p(y \mid x)$" sticky="chain-rule-probability">
+$$D_{\mathrm{KL}}(p\,\|\,q_\theta) = \mathbb{E}\Big[\log\frac{p(X)\,p(Y \mid X)}{p(X)\,q_\theta(Y \mid X)}\Big]$$
+</Step>
+
+<Step justification="$p(X) > 0$ for every input that can occur, so it cancels" fadeable>
+$$D_{\mathrm{KL}}(p\,\|\,q_\theta) = \mathbb{E}\Big[\log\frac{p(Y \mid X)}{q_\theta(Y \mid X)}\Big]$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Condition on X: an average of per-input divergences">
+
+<Step justification="law of total expectation: average first over $Y$ given $X$, then over $X$" sticky="law-of-total-expectation">
+$$D_{\mathrm{KL}}(p\,\|\,q_\theta) = \mathbb{E}_X\Big[\mathbb{E}_{Y\sim p(\cdot\mid X)}\Big[\log\frac{p(Y \mid X)}{q_\theta(Y \mid X)}\Big]\Big]$$
+</Step>
+
+<Step justification="for fixed $X$, the inner expectation is def-3-4-2 for two distributions over labels" sticky="kl-divergence" fadeable>
+$$D_{\mathrm{KL}}(p\,\|\,q_\theta) = \mathbb{E}_X\Big[D_{\mathrm{KL}}\big(p(\cdot \mid X)\,\|\,q_\theta(\cdot \mid X)\big)\Big]$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Drop the part θ cannot change, then use the sample">
+
+<Step justification="return to step 4: $\log\frac{a}{b} = \log a - \log b$ and linearity of expectation" sticky="log-rules">
+$$D_{\mathrm{KL}}(p\,\|\,q_\theta) = \mathbb{E}\big[\log p(Y \mid X)\big] - \mathbb{E}\big[\log q_\theta(Y \mid X)\big]$$
+</Step>
+
+<Step justification="the first term involves only the data distribution, not $\theta$, so it does not move the minimizer">
+$$\argmin_\theta D_{\mathrm{KL}}(p\,\|\,q_\theta) = \argmin_\theta \mathbb{E}_{(X,Y)\sim p}\big[-\log q_\theta(Y \mid X)\big]$$
+</Step>
+
+<Step justification="take $p = \hat p$, the empirical distribution of the pairs; an expectation under $\hat p$ is the sample average (der-3-4-5 steps 3 to 5 with $z = (x, y)$)" fadeable>
+$$\argmin_\theta D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = \argmin_\theta \Big(-\frac1n\sum_{i=1}^{n}\log q_\theta(y^{(i)} \mid x^{(i)})\Big)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Two things happened. The $p(x)$ factor cancelled (step 4), which is the KL-side twin of L6 p.7's "focusing on the bits that invoke the parameters": the $\sum_i \log P(X_i)$ term of the joint likelihood never involved $\theta$. And the divergence of joints became an average of divergences between label distributions (step 6), one for each input, weighted by how often that input occurs. A discriminative model is judged only on the label distributions, input by input.
+
+What is the target label distribution at a training input? If each input occurs once in the data, as it does for continuous features, the empirical conditional $\hat p(\cdot \mid x^{(i)})$ is all mass on the observed label: a one-hot vector. That is the "desired output $y$" of L6 p.15.
+
+<Derivation
+  id="der-3-4-8"
+  title="For a one-hot target, the KL divergence is the negative log-probability of the observed label, which for logistic regression is the slide's objective"
+  goalTex="D_{\mathrm{KL}}\big(\delta_{y^{(i)}}\,\|\,q_\theta(\cdot\mid x^{(i)})\big) \text{ for the logistic model}"
+  resultTex="\sum_{i=1}^{n} D_{\mathrm{KL}}\big(\delta_{y^{(i)}}\,\|\,q_\theta(\cdot\mid x^{(i)})\big) = -\sum_{i=1}^{n}\log\big[y^{(i)}\sigma(\theta^\top x^{(i)}) + (1-y^{(i)})\big(1-\sigma(\theta^\top x^{(i)})\big)\big]"
+  source="L5 p.50 and L6 p.15 ('identical to minimizing the KL divergence between the desired output y and actual output σ(θᵀX)', stated)"
+>
+
+<Chunk title="A point mass leaves one term">
+
+<Step justification="the target at example $i$ is the point mass on the observed label, written with an indicator" sticky="indicator-function">
+$$\delta_{y^{(i)}}(y') = \mathbb{1}\big[y' = y^{(i)}\big]$$
+</Step>
+
+<Step justification="def-3-4-2 with $p = \delta_{y^{(i)}}$ and $q = q_\theta(\cdot \mid x^{(i)})$, summing over the labels $y'$">
+$$D_{\mathrm{KL}}\big(\delta_{y^{(i)}}\,\|\,q_\theta(\cdot\mid x^{(i)})\big) = \sum_{y'}\delta_{y^{(i)}}(y')\log\frac{\delta_{y^{(i)}}(y')}{q_\theta(y' \mid x^{(i)})}$$
+</Step>
+
+<Step justification="terms with $\delta = 0$ vanish by $0\log 0 = 0$; the one remaining term has $\delta = 1$" fadeable>
+$$D_{\mathrm{KL}}\big(\delta_{y^{(i)}}\,\|\,q_\theta(\cdot\mid x^{(i)})\big) = \log\frac{1}{q_\theta(y^{(i)} \mid x^{(i)})}$$
+</Step>
+
+<Step justification="$\log\frac1a = -\log a$; equivalently, a point mass has entropy 0, so here the KL equals the cross-entropy" sticky="log-rules">
+$$D_{\mathrm{KL}}\big(\delta_{y^{(i)}}\,\|\,q_\theta(\cdot\mid x^{(i)})\big) = -\log q_\theta(y^{(i)} \mid x^{(i)})$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Insert the logistic model and sum">
+
+<Step justification="the logistic model gives $q_\theta(1 \mid x) = \sigma(\theta^\top x)$ and $q_\theta(0 \mid x) = 1 - \sigma(\theta^\top x)$; on $y \in \lbrace 0, 1\rbrace$ the slides' additive form selects the right one" sticky="bernoulli" fadeable>
+$$q_\theta(y^{(i)} \mid x^{(i)}) = y^{(i)}\sigma(\theta^\top x^{(i)}) + (1 - y^{(i)})\big(1 - \sigma(\theta^\top x^{(i)})\big)$$
+</Step>
+
+<Step justification="substitute step 5 into step 4 and sum over the $n$ examples">
+$$\sum_{i=1}^{n} D_{\mathrm{KL}}\big(\delta_{y^{(i)}}\,\|\,q_\theta(\cdot\mid x^{(i)})\big) = -\sum_{i=1}^{n}\log\big[y^{(i)}\sigma(\theta^\top x^{(i)}) + (1-y^{(i)})\big(1-\sigma(\theta^\top x^{(i)})\big)\big]$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The right side is the objective of L6 p.7 and lesson 3.3, so the claim on L5 p.50 and L6 p.15 holds in the precise sense of der-3-4-7 and der-3-4-8: the logistic-regression NLL is the sum, over training examples, of the KL divergence from the one-hot "desired output" to the model's predicted label distribution. Since one-hot targets have zero entropy, KL and [[cross-entropy]] coincide example by example, which is why the same loss goes by both names. For analyst B's ADVERSE fit in the hook, the answer is this sum of one-hot KLs. <SlideRef lecture={6} pages="21" />
+
+<Callout type="note">
+
+The slides write the Bernoulli likelihood in the additive form $y\sigma + (1-y)(1-\sigma)$; lesson 3.3 and most textbooks write the product form $\sigma^{y}(1-\sigma)^{1-y}$. The two are equal for $y \in \lbrace 0, 1\rbrace$: at $y = 1$ both give $\sigma$, at $y = 0$ both give $1 - \sigma$. Only the product form splits under the log into $y\log\sigma + (1-y)\log(1-\sigma)$.
+
+</Callout>
+
+<Check ids={["q-u3-l4-007", "q-u3-l4-008", "q-u3-l4-009", "q-u3-l4-013"]} />
+
+## Explore
+
+The first widget rebuilds the figure on L6 p.12. Drag the line through the VASCO placebo patients and watch each patient's Gaussian bell, its likelihood, and the total NLL, which is $c_1$ times the squared error plus $c_2$.
+
+<Widget
+  name="gaussian-noise-least-squares"
+  dataset="vasco"
+  arm="placebo"
+  sigmaEps={8}
+  showBells={true}
+  showNll={true}
+  challenge="Find the line with the smallest NLL. Then halve and double σ_ε: the NLL values change, but does the best line move? Finally set σ_ε below 2 and explain why one patient far from the line now dominates."
+/>
+
+The second widget rebuilds the figure on L6 p.17: two distributions, the signed integrand $p\log(p/q)$, and both directions of the divergence.
+
+<Widget
+  name="kl-two-gaussians"
+  muP={0}
+  sigmaP={1}
+  muQ={1}
+  sigmaQ={1}
+  showIntegrand={true}
+  showReverse={true}
+  challenge="Make the integrand negative somewhere while the total stays positive. Then change only σ_q and find a setting where D_KL(p‖q) and D_KL(q‖p) differ by more than a factor of two."
+/>
+
+## Worked examples
+
+<Example title="VASCO placebo arm: the NLL ranks lines the way the squared error does">
+
+Model the placebo arm with <EqRef id="eq-3-4-1" />, centering the baseline: $f_\theta(B) = \theta_0 + \theta_1 (B - 150)$, with $B$ the baseline systolic pressure in mmHg and target $y$ the 8-week change. The generator for this case (src/data/vasco.json) uses noise standard deviation $\sigma_\varepsilon = 8$ mmHg.
+
+**Three patients, two lines.** Take the first three placebo records, VAS-0004 ($B = 180$, $y = 7.8$), VAS-0010 ($B = 151$, $y = 2.2$), and VAS-0015 ($B = 165$, $y = -6.4$). Line A is the generator's placebo line, $\theta_A = (-3,\ 0.15)$; line B ignores baseline, $\theta_B = (-3,\ 0)$.
+
+| | residuals $y - f_\theta(B)$ | $S = \sum r_i^2$ |
+|---|---|---|
+| Line A | $6.30,\ 5.05,\ -5.65$ | $97.115$ |
+| Line B | $10.80,\ 5.20,\ -3.40$ | $155.24$ |
+
+**The NLL at $\sigma_\varepsilon = 8$.** By der-3-4-1, $c_1 = 1/(2 \cdot 64) = 0.0078125$ and $c_2 = \frac32\log(2\pi \cdot 64) = 8.9951$ for $n = 3$. So $\mathrm{NLL}_A = 0.0078125 \times 97.115 + 8.9951 = 9.7539$ and $\mathrm{NLL}_B = 10.2080$. Line A is more likely, as it has the smaller squared error.
+
+**The NLL at $\sigma_\varepsilon = 4$.** Now $c_1 = 1/32 = 0.03125$ and $c_2 = \frac32\log(2\pi \cdot 16) = 6.9157$, giving $\mathrm{NLL}_A = 9.9505$ and $\mathrm{NLL}_B = 11.7669$. Every value changed; the order did not. The gap is $c_1(S_B - S_A)$: $0.4541$ at $\sigma_\varepsilon = 8$ and $1.8164$ at $\sigma_\varepsilon = 4$, four times larger because $c_1$ is. A narrower noise model punishes the same residuals more, but it punishes them in the same order (der-3-4-2 steps 3 and 4).
+
+**All 50 placebo patients.** Least squares on the full arm (der-3-4-2 step 5) gives $\hat\theta = (-2.160,\ 0.044)$ with residual sum of squares $S = 3396.45$. By der-3-4-3, $\hat\sigma_\varepsilon^2 = S/50 = 67.93$, so $\hat\sigma_\varepsilon = 8.24$ mmHg, close to the generator's 8. The fitted slope, 0.044, is well below the generator's 0.15: with 50 patients and noise of 8 mmHg, the slope on baseline is estimated loosely. Maximum likelihood finds the most probable line given these patients, not the true one.
+
+</Example>
+
+<Example title="The L6 coin: KL, entropy, and the average NLL">
+
+L6 p.8 flips a coin six times and sees H, T, H, T, T, T. Code heads as 1. The empirical distribution puts mass $\hat p(1) = \frac13$ on heads and $\hat p(0) = \frac23$ on tails, and the model is $q_\theta = \mathrm{Bernoulli}(\theta)$. All logs are natural, so the units are nats.
+
+**The constant.** $H(\hat p) = -\frac13\log\frac13 - \frac23\log\frac23 = 0.6365$.
+
+**Three candidate coins.** The average NLL is $-\frac16\big(2\log\theta + 4\log(1-\theta)\big)$; the KL is <EqRef id="eq-3-4-3" />.
+
+| $\theta$ | average NLL | $D_{\mathrm{KL}}(\hat p\,\|\,q_\theta)$ | $H(\hat p) + D_{\mathrm{KL}}$ |
+|---|---|---|---|
+| $1/2$ | $0.6931$ | $0.0566$ | $0.6931$ |
+| $1/4$ | $0.6539$ | $0.0174$ | $0.6539$ |
+| $1/3$ | $0.6365$ | $0$ | $0.6365$ |
+
+The last column reproduces the average NLL, as <EqRef id="eq-3-4-5" /> says it must. The KL is 0 at $\theta = \frac13$, the MLE of lesson 3.2, and the average NLL there equals the entropy, its floor (Gibbs' inequality).
+
+**Not symmetric.** For the fair coin, $D_{\mathrm{KL}}(\hat p\,\|\,\mathrm{Bern}(\frac12)) = 0.0566$ but $D_{\mathrm{KL}}(\mathrm{Bern}(\frac12)\,\|\,\hat p) = 0.0589$. The gap is wider for lopsided coins: $D_{\mathrm{KL}}(\mathrm{Bern}(0.1)\,\|\,\mathrm{Bern}(0.5)) = 0.3681$, while $D_{\mathrm{KL}}(\mathrm{Bern}(0.5)\,\|\,\mathrm{Bern}(0.1)) = 0.5108$.
+
+**No triangle inequality.** Going from $\mathrm{Bern}(0.1)$ to $\mathrm{Bern}(0.9)$ directly costs $D_{\mathrm{KL}}(\mathrm{Bern}(0.1)\,\|\,\mathrm{Bern}(0.9)) = 1.7578$. Going through $\mathrm{Bern}(0.5)$ costs $0.3681 + 0.5108 = 0.8789$, less than half. A metric could not do this, which is why we call KL a divergence and not a distance.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u3-l4-011", "q-u3-l4-012"]} />
+
+## Pitfalls
+
+<Pitfall title="Spot the error: KL divergence is not a distance" misconception="kl-is-a-metric">
+
+L6 p.16 introduces KL as a way to "measure the distance between two distributions". The belief that follows is that $D_{\mathrm{KL}}(p\,\|\,q) = D_{\mathrm{KL}}(q\,\|\,p)$ and that it obeys the triangle inequality. Neither holds: the coin example gives $0.3681$ one way and $0.5108$ the other, and a direct divergence of $1.7578$ that exceeds the two-leg detour's $0.8789$. What does hold is Gibbs' inequality: $D_{\mathrm{KL}} \ge 0$ with equality only for identical distributions (der-3-4-4).
+
+</Pitfall>
+
+<Pitfall title="Spot the error: the sample average equals the KL objective only for the empirical distribution" misconception="kl-sample-average-exact">
+
+L6 p.19 writes an equals sign between $\sum_{x,y} p(y,x)\log\frac{p(y,x)}{q_\theta(y,x)}$ and an average over the $N$ data points. If $p$ is the empirical distribution, the equality is exact (der-3-4-5 steps 3 to 5). If $p$ is the true data-generating distribution, it is an estimate: unbiased at each fixed $\theta$ and consistent by the law of large numbers (der-3-4-6), but not equal on any one dataset, and optimistic at the trained $\hat\theta$.
+
+</Pitfall>
+
+<Pitfall title="Spot the error: one σ for two things" misconception="sigma-noise-vs-sigmoid">
+
+L6 p.13 writes the noise as $\epsilon \sim \mathcal{N}(0, \sigma^2)$, between slides that use $\sigma(\theta^T X)$ for the sigmoid (L6 p.7 and p.15). A reader who carries the sigmoid into the Gaussian density gets nonsense. In this lesson, $\sigma(\cdot)$ is always the sigmoid and $\sigma_\varepsilon$ is the noise standard deviation; the second argument of $\mathcal{N}$ is the variance $\sigma_\varepsilon^2$.
+
+</Pitfall>
+
+<Pitfall title="You do not need to know the noise level to fit the line" misconception="mle-needs-sigma">
+
+The belief: the Gaussian likelihood contains $\sigma_\varepsilon$, so maximum likelihood cannot be carried out until $\sigma_\varepsilon$ is known. The fix: $\sigma_\varepsilon$ enters only through the constants $c_1 > 0$ and $c_2$ (der-3-4-1), which do not move the minimizer over $\theta$ (der-3-4-2). Fit $\theta$ first; then $\hat\sigma_\varepsilon^2$ is the mean squared residual (der-3-4-3).
+
+</Pitfall>
+
+<Pitfall title="Least squares does not require Gaussian noise" misconception="ls-needs-gaussian">
+
+The belief: least squares is only valid when the noise is Gaussian. The fix: least squares is a well-defined fit for any data (lesson 1.4). Gaussian noise is a condition under which it is also the maximum-likelihood fit. Under Laplace noise the maximum-likelihood fit minimizes absolute error instead, and under heavy-tailed noise least squares is valid but sensitive to outliers.
+
+</Pitfall>
+
+<Pitfall title="Maximize the likelihood, minimize the negative log-likelihood" misconception="maximize-nll">
+
+The belief (L6 p.20 poll, statement d): MLE finds the best parameters by maximizing the negative log-likelihood. The fix: the log is increasing, so maximizing the likelihood is maximizing the log-likelihood, which is minimizing its negative. L5 p.50 flags exactly this: "note argmin rather than argmax".
+
+</Pitfall>
+
+<Pitfall title="The integrand can be negative; the divergence cannot" misconception="kl-integrand-sign">
+
+The belief: since $p(x)\log\frac{p(x)}{q(x)}$ is negative wherever $q(x) > p(x)$, the KL divergence is negative when $q$ puts more mass than $p$ on some outcomes. The fix: both distributions sum to 1, so mass that $q$ adds in one place is missing somewhere else, where the integrand is positive. Gibbs' inequality (der-3-4-4) shows the total is never below 0, and the figure on L6 p.17 shades both lobes.
+
+</Pitfall>
+
+<Pitfall title="KL to a one-hot target is the surprise of the observed label" misconception="kl-is-entropy">
+
+The belief: the KL divergence, or the average NLL, is an entropy: either the entropy of the model's prediction, or 0 because a one-hot target has zero entropy. The fix: $D_{\mathrm{KL}}(p\,\|\,q) = H(p, q) - H(p)$. A one-hot target has $H(p) = 0$, so its KL equals the cross-entropy $-\log q_\theta(y^{(i)} \mid x^{(i)})$ (der-3-4-8), the model's surprise at the label actually observed. In general the average NLL estimates $H(p) + D_{\mathrm{KL}}(p\,\|\,q_\theta)$ (der-3-4-6), not the KL alone and not $H(q_\theta)$.
+
+</Pitfall>
+
+<Pitfall title="The square comes from the Gaussian, not from maximum likelihood" misconception="mle-always-squared">
+
+The belief: maximum likelihood with additive noise always gives least squares. The fix: the squared residual is the exponent of the Gaussian density (der-3-4-1), and the loss is the negative log of whatever noise density you assume. Laplace noise gives the absolute error, so the choice of noise model is a choice of loss.
+
+</Pitfall>
+
+<Pitfall title="A conditional model is not judged on the inputs" misconception="discriminative-models-x">
+
+The belief: completing $q_\theta(y \mid x)$ to a joint makes the KL score how well the model predicts $x$; or a conditional model has no joint, so the KL is undefined. The fix: complete the joint with the data's own $p(x)$, which then cancels (der-3-4-7). What is left is the average over inputs of the KL between label distributions, not the KL between the label marginals $p(y)$ and $q_\theta(y)$.
+
+</Pitfall>
+
+<Pitfall title="The direction of the KL matters" misconception="kl-direction">
+
+The belief: MLE minimizes "the KL between the data and the model", so either direction will do. The fix: MLE minimizes $D_{\mathrm{KL}}(\hat p\,\|\,q_\theta)$, the expectation under the data. The reverse, $D_{\mathrm{KL}}(q_\theta\,\|\,\hat p)$, is an expectation under the model and is $+\infty$ whenever the model puts probability on any outcome the sample did not contain, which for a Gaussian model is every outcome but $n$ points. The forward direction instead punishes a model that gives zero probability to something that happened: one such patient makes the NLL infinite. The convention $0\log 0 = 0$ covers outcomes with $p(x) = 0$, not outcomes with $q(x) = 0$: one observed label to which the model gives probability 0 makes the NLL infinite.
+
+</Pitfall>
+
+<Pitfall title="MLE does not always have a closed form" misconception="mle-always-closed-form">
+
+The belief (L6 p.20 poll, statement b): once the likelihood is written down, the MLE can be solved for directly. The fix: Gaussian linear regression happens to give the normal equations (der-3-4-2), but logistic regression's first-order condition has no closed-form solution, and L5 p.50 says it "needs gradient descent" (lesson 3.3).
+
+</Pitfall>
+
+<Connections>
+
+- Back: 1.4 Least squares solves the problem der-3-4-2 arrives at; 2.2 True and empirical risk supplies unbiasedness and the law of large numbers used in der-3-4-6; 3.2 states the maximum-likelihood principle and the coin MLE $\hat\theta = \frac13$ reused above.
+- Alongside: 3.3 derives the logistic NLL whose KL reading is der-3-4-8, and its gradient and convexity.
+- Next: 3.5 Softmax regression. With $K$ classes and one-hot targets, der-3-4-8 holds verbatim with $q_\theta(\cdot \mid x)$ the softmax, so the softmax NLL is again a sum of KL divergences.
+- Later: 5.1 Choice of divergence compares this KL loss with the L2 loss on the sigmoid output (L7). 5.3 adds a prior to the likelihood: a Gaussian prior on $\theta$ turns maximum likelihood into ridge regression. 7.2 fits a multivariate Gaussian by maximum likelihood, the same recipe as der-3-4-1 in $d$ dimensions.
+- Code: no companion notebook implements these derivations; the L4 companion's diabetes GD loop (lesson 2.4) minimizes the same squared error that der-3-4-2 shows is the Gaussian NLL.
+- Graph neighbors: [[gaussian]], [[log-likelihood]], [[kl-divergence]], [[entropy]], [[gibbs-inequality]], [[cross-entropy]], [[law-of-large-numbers]].
+
+</Connections>
+
+{/* no-homework-bridge: L6 p.19 says "see homework" for the conditional KL argument (der-3-4-7), but the homework map (docs/course-map/05-homeworks.md) records no such problem in HW1 or HW2, and HW3 (live until 2026-10-19) covers Naive Bayes and GDA. If the problem surfaces in a homework, add a bridge listing conditional-kl-nll; der-3-4-7 is a general derivation, not a homework-specific answer. */}
+
+<Summary>
+
+- **Linear-Gaussian model:** $y = \theta^\top x + \varepsilon$, $\varepsilon \sim \mathcal{N}(0, \sigma_\varepsilon^2)$, so $y \mid x \sim \mathcal{N}(\theta^\top x, \sigma_\varepsilon^2)$.
+- **Its NLL:** $-\sum_i \log p_\theta(y^{(i)} \mid x^{(i)}) = \frac{1}{2\sigma_\varepsilon^2}\lVert X\theta - y\rVert_2^2 + \frac n2\log(2\pi\sigma_\varepsilon^2)$; the slide's $c_1 = \frac{1}{2\sigma_\varepsilon^2}$, $c_2 = \frac n2 \log(2\pi\sigma_\varepsilon^2)$.
+- **MLE:** $\hat\theta_{\mathrm{MLE}}$ is the least-squares solution for every $\sigma_\varepsilon$; $\hat\sigma_\varepsilon^2 = \frac1n\lVert X\hat\theta - y\rVert_2^2$.
+- **KL divergence:** $D_{\mathrm{KL}}(p\,\|\,q) = \sum_x p(x)\log\frac{p(x)}{q(x)} = H(p, q) - H(p)$; natural log; not symmetric, not a metric.
+- **Gibbs' inequality:** $D_{\mathrm{KL}}(p\,\|\,q) \ge 0$, with equality iff $p = q$, from $\log t \le t - 1$.
+- **MLE = min KL:** $D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = -H(\hat p) - \frac1n\sum_i \log q_\theta(z^{(i)})$, so $\argmin_\theta D_{\mathrm{KL}}(\hat p\,\|\,q_\theta) = \hat\theta_{\mathrm{MLE}}$; the average NLL estimates $H(p) + D_{\mathrm{KL}}(p\,\|\,q_\theta)$.
+- **Conditional version:** with $q_\theta(x, y) = p(x)q_\theta(y \mid x)$, $D_{\mathrm{KL}}(p\,\|\,q_\theta) = \mathbb{E}_X[D_{\mathrm{KL}}(p(\cdot\mid X)\,\|\,q_\theta(\cdot\mid X))]$, minimized by maximum conditional likelihood.
+- **One-hot targets:** $D_{\mathrm{KL}}(\delta_{y}\,\|\,q_\theta(\cdot \mid x)) = -\log q_\theta(y \mid x)$; summed over examples, the logistic-regression NLL.
+
+</Summary>

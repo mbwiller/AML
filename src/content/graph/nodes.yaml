@@ -1434,3 +1434,269 @@
   unit: u8-unsupervised-learning-and-kmeans
   lesson: kmeans
   summary: "150 flowers, 3 species of 50; L10 clusters sepal length and width with K = 3 and finds centroids near (5.0, 3.4), (5.8, 2.7), (6.8, 3.1) cm."
+
+# ---------- Unit 3: Logistic regression and maximum likelihood ----------
+
+# ---------- Lesson 3.1: classification-and-the-sigmoid ----------
+# Course map L5 pp.17-26, 33-34, 38 and L6 pp.2-3. The glossary terms `log-odds` and
+# `exponential-function` (new) are nodes automatically and are not repeated here.
+
+- id: classification-vs-regression
+  label: "Classification vs regression"
+  type: concept
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: classification-and-the-sigmoid
+  summary: "Regression fits a curve through the output space; classification finds regions of feature space and reports P(Y = 1 | X). For a 0/1 label the regression function E[Y | X] is that probability."
+  derivation: der-3-1-1
+
+- id: thresholded-linear-regression-fails
+  label: "Thresholded linear regression fails"
+  type: concept
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: classification-and-the-sigmoid
+  summary: "Least squares on 0/1 labels, thresholded at 0.5: a linear score with nonzero slope always leaves [0, 1], and far, correctly classified points drag the threshold."
+  derivation: der-3-1-2
+
+- id: sigmoid-function
+  label: "Sigmoid function"
+  type: concept
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: classification-and-the-sigmoid
+  summary: "σ(z) = 1/(1 + e^(−z)) lies in (0, 1), σ(0) = 1/2, tends to 1 and 0 at ±∞, and σ(−z) = 1 − σ(z); P_θ(y = 1 | x) = σ(θ^T x)."
+  derivation: der-3-1-3
+
+- id: sigmoid-derivative
+  label: "Sigmoid derivative σ(1 − σ)"
+  type: concept
+  field: calculus
+  unit: u3-logistic-regression-and-mle
+  lesson: classification-and-the-sigmoid
+  summary: "σ'(z) = σ(z)(1 − σ(z)) by the chain rule; positive everywhere (σ is strictly increasing) and at most 1/4, attained only at z = 0."
+  derivation: der-3-1-4
+
+- id: logistic-linear-decision-boundary
+  label: "Logistic regression has a linear decision boundary"
+  type: concept
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: classification-and-the-sigmoid
+  summary: "σ(θᵀx) ≥ t exactly when θᵀx ≥ log(t/(1 − t)): every threshold gives a hyperplane, parallel ones for different t."
+  derivation: der-3-1-7
+
+- id: log-odds-logit
+  label: "Log-odds (logit)"
+  type: concept
+  field: probability
+  unit: u3-logistic-regression-and-mle
+  lesson: classification-and-the-sigmoid
+  summary: "The sigmoid's inverse: σ(z) = p iff z = log(p/(1 − p)). In logistic regression the log-odds are θ^T x, so +1 in x_j multiplies the odds by e^(θ_j) and the boundary σ(θ^T x) = t is a hyperplane."
+  derivation: der-3-1-5
+
+# ---------- Lesson 3.2: maximum-likelihood-principle ----------
+# Seeded from docs/course-map/02-lectures-L4-L5.md (L5 "Concept-graph edges": windowed average -> P(Y=1|X);
+# 0/1 loss non-differentiability -> likelihood-based objective; likelihood -> MLE principle; multinomial /
+# Gaussian examples -> MLE principle) and docs/course-map/03-lectures-L6-L7.md (L6: MLE principle -> coin-flip MLE).
+# maximum-likelihood-estimation is a glossary term (a node automatically).
+
+- id: conditional-probability-window-estimate
+  label: "Window average estimates P(Y=1|X)"
+  type: concept
+  field: statistics
+  unit: u3-logistic-regression-and-mle
+  lesson: maximum-likelihood-principle
+  summary: "Averaging the 0/1 labels in a window W is unbiased for P(Y=1 | X in W) with variance q(1-q)/m; narrow windows trade bias for variance, and a one-point window is the staircase."
+  derivation: der-3-2-1
+
+- id: zero-one-loss-not-optimizable
+  label: "0/1 error cannot be trained by GD"
+  type: concept
+  field: calculus
+  unit: u3-logistic-regression-and-mle
+  lesson: maximum-likelihood-principle
+  summary: "The 0/1 training error is piecewise constant in θ: its gradient is zero off the hyperplanes θᵀx⁽ⁱ⁾ = 0 and undefined on them, so gradient descent never moves."
+  derivation: der-3-2-2
+
+- id: mle-principle
+  label: "Maximum-likelihood principle"
+  type: concept
+  field: statistics
+  unit: u3-logistic-regression-and-mle
+  lesson: maximum-likelihood-principle
+  summary: "Pick the parameters under which the observed data are most probable ('the world is a boring place'); logs, added constants, and a sign flip do not move the estimate, so the loss is the negative log-likelihood."
+  derivation: der-3-2-3
+
+- id: mle-coin-flip
+  label: "Coin-flip (Bernoulli) MLE"
+  type: method
+  field: statistics
+  unit: u3-logistic-regression-and-mle
+  lesson: maximum-likelihood-principle
+  summary: "θ̂ = #H/(#H + #T), the empirical frequency; the log-likelihood is strictly concave, and the formula also covers the edge cases #H = 0 and #T = 0."
+  derivation: der-3-2-4
+
+- id: mle-dice
+  label: "Die (categorical) MLE"
+  type: method
+  field: statistics
+  unit: u3-logistic-regression-and-mle
+  lesson: maximum-likelihood-principle
+  summary: "p̂_k = n_k/n: a Lagrange multiplier for Σ p_k = 1 equals the number of rolls; the multinomial coefficient does not move the estimate."
+  derivation: der-3-2-5
+
+- id: mle-gaussian
+  label: "Gaussian MLE"
+  type: method
+  field: statistics
+  unit: u3-logistic-regression-and-mle
+  lesson: maximum-likelihood-principle
+  summary: "μ̂ is the sample mean and σ̂² the sample variance with a 1/n factor (biased by (n-1)/n)."
+  derivation: der-3-2-6
+
+# ---------- Lesson 3.3: deriving-the-logistic-regression-objective ----------
+# Seeded from docs/course-map/02-lectures-L4-L5.md (L5 pp.44-50, derivation gaps 10-13, 16) and
+# 03-lectures-L6-L7.md (L6 pp.6-7, p.15, gaps 1 and 6). Glossary terms (sigmoid, bernoulli,
+# cross-entropy, convex-function, ...) are nodes automatically and are not repeated here.
+
+- id: logistic-regression-model
+  label: "Logistic regression model"
+  type: method
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: deriving-the-logistic-regression-objective
+  summary: "y | x ~ Bernoulli(σ(θᵀx)): a discriminative model of the label only, with P(y = 1 | x) = σ(θᵀx)."
+
+- id: logistic-nll
+  label: "Logistic NLL objective"
+  type: concept
+  field: statistics
+  unit: u3-logistic-regression-and-mle
+  lesson: deriving-the-logistic-regression-objective
+  summary: "Likelihood → log → drop Σ log P(x^(i)) → negate: the MLE minimizes −(1/n)Σ log[yσ(θᵀx) + (1 − y)(1 − σ(θᵀx))]."
+  derivation: der-3-3-1
+
+- id: bernoulli-cross-entropy-equivalence
+  label: "Slides' Bernoulli form = cross-entropy"
+  type: concept
+  field: information-theory
+  unit: u3-logistic-regression-and-mle
+  lesson: deriving-the-logistic-regression-objective
+  summary: "On y ∈ {0, 1}, yp + (1 − y)(1 − p) = p^y(1 − p)^(1−y), so the NLL is binary cross-entropy and, per example, the KL divergence from the observed label."
+  derivation: der-3-3-2
+
+- id: logistic-gradient
+  label: "Logistic NLL gradient"
+  type: concept
+  field: calculus
+  unit: u3-logistic-regression-and-mle
+  lesson: deriving-the-logistic-regression-objective
+  summary: "∇R̂(θ) = (1/n)Σ(σ(θᵀx^(i)) − y^(i))x^(i) = (1/n)Xᵀ(σ(Xθ) − y): residual times input, the same shape as least squares."
+  derivation: der-3-3-3
+
+- id: logistic-convexity
+  label: "Logistic NLL is convex"
+  type: concept
+  field: calculus
+  unit: u3-logistic-regression-and-mle
+  lesson: deriving-the-logistic-regression-objective
+  summary: "Hessian (1/n)XᵀSX with S = diag(p̂(1 − p̂)) is PSD, so every stationary point is global; strictly convex when X has full column rank."
+  derivation: der-3-3-4
+
+- id: logistic-no-closed-form
+  label: "No closed form for logistic regression"
+  type: concept
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: deriving-the-logistic-regression-objective
+  summary: "Xᵀσ(Xθ) = Xᵀy is nonlinear in θ, so we iterate (intercept only: θ₀ = logit of the event rate); on separable data no minimizer exists."
+  derivation: der-3-3-5
+
+# ---------- Lesson 3.4: gaussian-mle-and-kl-divergence ----------
+# Course map L6 pp.12-21 (and L5 p.50). The glossary terms `kl-divergence`, `entropy`, and
+# `gibbs-inequality` (new in this lesson) are nodes automatically and are not repeated here.
+
+- id: least-squares-gaussian-mle
+  label: "Least squares is Gaussian MLE"
+  type: concept
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: gaussian-mle-and-kl-divergence
+  summary: "With y = θᵀx + ε, ε ~ N(0, σ_ε²), the NLL is ‖Xθ − y‖²/(2σ_ε²) + (n/2)log(2πσ_ε²), so the MLE of θ is the least-squares fit for every σ_ε, and σ̂_ε² is the mean squared residual."
+  derivation: der-3-4-1
+
+- id: kl-divergence-def
+  label: "KL divergence and Gibbs' inequality"
+  type: concept
+  field: information-theory
+  unit: u3-logistic-regression-and-mle
+  lesson: gaussian-mle-and-kl-divergence
+  summary: "D_KL(p‖q) = Σ p log(p/q) = H(p, q) − H(p); nonnegative, zero iff p = q (from log t ≤ t − 1); asymmetric and not a metric."
+  derivation: der-3-4-4
+
+- id: mle-minimizes-kl
+  label: "MLE minimizes KL to the data"
+  type: concept
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: gaussian-mle-and-kl-divergence
+  summary: "D_KL(p̂‖q_θ) = −H(p̂) − (1/n)Σ log q_θ(z^(i)), so argmin_θ D_KL(p̂‖q_θ) is the MLE; the average NLL estimates H(p) + D_KL(p‖q_θ) for the true p."
+  derivation: der-3-4-5
+
+- id: conditional-kl-nll
+  label: "Conditional KL is the conditional NLL"
+  type: concept
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: gaussian-mle-and-kl-divergence
+  summary: "With q_θ(x, y) = p(x) q_θ(y|x), the KL is E_X[D_KL(p(·|X)‖q_θ(·|X))]; with one-hot targets each term is −log q_θ(y^(i)|x^(i)), the logistic-regression NLL (the L6 p.19 'see homework' item)."
+  derivation: der-3-4-7
+
+# ---------- Lesson 3.5: softmax-regression ----------
+# Seeded from docs/course-map/03-lectures-L6-L7.md, L6 pp.22-25 and derivation gap 7.
+
+- id: softmax-regression
+  label: "Softmax regression"
+  type: method
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: softmax-regression
+  summary: "One linear score θ_k^T x per class, exponentiated and normalized: p(y = k | x) = e^{θ_k^T x} / Σ_j e^{θ_j^T x}. Pairwise log-odds are (θ_k − θ_l)^T x; predict the largest score."
+  derivation: der-3-5-1
+
+- id: softmax-shift-invariance
+  label: "Softmax shift invariance"
+  type: concept
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: softmax-regression
+  summary: "Adding the same vector c to every θ_k leaves every class probability unchanged, so one class can be fixed at 0 and the max logit can be subtracted (log-sum-exp)."
+  derivation: der-3-5-2
+
+- id: softmax-reduces-to-sigmoid
+  label: "Softmax with K = 2 is the sigmoid"
+  type: concept
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: softmax-regression
+  summary: "With two classes, p(y = 1 | x) = σ((θ_1 − θ_0)^T x): two-class softmax regression is logistic regression with a redundant second vector."
+  derivation: der-3-5-3
+
+- id: softmax-nll-gradient
+  label: "Softmax cross-entropy and its gradient"
+  type: method
+  field: ml
+  unit: u3-logistic-regression-and-mle
+  lesson: softmax-regression
+  summary: "The NLL is cross-entropy with one-hot labels, (1/n) Σ_i (−θ_{y_i}^T x_i + log Σ_j e^{θ_j^T x_i}); its gradient is ∇_{θ_k} = (1/n) Σ_i (p_k(x_i) − 1[y_i = k]) x_i = (1/n) X^T(P − Y)."
+  derivation: der-3-5-5
+
+- id: softmax-convexity
+  label: "Softmax loss is convex, not strictly"
+  type: concept
+  field: calculus
+  unit: u3-logistic-regression-and-mle
+  lesson: softmax-regression
+  summary: "The Hessian in the logits is diag(p) − pp^T, whose quadratic form is a variance, so the loss is convex in Θ; it is flat along the shift direction, so minimizers are not unique without a reference class or a penalty."
+  derivation: der-3-5-6

@@ -1,0 +1,12 @@
+---
+id: identifiability
+term: Identifiability
+aliases: [identifiable, non-identifiable, unidentifiable, overparameterized]
+field: statistics
+firstUsedIn: u3-logistic-regression-and-mle
+related: [softmax, one-hot-encoding, log-likelihood]
+---
+
+**What it is.** A parametrized model is identifiable when different parameter values always give different distributions: $p_\theta = p_{\theta'}$ implies $\theta = \theta'$. If two settings produce exactly the same distribution, no amount of data can tell them apart, and the likelihood takes the same value at both.
+
+**How ML uses it.** Softmax regression is not identifiable: adding one vector $c$ to every class's $\theta_k$ leaves all class probabilities unchanged, so its likelihood is flat along that direction and its minimizer is not unique. The usual fixes are to pin one class's parameters to zero (logistic regression is softmax with $\theta_0 = 0$) or to add a penalty such as $\lambda\sum_k\lVert\theta_k\rVert_2^2$, which picks one point of the flat set. In linear regression, one-hot columns for every category plus an intercept are non-identifiable for the same reason (the dummy-variable trap).

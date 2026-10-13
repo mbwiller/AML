@@ -1,0 +1,635 @@
+---
+title: "Softmax regression"
+unit: u3-logistic-regression-and-mle
+order: 5
+slug: softmax-regression
+summary: "Logistic regression for K classes: one linear score per class, exponentiated and normalized. Shift invariance, the reduction to the sigmoid at K = 2, the cross-entropy loss, its gradient, and convexity."
+lectures:
+  - { lecture: 6, pages: "22-25" }
+concepts:
+  - softmax-regression
+  - softmax-shift-invariance
+  - softmax-reduces-to-sigmoid
+  - softmax-nll-gradient
+  - softmax-convexity
+prerequisites:
+  - logistic-regression-model
+  - logistic-nll
+  - bernoulli-cross-entropy-equivalence
+  - logistic-gradient
+  - logistic-convexity
+  - mle-principle
+  - sigmoid
+  - categorical
+  - one-hot-encoding
+  - indicator-function
+  - cross-entropy
+  - log-rules
+  - log-sum-exp
+  - argmax
+  - iid
+  - log-likelihood
+  - chain-rule-calculus
+  - gradient
+  - gradient-descent
+  - hessian
+  - positive-semidefinite
+  - variance
+  - convex-function
+  - identifiability
+cases: [tropo]
+companions:
+  - { notebook: "Code Companions/L5 code companion.ipynb", cells: "1-3" }
+estimatedMinutes: 50
+status: review
+authors: [jide]
+---
+
+<Frame
+  data="labeled pairs $(x^{(i)}, y^{(i)})$ with $x^{(i)} \in \mathbb{R}^d$ (including $x_0 = 1$) and $y^{(i)} \in \{1, \dots, K\}$"
+  model="$p_\Theta(y = k \mid x) = \dfrac{e^{\theta_k^\top x}}{\sum_{j=1}^{K} e^{\theta_j^\top x}}$, one parameter vector $\theta_k$ per class"
+  objective="minimize the cross-entropy $\hat R(\Theta) = -\frac1n\sum_i \log p_\Theta(y^{(i)} \mid x^{(i)})$"
+  optimizer="gradient descent (no closed form); predict $\hat y = \argmax_k \theta_k^\top x$"
+/>
+
+<Objectives>
+
+- Construct the softmax regression model from $K$ linear scores, and prove its outputs form a probability distribution whose pairwise log-odds are linear in $x$.
+- Prove that adding the same vector to every $\theta_k$ leaves every class probability unchanged, and use this to explain both the "set $\tilde\theta_0 = 0$" step and the log-sum-exp trick.
+- Derive that with $K = 2$ softmax regression is logistic regression with $\theta = \theta_1 - \theta_0$.
+- Derive the softmax negative log-likelihood as cross-entropy with one-hot targets, and its gradient $\nabla_{\theta_k}\hat R = \frac1n\sum_i \big(p_\Theta(y = k \mid x^{(i)}) - \mathbb{1}[y^{(i)} = k]\big)\,x^{(i)}$.
+- Show that the loss is convex but not strictly convex, and say what that means for gradient descent and for the uniqueness of $\hat\Theta$.
+
+</Objectives>
+
+<Hook>
+
+A patient arrives in the emergency department with chest pain. Lessons 3.1–3.3 built a model that answers one yes/no question, "myocardial infarction or not?", with a probability. The physician's real question has more than two answers: a heart attack, another cardiac cause, a pulmonary embolism, or something non-cardiac. Fitting one logistic regression per answer gives four probabilities that need not add to 1, and the patient has exactly one diagnosis.
+
+What is the smallest change to logistic regression that outputs one probability per class, all positive, summing to 1, and can still be fit by maximum likelihood and gradient descent?
+
+{/* hook-figure: the softmax-playground widget in the Explore section serves as the hook's explorable; no shared case has more than two classes, so the hook uses the TROPO setting without its data */}
+
+</Hook>
+
+## From K regressions to one distribution
+
+L6 builds the model in three moves <SlideRef lecture={6} pages="22-23" />. With $K > 2$ categories, a first attempt fits one linear function per category, $z_k = \theta_k^\top x$ for $k = 1, \dots, K$. The scores $z_k$ are unbounded, the same problem L5 found with linear regression for two classes. Passing each score through the exponential makes it positive, $e^{z_k} > 0$. Dividing by the sum of all $K$ exponentials makes the $K$ numbers add to 1. The result is the [[softmax]] function.
+
+<Definition id="def-3-5-1" title="Softmax function" source="L6 p.23">
+
+For a vector of scores $z = (z_1, \dots, z_K) \in \mathbb{R}^K$,
+
+$$\mathrm{softmax}(z)_k = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}}, \qquad k = 1, \dots, K.$$
+
+The scores $z_k$ are called logits. The denominator $S = \sum_j e^{z_j}$ is the normalizer, and its log, $\log S = \log\sum_j e^{z_j}$, is the [[log-sum-exp]] of the logits.
+
+Also written as: $\sigma(z)_k$ or $\mathrm{softargmax}$ in some texts; "normalized exponential".
+
+</Definition>
+
+<Definition id="def-3-5-2" title="Softmax regression" source="L6 pp.22-23">
+
+A model of a [[categorical]] label $y \in \{1, \dots, K\}$ given features $x \in \mathbb{R}^d$ (with $x_0 = 1$ absorbing the intercept). Each class has its own parameter vector $\theta_k \in \mathbb{R}^d$, collected as the columns of $\Theta = [\theta_1, \dots, \theta_K] \in \mathbb{R}^{d \times K}$:
+
+$$p_\Theta(y = k \mid x) = \mathrm{softmax}(\Theta^\top x)_k = \frac{e^{\theta_k^\top x}}{\sum_{j=1}^{K} e^{\theta_j^\top x}}.$$
+
+We abbreviate $p_k(x) = p_\Theta(y = k \mid x)$. The prediction is the most probable class, $\hat y = \argmax_k p_k(x)$.
+
+Also written as: multinomial logistic regression, multiclass logistic regression, `LogisticRegression()` in scikit-learn (multinomial by default for $K \ge 3$; the slides' `multi_class='multinomial'` is deprecated), a linear layer followed by `softmax` in PyTorch.
+
+</Definition>
+
+<Callout type="slide">
+
+**Notation.** L6 p.23 writes $P(Y = y_i) = \exp(\theta_i^T X)/\sum_{j=1}^K \exp(\theta_j^T X)$. There, $y_i$ is the $i$-th class and $\theta_i$ its parameter vector, so $i$ is a class index; the same slides use $i$ for examples on pp.4–19. We write $k$ for classes and keep $i$ for examples, so the slide's $P(Y = y_i)$ is our $p_\Theta(y = k \mid x)$. The naive step on p.22 writes the per-class outputs as $y_1 = \theta_1^T X, \dots$; we call them logits $z_k$ and keep $y$ for the true label. A subscript on $\theta$ in this lesson names a class, so $\theta_k$ is a vector; its $j$-th component is $\theta_{kj}$ (as in lesson 6.2). On p.25 the two classes are numbered 0 and 1, so $\theta_0$ there is the class-0 vector, not the intercept. The course map records p.25 as $\exp(\tilde\theta_1 X)$ without a transpose; we write $\tilde\theta_1^\top x$.
+
+</Callout>
+
+<Callout type="beyond">
+
+L6 constructs the model (pp.22–23) and does the $K = 2$ substitution (p.25). Everything else in this lesson is beyond the slides: the proof that the substitution loses nothing (der-3-5-2), the loss and its gradient (the p.24 poll says both "can be written down" and fit by gradient descent, but no slide writes them), and convexity. The slides state the model and the $K = 2$ reduction but write neither the loss nor its gradient; the derivations below supply them.
+
+</Callout>
+
+<Check ids={["q-u3-l5-001", "q-u3-l5-004"]} />
+
+<Intuition>
+
+Take one feature plus the intercept and $K = 3$ classes. Each logit $z_k = \theta_{k0} + \theta_{k1} x_1$ is a straight line in $x_1$. At every $x_1$, softmax looks at the three heights. The class whose line is highest gets the largest probability, and how much larger depends only on the **gaps** between the lines: a gap of 1 multiplies the odds by $e \approx 2.72$, a gap of 3 by about 20. Where two lines cross, those two classes are tied, so the decision boundaries are the crossing points.
+
+Now add the same line $c_0 + c_1 x_1$ to all three logits. Every line tilts and shifts together; no line overtakes another; every gap is unchanged. So every probability is unchanged. That is shift invariance, and it says the model has one more parameter vector than the data can pin down. With two classes, only the gap $z_1 - z_0$ matters, and a single number fed through an S-curve is exactly logistic regression.
+
+</Intuition>
+
+## Softmax outputs are probabilities
+
+The construction promises three things: positive outputs, outputs that add to 1, and a ranking that follows the logits. We check each, and along the way find what plays the role of the log-odds from lesson 3.1.
+
+<Derivation
+  id="der-3-5-1"
+  title="Softmax outputs form a probability distribution whose pairwise log-odds are linear in x"
+  goalTex="p_k(x) = \frac{e^{\theta_k^\top x}}{\sum_{j} e^{\theta_j^\top x}} \text{ is a distribution over } \{1, \dots, K\}"
+  resultTex="p_k(x) > 0, \quad \sum_{k=1}^{K} p_k(x) = 1, \quad \log\frac{p_k(x)}{p_l(x)} = (\theta_k - \theta_l)^\top x, \quad \argmax_k p_k(x) = \argmax_k \theta_k^\top x"
+  source="L6 pp.22-23 (constructed on the slides; the properties are stated as the reason for each move)"
+>
+
+<Chunk title="Positive and summing to one">
+
+<Step justification="the exponential of any real number is positive; write $z_k = \theta_k^\top x$ and $S = \sum_j e^{z_j}$">
+$$e^{z_k} > 0 \text{ for every } k, \qquad S = \sum_{j=1}^{K} e^{z_j} > 0$$
+</Step>
+
+<Step justification="a positive number divided by a positive number is positive; with $K \ge 2$, $S$ contains $e^{z_k}$ plus at least one more positive term, so $S > e^{z_k}$" fadeable>
+$$0 < p_k(x) = \frac{e^{z_k}}{S} < 1$$
+</Step>
+
+<Step justification="all $K$ fractions share the denominator $S$, so their sum is $S/S$" fadeable>
+$$\sum_{k=1}^{K} p_k(x) = \frac{\sum_{k} e^{z_k}}{S} = \frac{S}{S} = 1$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Ratios depend only on gaps between logits">
+
+<Step justification="divide two class probabilities; the shared denominator $S$ cancels">
+$$\frac{p_k(x)}{p_l(x)} = \frac{e^{z_k}}{e^{z_l}} = e^{z_k - z_l}$$
+</Step>
+
+<Step justification="take logs; $\log e^{a} = a$; substitute $z_k = \theta_k^\top x$ and factor out $x$" sticky="log-rules">
+$$\log\frac{p_k(x)}{p_l(x)} = z_k - z_l = (\theta_k - \theta_l)^\top x$$
+</Step>
+
+<Step justification="by step 4, $p_k > p_l$ exactly when $e^{z_k - z_l} > 1$, that is when $z_k > z_l$; so softmax preserves the order of the logits" sticky="argmax" fadeable>
+$$\argmax_k p_k(x) = \argmax_k \theta_k^\top x$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 5 is the multiclass log-odds: between any two classes, the log of the probability ratio is linear in $x$, just as lesson 3.1's $\log\frac{p}{1-p} = \theta^\top x$ is for two. The boundary between classes $k$ and $l$ is where that log-odds is 0, the hyperplane $(\theta_k - \theta_l)^\top x = 0$. Step 6 says prediction never needs the exponentials: take the largest logit.
+
+<Check ids={["q-u3-l5-005", "q-u3-l5-015"]} />
+
+## Shift invariance
+
+Step 5 shows that only **differences** $\theta_k - \theta_l$ reach the probabilities. Here is the full statement and its proof.
+
+<Derivation
+  id="der-3-5-2"
+  title="Adding the same vector to every θ_k leaves every softmax probability unchanged"
+  goalTex="p_k(x) \text{ under } \theta_j \mapsto \theta_j - c \text{ for all } j, \text{ for a fixed } c \in \mathbb{R}^d"
+  resultTex="\frac{e^{(\theta_k - c)^\top x}}{\sum_{j} e^{(\theta_j - c)^\top x}} = \frac{e^{\theta_k^\top x}}{\sum_{j} e^{\theta_j^\top x}} \text{ for all } x, k; \qquad \text{so } \tilde\theta_K = 0 \text{ loses nothing, and } \log\sum_j e^{z_j} = m + \log\sum_j e^{z_j - m}"
+  source="L6 p.25 (the reparametrization θ̃_0 = 0, θ̃_1 = θ_1 − θ_0 is used; why it is without loss of generality is not shown)"
+>
+
+<Chunk title="Substitute the shifted parameters">
+
+<Step justification="replace every $\theta_j$ by $\theta_j - c$ in def-3-5-2, with the same $c$ for all classes">
+$$\tilde p_k(x) = \frac{e^{(\theta_k - c)^\top x}}{\sum_{j=1}^{K} e^{(\theta_j - c)^\top x}}$$
+</Step>
+
+<Step justification="the inner product distributes over subtraction" sticky="linear-function">
+$$(\theta_j - c)^\top x = \theta_j^\top x - c^\top x$$
+</Step>
+
+<Step justification="the exponential of a difference is a quotient, $e^{a - b} = e^{a}/e^{b}$; apply it in the numerator and in every term of the denominator" fadeable>
+$$\tilde p_k(x) = \frac{e^{\theta_k^\top x}\,/\,e^{c^\top x}}{\sum_{j=1}^{K} e^{\theta_j^\top x}\,/\,e^{c^\top x}}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Factor out the common term and cancel">
+
+<Step justification="$e^{c^\top x}$ does not depend on $j$, so it factors out of the sum">
+$$\tilde p_k(x) = \frac{e^{\theta_k^\top x}\,/\,e^{c^\top x}}{\Big(\sum_{j=1}^{K} e^{\theta_j^\top x}\Big)\,/\,e^{c^\top x}}$$
+</Step>
+
+<Step justification="the positive factor $1/e^{c^\top x}$ appears in numerator and denominator and cancels" fadeable>
+$$\tilde p_k(x) = \frac{e^{\theta_k^\top x}}{\sum_{j=1}^{K} e^{\theta_j^\top x}} = p_k(x)$$
+</Step>
+
+<Step justification="step 5 holds for every $x$ and every $k$, so every factor $p_\Theta(y^{(i)} \mid x^{(i)})$ of the conditional likelihood $L(\Theta) = \prod_i p_\Theta(y^{(i)} \mid x^{(i)})$ is unchanged; the likelihood cannot distinguish $\Theta$ from $\Theta - c\mathbf{1}^\top$" sticky="identifiability">
+$$L(\theta_1 - c, \dots, \theta_K - c) = L(\theta_1, \dots, \theta_K) \text{ for every } c \in \mathbb{R}^d$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Two uses: a reference class, and stable arithmetic">
+
+<Step justification="choose $c = \theta_K$; every model has an equivalent one with the last class's vector equal to 0, so fixing $\tilde\theta_K = 0$ restricts nothing (any class can serve as the reference)">
+$$\tilde\theta_k = \theta_k - \theta_K, \qquad \tilde\theta_K = 0, \qquad p_k \text{ unchanged}$$
+</Step>
+
+<Step justification="steps 1–5 never used the form $c^\top x$, only that one number is subtracted from every logit; so for any scalar $m$ the softmax of the logits is unchanged">
+$$\frac{e^{z_k - m}}{\sum_{j} e^{z_j - m}} = \frac{e^{z_k}}{\sum_{j} e^{z_j}}$$
+</Step>
+
+<Step justification="take the log of the normalizer in step 8: $\log\sum_j e^{z_j} = \log\big(e^{m}\sum_j e^{z_j - m}\big)$, and the log of a product is a sum of logs; choosing $m = \max_k z_k$ makes every exponent at most 0" sticky="log-sum-exp">
+$$\log\sum_{j=1}^{K} e^{z_j} = m + \log\sum_{j=1}^{K} e^{z_j - m}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 6 has a cost: softmax regression is not [[identifiability|identifiable]]. It has $K d$ parameters, but the likelihood sees only $(K - 1)d$ of them, because one vector's worth of directions changes nothing. Step 7 is the standard fix, and der-3-5-3 uses it with $K = 2$. Step 9 is the fix for a different problem, overflow: `np.exp(1000.0)` is `inf` in float64, but after subtracting the largest logit the biggest exponential is $e^0 = 1$.
+
+<Check ids={["q-u3-l5-006", "q-u3-l5-007", "q-u3-l5-012", "q-u3-l5-016"]} />
+
+## Two classes give back the sigmoid
+
+With $K = 2$, softmax regression should be logistic regression. L6 p.25 shows it by setting $\tilde\theta_0 = 0$ and $\tilde\theta_1 = \theta_1 - \theta_0$ <SlideRef lecture={6} pages="25" />. With der-3-5-2 in hand, that substitution is justified.
+
+<Derivation
+  id="der-3-5-3"
+  title="With K = 2, softmax regression is logistic regression with θ = θ_1 − θ_0"
+  goalTex="p_\Theta(y = 1 \mid x) \text{ for softmax regression with classes } \{0, 1\}"
+  resultTex="p_\Theta(y = 1 \mid x) = \sigma(\tilde\theta_1^\top x), \qquad p_\Theta(y = 0 \mid x) = 1 - \sigma(\tilde\theta_1^\top x), \qquad \tilde\theta_1 = \theta_1 - \theta_0"
+  source="L6 p.25"
+>
+
+<Chunk title="Make class 0 the reference">
+
+<Step justification="def-3-5-2 with two classes numbered 0 and 1, as on the slide">
+$$p_\Theta(y = 1 \mid x) = \frac{e^{\theta_1^\top x}}{e^{\theta_0^\top x} + e^{\theta_1^\top x}}$$
+</Step>
+
+<Step justification="shift invariance (der-3-5-2) with $c = \theta_0$: $\tilde\theta_0 = \theta_0 - \theta_0 = 0$ and $\tilde\theta_1 = \theta_1 - \theta_0$" sticky="identifiability">
+$$p_\Theta(y = 1 \mid x) = \frac{e^{\tilde\theta_1^\top x}}{e^{0^\top x} + e^{\tilde\theta_1^\top x}}$$
+</Step>
+
+<Step justification="$0^\top x = 0$ and $e^{0} = 1$" fadeable>
+$$p_\Theta(y = 1 \mid x) = \frac{e^{\tilde\theta_1^\top x}}{1 + e^{\tilde\theta_1^\top x}}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Recognize the sigmoid">
+
+<Step justification="divide numerator and denominator by $e^{\tilde\theta_1^\top x} > 0$; $1/e^{a} = e^{-a}$" fadeable>
+$$p_\Theta(y = 1 \mid x) = \frac{1}{e^{-\tilde\theta_1^\top x} + 1}$$
+</Step>
+
+<Step justification="this is the sigmoid $\sigma(z) = 1/(1 + e^{-z})$ at $z = \tilde\theta_1^\top x$" sticky="sigmoid">
+$$p_\Theta(y = 1 \mid x) = \sigma(\tilde\theta_1^\top x)$$
+</Step>
+
+<Step justification="the two probabilities sum to 1 (der-3-5-1 step 3)">
+$$p_\Theta(y = 0 \mid x) = 1 - \sigma(\tilde\theta_1^\top x)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+So the two-class softmax model and the logistic model of lesson 3.3 describe exactly the same set of conditional distributions. The softmax version just carries a redundant second vector. Every pair $(\theta_0, \theta_1)$ with the same difference $\theta_1 - \theta_0$ is the same model, which is the $K = 2$ case of der-3-5-2 step 6.
+
+
+## The loss: cross-entropy with one-hot labels
+
+The p.24 poll asks whether the softmax objective can be written down "as we did for logistic regression" <SlideRef lecture={6} pages="24" />. It can, by the same maximum-likelihood recipe as lesson 3.3: write the conditional likelihood of the labels, take logs, negate. The only new ingredient is a way to write "the probability of the observed class" as a formula.
+
+<Derivation
+  id="der-3-5-4"
+  title="The softmax negative log-likelihood is the cross-entropy between one-hot labels and the predicted probabilities"
+  goalTex="\hat R(\Theta) = -\frac1n \log \prod_{i=1}^{n} p_\Theta(y^{(i)} \mid x^{(i)})"
+  resultTex="\hat R(\Theta) = -\frac1n\sum_{i=1}^{n}\sum_{k=1}^{K}\mathbb{1}[y^{(i)} = k]\log p_k(x^{(i)}) = \frac1n\sum_{i=1}^{n}\Big(-\theta_{y^{(i)}}^\top x^{(i)} + \log\sum_{j=1}^{K} e^{\theta_j^\top x^{(i)}}\Big)"
+  source="L6 p.24 poll (asserted possible; the slides never write the objective); the recipe of L6 pp.6-7"
+>
+
+<Chunk title="Write the conditional likelihood">
+
+<Step justification="the examples are i.i.d.; as in lesson 3.3, the factors $P(x^{(i)})$ do not involve $\Theta$ and drop out of the argmax, leaving the conditional likelihood" sticky="iid">
+$$L(\Theta) = \prod_{i=1}^{n} p_\Theta(y^{(i)} \mid x^{(i)})$$
+</Step>
+
+<Step justification="a categorical pmf in product form: for the observed class the exponent is 1, for every other class it is 0 and the factor is 1 (the $K$-class version of $p^{y}(1-p)^{1-y}$)" sticky="categorical">
+$$p_\Theta(y \mid x) = \prod_{k=1}^{K} p_k(x)^{\mathbb{1}[y = k]}$$
+</Step>
+
+<Step justification="substitute step 2 into step 1 for each example">
+$$L(\Theta) = \prod_{i=1}^{n}\prod_{k=1}^{K} p_k(x^{(i)})^{\mathbb{1}[y^{(i)} = k]}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Take logs, negate, and average">
+
+<Step justification="the log of a product is the sum of the logs, and $\log a^{b} = b\log a$" sticky="log-rules" fadeable>
+$$\log L(\Theta) = \sum_{i=1}^{n}\sum_{k=1}^{K}\mathbb{1}[y^{(i)} = k]\log p_k(x^{(i)})$$
+</Step>
+
+<Step justification="maximizing $\log L$ is minimizing $-\frac1n\log L$; the inner sum is the cross-entropy between the one-hot vector of $y^{(i)}$ and the predicted distribution" sticky="cross-entropy">
+$$\hat R(\Theta) = -\frac1n\sum_{i=1}^{n}\sum_{k=1}^{K}\mathbb{1}[y^{(i)} = k]\log p_k(x^{(i)})$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Keep the surviving term and expand the softmax">
+
+<Step justification="for each $i$ exactly one indicator is 1, the one with $k = y^{(i)}$" sticky="indicator-function" fadeable>
+$$\hat R(\Theta) = -\frac1n\sum_{i=1}^{n}\log p_{y^{(i)}}(x^{(i)})$$
+</Step>
+
+<Step justification="substitute def-3-5-2 for the observed class">
+$$\hat R(\Theta) = -\frac1n\sum_{i=1}^{n}\log\frac{e^{\theta_{y^{(i)}}^\top x^{(i)}}}{\sum_{j=1}^{K} e^{\theta_j^\top x^{(i)}}}$$
+</Step>
+
+<Step justification="the log of a quotient is the difference of the logs, and $\log e^{a} = a$" sticky="log-rules">
+$$\hat R(\Theta) = \frac1n\sum_{i=1}^{n}\Big(-\theta_{y^{(i)}}^\top x^{(i)} + \log\sum_{j=1}^{K} e^{\theta_j^\top x^{(i)}}\Big)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Write $\ell_i(\Theta) = -\theta_{y^{(i)}}^\top x^{(i)} + \log\sum_j e^{\theta_j^\top x^{(i)}}$ for one example's loss, so $\hat R = \frac1n\sum_i\ell_i$. Each $\ell_i$ is the log-sum-exp of the logits minus the true class's logit. It is at least 0, because the log-sum-exp exceeds every logit in it, and it approaches 0 only when the true class's logit dominates all the others. With $K = 2$ and $y \in \{0, 1\}$, the inner sum of step 5 is $-[y\log p_1 + (1 - y)\log p_0]$, the binary [[cross-entropy]] of lesson 3.3.
+
+The slides write the two-class likelihood additively, $y\,p + (1 - y)(1 - p)$, rather than as $p^{y}(1 - p)^{1 - y}$ <SlideRef lecture={6} pages="6" />; on $y \in \{0, 1\}$ the two are equal. The same holds here: the additive form $\sum_k \mathbb{1}[y = k]\,p_k(x)$ equals the product form of step 2, because exactly one indicator is 1 (the label is [[one-hot-encoding|one-hot]]). The product form is the one whose log splits into a sum (step 4).
+
+<Callout type="note">
+
+The empirical risk carries the factor $\frac1n$; the negative log-likelihood $-\log L(\Theta) = n\,\hat R(\Theta)$ does not. Written as a sum, as the slides would, the objective drops the $\frac1n$. Both have the same minimizer, and their gradients differ by the factor $n$, which a step size absorbs.
+
+</Callout>
+
+## The gradient: predicted minus observed
+
+Lesson 3.3 found the logistic gradient $\frac1n\sum_i(\sigma(\theta^\top x^{(i)}) - y^{(i)})\,x^{(i)}$ of the [[sigmoid]] model: prediction minus label, times the input. The softmax gradient has the same shape, once per class.
+
+<Derivation
+  id="der-3-5-5"
+  title="The softmax gradient for class k is (predicted probability minus indicator) times x"
+  goalTex="\nabla_{\theta_k}\hat R(\Theta) \text{ for } \hat R(\Theta) = \frac1n\sum_i\Big(-\theta_{y^{(i)}}^\top x^{(i)} + \log\sum_j e^{\theta_j^\top x^{(i)}}\Big)"
+  resultTex="\nabla_{\theta_k}\hat R(\Theta) = \frac1n\sum_{i=1}^{n}\big(p_k(x^{(i)}) - \mathbb{1}[y^{(i)} = k]\big)\,x^{(i)}, \qquad \nabla_\Theta\hat R = \frac1n X^\top(P - Y)"
+  source="L6 p.24 poll (asserted: softmax can be optimized by GD); the gradient is not on the slides (course map L6 gap 7)"
+>
+
+<Chunk title="Differentiate one example's loss">
+
+<Step justification="one example's loss from der-3-5-4 step 8; drop the superscript $(i)$ and write $S = \sum_j e^{\theta_j^\top x}$">
+$$\ell(\Theta) = -\theta_y^\top x + \log S$$
+</Step>
+
+<Step justification="$\nabla_\theta(\theta^\top x) = x$; the term $\theta_y^\top x$ involves $\theta_k$ only when $y = k$" sticky="gradient">
+$$\nabla_{\theta_k}\big(\theta_y^\top x\big) = \mathbb{1}[y = k]\,x$$
+</Step>
+
+<Step justification="chain rule through the log, $\frac{d}{dS}\log S = \frac1S$" sticky="chain-rule-calculus">
+$$\nabla_{\theta_k}\log S = \frac{1}{S}\,\nabla_{\theta_k}S$$
+</Step>
+
+<Step justification="only the $j = k$ term of $S$ involves $\theta_k$; chain rule through the exponential, $\nabla_{\theta_k}e^{\theta_k^\top x} = e^{\theta_k^\top x}\,x$" sticky="chain-rule-calculus" fadeable>
+$$\nabla_{\theta_k}S = e^{\theta_k^\top x}\,x$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Recognize the softmax and average">
+
+<Step justification="substitute step 4 into step 3; the fraction is exactly $p_k(x)$ by def-3-5-2" sticky="softmax">
+$$\nabla_{\theta_k}\log S = \frac{e^{\theta_k^\top x}}{S}\,x = p_k(x)\,x$$
+</Step>
+
+<Step justification="subtract step 2 from step 5, following the signs in step 1" fadeable>
+$$\nabla_{\theta_k}\ell = \big(p_k(x) - \mathbb{1}[y = k]\big)\,x$$
+</Step>
+
+<Step justification="the gradient of an average is the average of the gradients" sticky="gradient">
+$$\nabla_{\theta_k}\hat R(\Theta) = \frac1n\sum_{i=1}^{n}\big(p_k(x^{(i)}) - \mathbb{1}[y^{(i)} = k]\big)\,x^{(i)}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Stack the classes and check against K = 2">
+
+<Step justification="collect step 7 for $k = 1, \dots, K$ as the columns of a $d \times K$ matrix; with $P_{ik} = p_k(x^{(i)})$ and the one-hot label matrix $Y_{ik} = \mathbb{1}[y^{(i)} = k]$, column $k$ of $X^\top(P - Y)$ is $\sum_i x^{(i)}(P_{ik} - Y_{ik})$" sticky="one-hot-encoding">
+$$\nabla_\Theta\hat R(\Theta) = \frac1n X^\top(P - Y)$$
+</Step>
+
+<Step justification="add step 6 over all classes; the probabilities sum to 1 (der-3-5-1 step 3) and so do the indicators">
+$$\sum_{k=1}^{K}\nabla_{\theta_k}\ell = \Big(\sum_k p_k(x) - \sum_k\mathbb{1}[y = k]\Big)\,x = (1 - 1)\,x = 0$$
+</Step>
+
+<Step justification="with $K = 2$, fix $\theta_0 = 0$ (der-3-5-3); then $p_1(x) = \sigma(\theta_1^\top x)$ and $\mathbb{1}[y = 1] = y$ for $y \in \{0, 1\}$, so step 7 for $k = 1$ becomes" sticky="sigmoid">
+$$\nabla_{\theta_1}\hat R(\Theta) = \frac1n\sum_{i=1}^{n}\big(\sigma(\theta_1^\top x^{(i)}) - y^{(i)}\big)\,x^{(i)}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+Step 10 is lesson 3.3's logistic gradient. Step 9 is shift invariance seen through the gradient: moving every $\theta_k$ by the same small $c$ changes the loss at rate $\sum_k c^\top\nabla_{\theta_k}\ell = 0$, as der-3-5-2 says it must.
+
+Each gradient step updates every class, not just the true one:
+
+$$\theta_k^{(t+1)} = \theta_k^{(t)} - \eta\,\frac1n\sum_{i=1}^{n}\big(p_k(x^{(i)}) - \mathbb{1}[y^{(i)} = k]\big)\,x^{(i)}.$$
+
+For an example of class $k$, the factor is $p_k - 1 < 0$, so $\theta_k$ moves toward $x^{(i)}$ and its logit rises. For every other class $l$ the factor is $p_l > 0$, so $\theta_l$ moves away and its logit falls, by an amount proportional to how much probability the model wrongly gave that class.
+
+**No closed form.** Setting step 7 to zero gives the condition a minimizer must satisfy, when one exists:
+
+$$\sum_{i=1}^{n} p_k(x^{(i)})\,x^{(i)} = \sum_{i:\,y^{(i)} = k} x^{(i)}, \qquad k = 1, \dots, K.$$
+
+The right side is fixed by the data. The left side depends on $\Theta$ through the exponentials inside every $p_k$, so the equations are nonlinear in $\Theta$ and cannot be solved in closed form, exactly as for logistic regression. The intercept coordinate $x_0 = 1$ of this condition reads $\sum_i p_k(x^{(i)}) = n_k$: at a minimizer, the predicted probabilities of class $k$ add up to the number of training examples in class $k$.
+
+<Check ids={["q-u3-l5-008", "q-u3-l5-009", "q-u3-l5-013"]} />
+
+## Convex, but not strictly
+
+Gradient descent on a [[convex-function|convex]] function cannot get stuck in a spurious local minimum (lesson 3.3 proved this structure for the logistic loss). The softmax loss inherits it, with one twist that shift invariance predicts.
+
+<Derivation
+  id="der-3-5-6"
+  title="The softmax loss is convex in Θ, and flat along the shift direction"
+  goalTex="\hat R(\Theta) \text{ is convex in } \Theta"
+  resultTex="\hat R(\Theta) \text{ convex in } \Theta; \quad \nabla_z^2\,\ell = \mathrm{diag}(p) - pp^\top \succeq 0, \qquad v^\top(\mathrm{diag}(p) - pp^\top)v = \mathrm{Var}_{k \sim p}(v_k), \qquad \text{zero along } \theta_k \mapsto \theta_k + c \text{ for all } k"
+  source="beyond the slides (extends course map L6 gap 7; the binary case is lesson 3.3's convexity result)"
+>
+
+<Chunk title="The Hessian in the logits">
+
+<Step justification="view one example's loss as a function of its logits $z = (z_1, \dots, z_K)$; $-z_y$ is linear, so only the log-sum-exp has curvature; its partial derivative is der-3-5-5 step 5 with $z_k$ in place of $\theta_k^\top x$" sticky="log-sum-exp">
+$$\ell(z) = -z_y + \log\sum_{j} e^{z_j}, \qquad \frac{\partial\ell}{\partial z_l} = p_l - \mathbb{1}[y = l]$$
+</Step>
+
+<Step justification="quotient rule on $p_l = e^{z_l}/S$, using $\partial S/\partial z_m = e^{z_m}$" sticky="derivative">
+$$\frac{\partial p_l}{\partial z_m} = \frac{\mathbb{1}[l = m]\,e^{z_l}\,S - e^{z_l}\,e^{z_m}}{S^2} = p_l\big(\mathbb{1}[l = m] - p_m\big)$$
+</Step>
+
+<Step justification="collect the second derivatives $\partial^2\ell/\partial z_l\,\partial z_m = \partial p_l/\partial z_m$ into a matrix; the indicator term is diagonal" sticky="hessian">
+$$\nabla_z^2\,\ell = \mathrm{diag}(p) - pp^\top$$
+</Step>
+
+</Chunk>
+
+<Chunk title="The Hessian is a variance, so it is PSD">
+
+<Step justification="expand the quadratic form for any $v \in \mathbb{R}^K$; $v^\top\mathrm{diag}(p)v = \sum_l p_l v_l^2$ and $v^\top pp^\top v = (p^\top v)^2$" sticky="quadratic-form" fadeable>
+$$v^\top\big(\mathrm{diag}(p) - pp^\top\big)v = \sum_{l} p_l v_l^2 - \Big(\sum_{l} p_l v_l\Big)^2$$
+</Step>
+
+<Step justification="$p$ is a distribution over classes (der-3-5-1), so this is $\mathbb{E}[v_k^2] - (\mathbb{E}[v_k])^2$ for a class $k$ drawn from $p$: a variance, which is never negative" sticky="variance">
+$$v^\top\nabla_z^2\,\ell\,v = \mathrm{Var}_{k \sim p}(v_k) \ge 0$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Back to Θ, and the flat direction">
+
+<Step justification="the logits $z = \Theta^\top x$ are linear in $\Theta$, so moving $\Theta$ along a direction $\Delta$ moves the logits along $u = \Delta^\top x$ at constant speed; the chain rule then gives the second derivative along the line as the quadratic form of step 5 with $v = u$" sticky="chain-rule-calculus">
+$$\frac{d^2}{dt^2}\,\ell(\Theta + t\Delta) = u^\top\nabla_z^2\,\ell\,u = \mathrm{Var}_{k \sim p}(u_k) \ge 0$$
+</Step>
+
+<Step justification="a function whose second derivative along every line is nonnegative is convex, so each $\ell_i$ is convex in $\Theta$; an average of convex functions with weights $\frac1n > 0$ is convex" sticky="convex-function" fadeable>
+$$\hat R(\Theta) = \frac1n\sum_{i=1}^{n}\ell_i(\Theta) \text{ is convex}$$
+</Step>
+
+<Step justification="take the shift direction of der-3-5-2, $\Delta = c\mathbf{1}^\top$ (every $\theta_k$ moves by $c$); then $u_k = c^\top x$ for every $k$, and the variance of a constant is 0" sticky="identifiability">
+$$u = (c^\top x)\,\mathbf{1} \;\Longrightarrow\; \frac{d^2}{dt^2}\,\hat R(\Theta + t\,c\mathbf{1}^\top) = 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+So the softmax loss is a bowl with a flat trough. Every stationary point is a global minimum, which is what makes gradient descent reliable here. If one minimizer exists, a whole $d$-dimensional family of them does: $\hat\Theta + c\mathbf{1}^\top$ for every $c \in \mathbb{R}^d$. Two common fixes remove this freedom. One is to set $\theta_K = 0$ (der-3-5-2 step 7), which removes the flat direction; the minimizer is then unique when $X$ has full column rank and the data are not separable. The other is an L2 penalty $\lambda\sum_k\lVert\theta_k\rVert_2^2$, which is not shift-invariant. Among all shifts $\theta_k - c$, the penalty is smallest when $c$ is the average of the $\theta_k$, so the penalized solution satisfies $\sum_k\hat\theta_k = 0$.
+
+<Callout type="beyond">
+
+As with logistic regression, a minimizer may not exist at all. If some $\Theta$ ranks every training example's true class strictly highest (the data are linearly separable), scaling $\Theta$ by $t \to \infty$ drives every $\ell_i$ to 0 and $\lVert\Theta\rVert$ to infinity. The L6 p.23 code uses `LogisticRegression(C=1e5, multi_class='multinomial')`. scikit-learn's `C` is $1/\lambda$, so `C=1e5` is an almost-zero penalty, chosen to imitate the unpenalized MLE while still guaranteeing a unique, finite answer. scikit-learn 1.5 deprecated the `multi_class` argument; with the default `lbfgs` solver and three or more classes, `LogisticRegression()` fits the multinomial (softmax) model.
+
+</Callout>
+
+<Check ids={["q-u3-l5-003", "q-u3-l5-014"]} />
+
+## Explore
+
+<Widget
+  name="softmax-playground"
+  k={3}
+  logits={[2, 1, -1]}
+  showExp={true}
+  showShift={true}
+  binaryMode={false}
+  challenge="Press 'subtract the max' and watch which bars change and which do not. Then set two logits equal: what do their probabilities do as you raise the third? Finally switch to K = 2 and drag the gap $z_1 - z_0$: which curve do you trace?"
+/>
+
+## Worked example
+
+{/* example-numbers: Example 1 uses toy values chosen here (no dataset); every number was computed by script from them. Example 2 reuses the TROPO posterior that lesson 7.3's worked example derives from the case-spec population parameters; it is not HW3 data. */}
+
+<Example homeworkReviewed title="One gradient step on one example, three classes">
+
+Toy values, for arithmetic only. Take $x = (1, 2)$ (intercept first) and parameter vectors $\theta_1 = (0, 1)$, $\theta_2 = (1, 0)$, $\theta_3 = (1, -1)$. The true class is $y = 2$.
+
+**Logits and probabilities (def-3-5-2).** $z = (\theta_1^\top x, \theta_2^\top x, \theta_3^\top x) = (2, 1, -1)$. The exponentials are $(7.3891, 2.7183, 0.3679)$ with sum $S = 10.4752$, so
+
+$$p(x) = (0.7054,\ 0.2595,\ 0.0351).$$
+
+The model favors class 1, the wrong one; der-3-5-1 step 6 predicts this from the largest logit alone.
+
+**Shift check (der-3-5-2 step 8).** Subtract $m = \max_k z_k = 2$: the logits become $(0, -1, -3)$, the exponentials $(1, 0.3679, 0.0498)$, the sum $1.4177$, and the probabilities are again $(0.7054, 0.2595, 0.0351)$.
+
+**Loss (der-3-5-4 step 8).** $\ell = -z_2 + \log S = -1 + 2.3490 = 1.3490$, which equals $-\log 0.2595$.
+
+**Gradients (der-3-5-5 step 6).** The factors $p_k - \mathbb{1}[y = k]$ are $(0.7054, -0.7405, 0.0351)$, so
+
+$$\nabla_{\theta_1}\ell = (0.7054, 1.4108), \qquad \nabla_{\theta_2}\ell = (-0.7405, -1.4810), \qquad \nabla_{\theta_3}\ell = (0.0351, 0.0702).$$
+
+They add to the zero vector (der-3-5-5 step 9).
+
+**One step with $\eta = 0.5$.** $\theta_k \leftarrow \theta_k - 0.5\,\nabla_{\theta_k}\ell$ gives $\theta_1 = (-0.3527, 0.2946)$, $\theta_2 = (1.3703, 0.7405)$, $\theta_3 = (0.9824, -1.0351)$. The new logits are $(0.2365, 2.8513, -1.0878)$ and the new probabilities $(0.0670, 0.9152, 0.0178)$. The true class went from 0.2595 to 0.9152 and the loss from 1.3490 to 0.0886. Class 2's vector moved toward $x$; the other two moved away, class 1 by far more, because it had taken the most probability.
+
+</Example>
+
+<Example homeworkReviewed case="tropo" title="TROPO as a two-class softmax">
+
+Lesson 7.3 derives, from the TROPO case's population parameters (with a shared variance), the posterior $p(\text{MI} \mid T) = \sigma(4.713\,t - 16.284)$ on the log scale $t = \log T$, with $T$ in ng/L. Here we need only its form. With $x = (1, t)$ it is logistic regression with $\theta = (-16.284, 4.713)$.
+
+**As a softmax (der-3-5-3, read backward).** Any pair with $\theta_{\text{MI}} - \theta_{\text{no MI}} = (-16.284, 4.713)$ is the same model. Take two such pairs:
+
+| | $\theta_{\text{no MI}}$ | $\theta_{\text{MI}}$ | logits at $T = 20$ ng/L ($t = 2.9957$) | $p(\text{MI} \mid T)$ |
+|---|---|---|---|---|
+| reference class "no MI" | $(0, 0)$ | $(-16.284, 4.713)$ | $(0,\ -2.1651)$ | 0.1029 |
+| shifted by $c = (1, 1)$ | $(1, 1)$ | $(-15.284, 5.713)$ | $(3.9957,\ 1.8306)$ | 0.1029 |
+
+The logits differ between the rows, but their gap, $-2.1651$, does not, and the probability depends only on that gap (der-3-5-1 step 5). This matches the 0.103 that lesson 7.3 reports at 20 ng/L. No amount of patient data could tell the two rows apart (der-3-5-2 step 6).
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u3-l5-002", "q-u3-l5-010", "q-u3-l5-011"]} />
+
+## Pitfalls
+
+{/* The course map lists no slide errors for L6 pp.22-25 (its "Slide errors" list covers p.11, p.34, and L7). The notation issues on p.23 and p.25 are recorded in the slide callout above, and the index clash also appears as the last pitfall. */}
+
+<Pitfall title="Softmax parameters are not unique" misconception="softmax-params-unique">
+
+The belief: the fitted $\hat\Theta$ is "the" answer, so its entries can be read as per-class effects on their own. The fix: adding any vector $c$ to every $\theta_k$ gives the same probabilities for every input (der-3-5-2), so only differences $\theta_k - \theta_l$ mean anything. Two programs can return different $\hat\Theta$ that predict identically. Compare classes through $\theta_k - \theta_l$, which is the log-odds slope between them (der-3-5-1 step 5), or fix a reference class.
+
+</Pitfall>
+
+<Pitfall title="Normalizing the raw scores is not a softmax" misconception="softmax-normalize-logits">
+
+The belief: dividing each score by the sum of scores, $z_k / \sum_j z_j$, gives probabilities just as well. The fix: logits can be negative, and their sum can be 0. With $z = (2, 1, -1)$ the "probabilities" would be $(1, 0.5, -0.5)$. The exponential is what guarantees positivity (der-3-5-1 step 1); L6 p.22 adds it for exactly this reason.
+
+</Pitfall>
+
+<Pitfall title="Computing the exponentials directly overflows" misconception="softmax-overflow">
+
+The belief: `np.exp(z) / np.exp(z).sum()` is a correct implementation. The fix: in float64, `np.exp(z)` is `inf` once $z$ exceeds about 709, and `inf / inf` is `nan`. Subtract the largest logit first; by der-3-5-2 step 8 the answer is unchanged, and the largest exponential becomes $e^0 = 1$. For the loss, use `logsumexp` (der-3-5-2 step 9) rather than `log(softmax(z))`, which turns tiny probabilities into $\log 0 = -\infty$.
+
+</Pitfall>
+
+<Pitfall title="Two-class softmax is not a richer model than logistic regression" misconception="softmax-binary-richer">
+
+The belief: softmax with $K = 2$ has two parameter vectors, twice as many as logistic regression, so it can fit more. The fix: by der-3-5-3 the probabilities depend only on $\theta_1 - \theta_0$, so both models describe exactly the same conditional distributions. The extra vector is redundant, and without a reference class or a penalty it makes the minimizer non-unique.
+
+</Pitfall>
+
+<Pitfall title="K separate sigmoids are not a softmax" misconception="softmax-vs-ovr">
+
+The belief: fitting $K$ one-vs-rest logistic regressions gives the same class probabilities as softmax regression. The fix: each one-vs-rest model is fit on its own, so its $K$ outputs need not add to 1, and each is fit to a different binary problem. Softmax regression fits all $K$ vectors jointly to one likelihood in which the classes compete for a fixed total of 1. The two can predict the same class on many inputs, but their probabilities differ.
+
+</Pitfall>
+
+<Pitfall title="The gradient moves every class, not only the true one" misconception="softmax-grad-true-class-only">
+
+The belief: an example of class $k$ only updates $\theta_k$. The fix: by der-3-5-5 step 6, the factor for any other class $l$ is $p_l(x) > 0$, so every $\theta_l$ moves away from $x$, in proportion to the probability the model wrongly gave class $l$. In the worked example, class 1 moved more than class 3 because it had taken 0.7054 of the probability.
+
+</Pitfall>
+
+<Pitfall title="The i in the slide's P(Y = y_i) is a class, not an example" misconception="softmax-index-clash">
+
+The belief: L6 p.23's $P(Y = y_i)$ is the probability of the $i$-th training label. The fix: in that formula $i$ runs over the $K$ classes, with $\theta_i$ the $i$-th class's vector, while on pp.4–19 the same letter indexes examples. We write $p_\Theta(y = k \mid x)$, keeping $i$ for examples, so the loss can say $p_{y^{(i)}}(x^{(i)})$ without ambiguity: the probability of example $i$'s class.
+
+</Pitfall>
+
+<Connections>
+
+- Before: 3.1 The sigmoid and log-odds; 3.3 The logistic-regression objective, gradient, and convexity, which der-3-5-3 and der-3-5-5 step 10 recover as the $K = 2$ case; 3.4 MLE as minimizing KL, of which der-3-5-4 is an instance with one-hot targets.
+- Companion: <Notebook path="Code Companions/L5 code companion.ipynb" cells="1-3" /> Section 1 fits `LogisticRegression(C=1e5, multi_class='multinomial')` on the first two Iris features and draws the three-class decision regions; each boundary is a segment of a line $(\theta_k - \theta_l)^\top x = 0$ (der-3-5-1 step 5).
+- Next: Unit 4 turns the probability vector into a prediction, $\hat y = \argmax_k p_k(x)$ (L6 p.26), and asks how good those predictions are.
+- Later: lesson 6.2 runs this model on bag-of-words features (der-6-2-5, der-6-2-6), writing $p_\theta$ with the intercept separate as $b_k$; lesson 6.1 names it the standard discriminative model; lesson 7.3 shows that GDA with a shared covariance has a softmax posterior with affine logits.
+- Graph neighbors: [[softmax]], [[log-sum-exp]], [[categorical]], [[cross-entropy]], [[identifiability]].
+
+</Connections>
+
+{/* no-homework-bridge: no released homework uses softmax regression (HW1 and HW2 are past; HW3 covers Naive Bayes and GDA). */}
+
+<Summary>
+
+- **Model:** $p_\Theta(y = k \mid x) = \dfrac{e^{\theta_k^\top x}}{\sum_{j=1}^K e^{\theta_j^\top x}}$; one $\theta_k$ per class. Positive, sums to 1; predict $\hat y = \argmax_k \theta_k^\top x$.
+- **Log-odds:** $\log\dfrac{p_k(x)}{p_l(x)} = (\theta_k - \theta_l)^\top x$; boundaries are hyperplanes.
+- **Shift invariance:** $\theta_k \mapsto \theta_k - c$ for all $k$ changes nothing, so fix $\theta_K = 0$; for logits, $\log\sum_j e^{z_j} = m + \log\sum_j e^{z_j - m}$ with $m = \max_k z_k$.
+- **K = 2:** $p(y = 1 \mid x) = \sigma\big((\theta_1 - \theta_0)^\top x\big)$, logistic regression.
+- **Loss:** $\hat R(\Theta) = -\frac1n\sum_i\sum_k\mathbb{1}[y^{(i)} = k]\log p_k(x^{(i)}) = \frac1n\sum_i\big(-\theta_{y^{(i)}}^\top x^{(i)} + \log\sum_j e^{\theta_j^\top x^{(i)}}\big)$.
+- **Gradient:** $\nabla_{\theta_k}\hat R = \frac1n\sum_i\big(p_k(x^{(i)}) - \mathbb{1}[y^{(i)} = k]\big)x^{(i)}$, i.e. $\frac1n X^\top(P - Y)$; the class gradients sum to 0.
+- **Convexity:** Hessian in the logits $\mathrm{diag}(p) - pp^\top \succeq 0$; convex in $\Theta$, flat along the shift direction; no closed form, so fit by gradient descent.
+
+</Summary>

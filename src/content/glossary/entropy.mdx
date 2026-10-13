@@ -1,0 +1,16 @@
+---
+id: entropy
+term: Entropy
+aliases: [Shannon entropy, H(p)]
+field: information-theory
+firstUsedIn: u3-logistic-regression-and-mle
+related: [kl-divergence, cross-entropy, log-rules]
+---
+
+**What it is.** The expected surprise of a draw from a discrete distribution $p$:
+
+$$H(p) = -\sum_x p(x)\log p(x) = \mathbb{E}_{X \sim p}\big[-\log p(X)\big],$$
+
+with $0 \log 0 = 0$. With the natural log it is measured in nats ($\log_2$ gives bits). It is $\ge 0$, it is 0 exactly for a point mass (an outcome that is certain), and among distributions on $m$ outcomes it is largest, $\log m$, for the uniform one.
+
+**How ML uses it.** It is the part of the KL divergence that does not involve the model: $D_{\mathrm{KL}}(p\,\|\,q_\theta) = H(p, q_\theta) - H(p)$. When $p$ is the data distribution, $H(p)$ is a constant in $\theta$, which is why minimizing cross-entropy and minimizing KL give the same fit. A one-hot label has entropy 0. Decision trees later use entropy to score splits.

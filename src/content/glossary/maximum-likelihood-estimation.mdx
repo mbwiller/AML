@@ -1,0 +1,16 @@
+---
+id: maximum-likelihood-estimation
+term: Maximum-likelihood estimation
+aliases: [MLE, maximum likelihood, maximum-likelihood estimate]
+field: statistics
+firstUsedIn: u3-logistic-regression-and-mle
+related: [likelihood-vs-probability, log-likelihood, argmax, iid]
+---
+
+**What it is.** Choose a family of distributions $P_\theta$, then pick the parameter under which the observed data were most probable:
+
+$$\hat\theta = \argmax_\theta P_\theta(\mathcal{D}) = \argmax_\theta \sum_{i=1}^{n} \log P_\theta(x^{(i)}) \quad \text{(i.i.d. data)}.$$
+
+The recipe is: write the likelihood, take logs, set the derivative to zero, and check that the critical point is a maximum. For a coin it gives the fraction of heads; for a die, the fraction of each face; for a Gaussian, the sample mean and the $\frac1n$ sample variance.
+
+**How ML uses it.** It turns "fit a model" into "minimize a loss": the negative log-likelihood. Minimizing logistic regression's cross-entropy and least squares under Gaussian noise are maximum-likelihood fits; the Naive Bayes and GDA parameters are maximum-likelihood estimates.

@@ -1,0 +1,12 @@
+---
+id: cross-entropy
+term: Cross-entropy
+aliases: [binary cross-entropy, BCE, log loss, logistic loss]
+field: information-theory
+firstUsedIn: u3-logistic-regression-and-mle
+related: [entropy, kl-divergence, log-likelihood, bernoulli]
+---
+
+**What it is.** For two distributions $p$ and $q$ on the same outcomes, $H(p, q) = -\sum_x p(x)\log q(x)$: the average surprise $-\log q(x)$ when the outcomes really come from $p$. It splits as $H(p, q) = H(p) + D_{\mathrm{KL}}(p \,\|\, q)$, so it is never below the entropy $H(p)$. For a label $y \in \{0, 1\}$ and a predicted probability $\hat p$ of class 1, the binary cross-entropy is $-[y\log\hat p + (1 - y)\log(1 - \hat p)]$.
+
+**How ML uses it.** It is the loss of logistic and softmax regression. Averaged over a training set it equals the negative log-likelihood, so minimizing it is maximum likelihood. When $p$ puts all its mass on the observed label, $H(p) = 0$ and the cross-entropy equals the KL divergence. sklearn calls it `log_loss`; PyTorch calls it `BCELoss` and `CrossEntropyLoss`.

@@ -1,0 +1,16 @@
+---
+id: kl-divergence
+term: KL divergence
+aliases: [Kullback-Leibler divergence, relative entropy, KL]
+field: information-theory
+firstUsedIn: u3-logistic-regression-and-mle
+related: [entropy, gibbs-inequality, cross-entropy, maximum-likelihood-estimation]
+---
+
+**What it is.** For two distributions $p$ and $q$ on the same outcomes,
+
+$$D_{\mathrm{KL}}(p \,\|\, q) = \sum_x p(x)\log\frac{p(x)}{q(x)},$$
+
+with the natural log and the convention $0 \log 0 = 0$. It is $\ge 0$, with equality exactly when $p = q$ (Gibbs' inequality), and it is $+\infty$ if $q(x) = 0$ somewhere $p(x) > 0$. It is not a metric: in general $D_{\mathrm{KL}}(p\,\|\,q) \ne D_{\mathrm{KL}}(q\,\|\,p)$, and it can violate the triangle inequality.
+
+**How ML uses it.** It splits as cross-entropy minus entropy, $H(p, q) - H(p)$. With $p$ the empirical distribution of the data and $q = q_\theta$ the model, the entropy term is a constant, so minimizing the KL over $\theta$ is maximum likelihood. The slides write it $D(p|q)$.

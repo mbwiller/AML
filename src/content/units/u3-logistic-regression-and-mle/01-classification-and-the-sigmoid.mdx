@@ -1,0 +1,676 @@
+---
+title: "Classification and the sigmoid"
+unit: u3-logistic-regression-and-mle
+order: 1
+slug: classification-and-the-sigmoid
+summary: "Why least squares on 0/1 labels fails, and the sigmoid that fixes it: its range, limits, symmetry, derivative, inverse (the log-odds), and the linear decision boundary."
+lectures:
+  - { lecture: 5, pages: "17-26" }
+  - { lecture: 5, pages: "33-34" }
+  - { lecture: 5, pages: "38" }
+  - { lecture: 6, pages: "2-3" }
+concepts:
+  - classification-vs-regression
+  - thresholded-linear-regression-fails
+  - sigmoid-function
+  - sigmoid-derivative
+  - log-odds-logit
+  - logistic-linear-decision-boundary
+prerequisites:
+  - supervised-task-types
+  - linear-model
+  - least-squares-problem
+  - conditional-expectation
+  - conditional-mean-optimality
+  - conditional-probability
+  - bernoulli
+  - derivative
+  - chain-rule-calculus
+  - exponential-function
+  - log-rules
+  - feature-map
+homework: [hw3]
+cases: [adverse]
+companions:
+  - { notebook: "Code Companions/lecture4-code companion.ipynb", cells: "24-37" }
+estimatedMinutes: 50
+status: review
+authors: [jide]
+---
+
+{/* scope: L5 pp.27-32 (the 1-D non-separable example, the 90/10 thought experiment, the windowed average) and pp.35-37 (0/1 error) belong to lesson 3.2; p.25's model is defined here but derived as an MLE in lesson 3.3, which owns the logistic-regression-model node. The third statement of the L5 p.38 poll (no closed form) is left to lesson 3.3. */}
+
+{/* no-slide-errors: the course map records no slide errors for L5 pp.17-26, 33-34, 38 or L6 pp.2-3; the Pitfalls section covers misconceptions only. */}
+
+{/* adverse-numbers: every ADVERSE number in this lesson was computed once by script from src/data/adverse.json (seed 2, n = 5000): least squares of y on [1, age, eGFR, K, NSAID, dose] with numpy.linalg.lstsq gives 1,048 fitted values below 0 (minimum -0.162), maximum 0.356, and none above 0.5; 310 events (6.2%); 56 patients have stored true risk p > 0.5; median p is 0.02685 and 67.7% of patients have p < 0.05. Patient logits use the generator's coefficients (src/lib/datasets/adverse.ts, including the eGFR-30 kink term, which is 0 for both patients used) and reproduce the stored p to 4 decimals. None of these numbers belongs to HW3 (Naive Bayes and GDA). */}
+
+<Frame
+  data="labeled pairs $(x^{(i)}, y^{(i)})$ with a binary label $y^{(i)} \in \{0, 1\}$ and $x_0 = 1$"
+  model="$f_\theta(x) = \sigma(\theta^\top x) = P_\theta(y = 1 \mid x)$, logistic regression (L5 p.25)"
+  objective="not yet: lesson 3.2 shows why the 0/1 error cannot be minimized directly, and lesson 3.3 derives the negative log-likelihood"
+  optimizer="gradient descent, which works because $\sigma'(z) = \sigma(z)(1 - \sigma(z))$ is cheap (L5 p.34)"
+/>
+
+<Objectives>
+
+- Explain how a classifier differs from a regression model: it partitions feature space into regions and reports class probabilities.
+- Derive that for a 0/1 label the squared-error-optimal predictor is $P(Y = 1 \mid X)$, and prove that a non-constant linear score must leave $[0, 1]$.
+- Derive the sigmoid's range, limits, value at 0, and symmetry $\sigma(-z) = 1 - \sigma(z)$.
+- Derive $\sigma'(z) = \sigma(z)(1 - \sigma(z))$ and its maximum value $\tfrac14$.
+- Invert the sigmoid to get the log-odds, interpret a coefficient as an odds multiplier, and show that thresholding $\sigma(\theta^\top x)$ gives a linear decision boundary.
+
+</Objectives>
+
+<Hook>
+
+The ADVERSE safety team follows 5,000 new users of an antihypertensive for 90 days; 310 of them (6.2%) have a hyperkalemia event. The label is 0 or 1. Suppose we reuse the tool we already have: fit the least-squares line of Unit 1 to the label on the five clinical features, and call an event when the fitted value exceeds 0.5.
+
+The line gives 1,048 patients a negative "probability" of an event. Its largest fitted value is 0.356, so it never calls an event at all, even though the generating model gives 56 of these patients a true risk above one half. What should a model for a 0/1 label output, and what shape must it have?
+
+{/* hook-figure: the sigmoid-fit-1d widget below the derivations is this lesson's explorable; the hook is numeric by design */}
+
+</Hook>
+
+## Classification is about regions and probabilities
+
+So far every target has been a real number, and the model has been a curve through the output space that passes close to the targets $y^{(i)}$ <SlideRef lecture={5} pages="20" />. From here on the target is a class. The question changes from "how large?" to "which one?", and the answer the slides ask for is a probability.
+
+<Definition id="def-3-1-1" title="Binary classification and probabilistic classifiers" source="L5 pp.18-21">
+
+In binary classification the target space is $\mathcal{Y} = \{0, 1\}$ and the dataset is $\mathcal{D} = \{(x^{(i)}, y^{(i)})\}_{i=1}^{n}$ with every $y^{(i)} \in \{0, 1\}$. A probabilistic classifier outputs, for each input $x$, a number in $[0, 1]$ meant as the probability that $x$ belongs to class 1:
+
+$$f_\theta(x) \approx P(Y = 1 \mid X = x).$$
+
+A hard prediction $\hat y \in \{0, 1\}$ is obtained by thresholding that number. <SlideRef lecture={5} pages="18-21" /> <SlideRef lecture={6} pages="2" />
+
+Also written as: L5 p.22 writes $\mathcal{Y} = \{0, 1\}$; p.32 writes the pairs as $(X_i, y_i)$; $P(1 \mid X)$ on L5 p.30.
+
+</Definition>
+
+<Definition id="def-3-1-2" title="Decision regions and decision boundary" source="L5 p.20">
+
+A hard classifier $\hat y(x)$ splits feature space into two decision regions, $R_1 = \{x : \hat y(x) = 1\}$ and $R_0 = \{x : \hat y(x) = 0\}$. The decision boundary is the set of points where the two regions meet. Classification is the problem of finding these regions, or, for a probabilistic classifier, of finding how $P(Y = 1 \mid X = x)$ varies over feature space. <SlideRef lecture={5} pages="20-21" />
+
+Also written as: "classes are associated with regions of the feature space" (L5 p.20); L5 p.21 draws the same regions with blurred edges, the picture of a probabilistic boundary.
+
+</Definition>
+
+The running example on the slides is the Iris data: 150 flowers, with the task of telling Iris setosa (class 0) from the other two species (class 1) using sepal length and sepal width <SlideRef lecture={5} pages="18-19" />. The two classes occupy two regions of the plane, and a classifier must find the line, or curve, between them.
+
+Why probabilities rather than hard labels? Because the same features can occur with either label. Two ADVERSE patients with identical age, kidney function, potassium, medication, and dose can have different outcomes. No function of $x$ alone can then reproduce every label, and the honest summary of what $x$ says is the fraction of such patients with an event, $P(Y = 1 \mid X = x)$. Lesson 3.2 develops this argument from the slides' 1-D example; der-3-1-1 below shows that least squares, applied to 0/1 labels, is already aiming at this probability.
+
+## First attempt: threshold a linear regression
+
+<Definition id="def-3-1-3" title="Thresholded linear regression" source="L5 pp.22-23">
+
+Fit a linear model $\hat y = \theta^\top x$ to the 0/1 labels by least squares, then predict class 1 when $\theta^\top x > 0.5$ and class 0 when $\theta^\top x < 0.5$. The decision boundary is the hyperplane $\theta^\top x = 0.5$. <SlideRef lecture={5} pages="22-23" />
+
+Also written as: "run a linear regression $Y = \theta^T X$ and minimize MSE" (L5 p.22).
+
+</Definition>
+
+On Iris this draws a straight diagonal boundary that leaves one setosa flower on the wrong side <SlideRef lecture={5} pages="23" />. L5 p.24 names the structural problem: the fitted value $\hat y^{(i)}$ can be negative, and nothing keeps it between 0 and 1 <SlideRef lecture={5} pages="24" />. Before proving that this must happen, a one-dimensional picture shows a second problem.
+
+<Intuition>
+
+The failure is easiest to see in one dimension. Take four patients at $x = 1, 2, 3, 4$ with labels $0, 0, 1, 1$. Least squares gives the line $\hat y = -0.5 + 0.4x$, which crosses 0.5 at $x = 2.5$, exactly between the classes. Already $\hat y(1) = -0.1$ is negative.
+
+Now add a fifth patient at $x = 10$ with label 1. Nothing about the classification problem has changed: the new point is far on the class-1 side and any sensible boundary should stay near 2.5. But least squares now gives $\hat y = 0.2 + 0.1x$. Its fitted value at the new point is $1.2$, an error it tries to reduce by flattening the line, and the threshold moves to $x = 3$, onto a class-1 patient. Push the fifth patient farther right and the patient at $x = 3$ falls on the wrong side.
+
+The squared error charges the far, correctly classified point for being "too far above" its label. What we want instead is a curve that rises from near 0 to near 1 and then stays flat, so that points deep inside a class cost nothing to fit. That curve is the [[sigmoid]].
+
+</Intuition>
+
+<Callout type="beyond">
+
+The leverage example above is not on the slides, which show only the unbounded outputs (L5 p.24) and the one misclassified setosa (L5 p.23). It is the standard second argument against least squares for classification; the [[sigmoid]] model fixes both.
+
+</Callout>
+
+### What least squares aims at, and why a line cannot reach it
+
+<Callout type="beyond">
+
+The slides say the output of a classification model represents a probability (L5 p.20, L6 p.2). The connection to Unit 2 is not on the slides: for a 0/1 label, the regression function $\mathbb{E}[Y \mid X]$ of lesson 2.1 is that probability.
+
+</Callout>
+
+<Derivation
+  id="der-3-1-1"
+  title="For a 0/1 label the regression function is the probability of class 1"
+  goalTex="\mathbb{E}[Y \mid X = x] \text{ when } Y \in \{0, 1\}"
+  resultTex="\mathbb{E}[Y \mid X = x] = P(Y = 1 \mid X = x), \text{ so the best squared-error predictor of a 0/1 label is } f^\star(x) = P(Y = 1 \mid X = x)"
+  source="L5 p.20 (stated: 'output of classification models: probabilities'); L6 p.2"
+>
+
+<Chunk title="Average a label that only takes the values 0 and 1">
+
+<Step justification="definition of conditional expectation for a discrete label: a sum over its values, weighted by their conditional probabilities" sticky="conditional-expectation">
+$$\mathbb{E}[Y \mid X = x] = \sum_{y \in \{0, 1\}} y\, P(Y = y \mid X = x)$$
+</Step>
+
+<Step justification="write out the two terms of the sum" fadeable>
+$$\mathbb{E}[Y \mid X = x] = 0 \cdot P(Y = 0 \mid X = x) + 1 \cdot P(Y = 1 \mid X = x)$$
+</Step>
+
+<Step justification="the first term is 0 and the second is the probability itself" fadeable>
+$$\mathbb{E}[Y \mid X = x] = P(Y = 1 \mid X = x)$$
+</Step>
+
+<Step justification="der-2-1-5: the conditional mean minimizes the expected squared error $\mathbb{E}[(Y - h(X))^2]$ over all predictors $h$ (the optimum is called $f^\star$ there); substitute step 3" sticky="conditional-expectation">
+$$f^\star(x) = \mathbb{E}[Y \mid X = x] = P(Y = 1 \mid X = x)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+So minimizing squared error on 0/1 labels is not wrong in aim. Its population target is exactly the probability a classifier should report. The trouble is the model class: least squares with a linear model fits the best line to a function whose values are confined to $[0, 1]$.
+
+<Check ids={["q-u3-l1-004"]} />
+
+L5 p.24's observation, that fitted values escape $[0, 1]$, is stated on the slide. It holds for every linear model that uses its features.
+
+<Derivation
+  id="der-3-1-2"
+  title="A linear score with a nonzero slope takes values above 1 and below 0"
+  goalTex="\theta^\top x \text{ over inputs } x = (1, u), \ u \in \mathbb{R}^d, \text{ where } \theta = (\theta_0, w) \text{ with } w = (\theta_1, \dots, \theta_d)^\top \ne 0"
+  resultTex="w \ne 0 \;\Longrightarrow\; \theta^\top x > 1 \text{ for some } x \text{ and } \theta^\top x < 0 \text{ for some } x"
+  source="L5 p.24 (stated: 'no guarantee that the output is bounded between 0 and 1')"
+>
+
+<Chunk title="Walk along the slope direction until the score leaves [0, 1]">
+
+<Step justification="split off the intercept: $x_0 = 1$ multiplies $\theta_0$, and the features $u$ multiply $w$" sticky="linear-function">
+$$\theta^\top x = \theta_0 + w^\top u$$
+</Step>
+
+<Step justification="choose inputs along the slope direction, $u = t\,w$ for a real number $t$, and pull the scalar $t$ out">
+$$\theta^\top x = \theta_0 + t\, w^\top w$$
+</Step>
+
+<Step justification="$w^\top w$ is the squared Euclidean norm, which is positive because $w \ne 0$" fadeable>
+$$\theta^\top x = \theta_0 + t\, \lVert w \rVert_2^2, \qquad \lVert w \rVert_2^2 > 0$$
+</Step>
+
+<Step justification="the score is a line in $t$ with positive slope $\lVert w \rVert_2^2$; solve the two linear inequalities for $t$" fadeable>
+$$t > \frac{1 - \theta_0}{\lVert w \rVert_2^2} \Rightarrow \theta^\top x > 1, \qquad t < \frac{-\theta_0}{\lVert w \rVert_2^2} \Rightarrow \theta^\top x < 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The proof sends $u$ far out along $w$, but real inputs need not go that far for the problem to bite: on ADVERSE, about one patient in five already gets a negative fitted value (the hook). A fitted value of $-0.16$ cannot be a probability.
+
+<Check ids={["q-u3-l1-003"]} />
+
+## The sigmoid
+
+L5 p.24 proposes the fix in one line: pass the linear output through a function that forces it into $(0, 1)$ <SlideRef lecture={5} pages="24" />.
+
+<Definition id="def-3-1-4" title="Sigmoid (logistic) function" source="L5 p.25">
+
+The [[sigmoid]] is the function $\sigma : \mathbb{R} \to (0, 1)$,
+
+$$
+\sigma(z) = \frac{1}{1 + e^{-z}}. \tag{3.1.1} \htmlId{eq-3-1-1}{}
+$$
+
+Its argument $z$ is called the score, or [[log-odds|logit]]. <SlideRef lecture={5} pages="25" />
+
+Also written as: $\frac{1}{1 + \exp(-z)}$ (L5 p.25); $f(x) = \frac{1}{1 + e^{-x}}$ in the plots of L5 p.24 and L6 p.3; the logistic function; $\operatorname{expit}(z)$ in some software.
+
+</Definition>
+
+<Definition id="def-3-1-5" title="Logistic regression model" source="L5 pp.25, 33">
+
+Logistic regression is the binary classifier
+
+$$f_\theta(x) = \sigma(\theta^\top x) = \frac{1}{1 + \exp(-\theta^\top x)}, \qquad x_0 = 1,$$
+
+read as a model of the conditional distribution of the label:
+
+$$P_\theta(y = 1 \mid x) = \sigma(\theta^\top x), \qquad P_\theta(y = 0 \mid x) = 1 - \sigma(\theta^\top x).$$
+
+In one line, $P_\theta(y \mid x) = \sigma(\theta^\top x)^{y}\,\big(1 - \sigma(\theta^\top x)\big)^{1 - y}$ for $y \in \{0, 1\}$: the label is [[bernoulli]] with parameter $\sigma(\theta^\top x)$. <SlideRef lecture={5} pages="25" /> <SlideRef lecture={5} pages="33" /> <SlideRef lecture={6} pages="3" />
+
+Also written as: $P_\theta(y = 1 \mid X) = \sigma(\theta^T X)$ (L5 p.33); the slides' additive form $y\,\sigma(\theta^\top x) + (1 - y)(1 - \sigma(\theta^\top x))$ (L5 p.44) equals the product form on $\{0, 1\}$: both give $\sigma$ at $y = 1$ and $1 - \sigma$ at $y = 0$.
+
+</Definition>
+
+Despite its name, logistic regression is a classification algorithm, as L5 p.25 highlights. It is a regression only in the sense of der-3-1-1: it models the regression function $\mathbb{E}[Y \mid X = x] = P(Y = 1 \mid X = x)$, now with a model class whose values are always valid probabilities. How to choose $\theta$ is the subject of lessons 3.2 and 3.3.
+
+<Callout type="slide">
+
+The slides plot the sigmoid as $f(x) = 1/(1 + e^{-x})$ (L5 p.24, L6 p.3), using $x$ for its argument. We keep $x$ for inputs and call the argument $z$, with $z = \theta^\top x$ in logistic regression. The slides write inputs as capital $X$ and examples as $(X_i, y_i)$; we write $x$ and $(x^{(i)}, y^{(i)})$. When the Gaussian appears in lesson 3.4, its standard deviation is $\sigma_\varepsilon$, so $\sigma$ alone always means the sigmoid.
+
+</Callout>
+
+L5 p.26 lists the properties that make $\sigma(z)$ look like a probability: it is bounded between 0 and 1, tends to 1 as $z \to \infty$, and tends to 0 as $z \to -\infty$ <SlideRef lecture={5} pages="26" />. The slides state them; the next derivation proves them, together with the value at 0 and the symmetry that the rest of the unit uses.
+
+<Derivation
+  id="der-3-1-3"
+  title="The sigmoid lies strictly between 0 and 1, tends to 0 and 1 at the ends, and satisfies σ(−z) = 1 − σ(z)"
+  goalTex="\text{range, } \lim_{z \to \pm\infty} \sigma(z), \ \sigma(0), \text{ and } \sigma(-z) \text{ for } \sigma(z) = \frac{1}{1 + e^{-z}}"
+  resultTex="0 < \sigma(z) < 1, \quad \lim_{z \to +\infty} \sigma(z) = 1, \quad \lim_{z \to -\infty} \sigma(z) = 0, \quad \sigma(0) = \tfrac12, \quad \sigma(-z) = 1 - \sigma(z)"
+  source="L5 p.26 (stated: 'bounded between 0 and 1; tends to 1 as z → ∞ and 0 as z → −∞'); L6 p.3"
+>
+
+<Chunk title="Bound the denominator to trap σ between 0 and 1">
+
+<Step justification="the exponential is positive for every real argument" sticky="exponential-function">
+$$e^{-z} > 0 \quad \text{for every } z \in \mathbb{R}$$
+</Step>
+
+<Step justification="add 1 to both sides">
+$$1 + e^{-z} > 1$$
+</Step>
+
+<Step justification="the reciprocal of a number greater than 1 lies strictly between 0 and 1" fadeable>
+$$0 < \sigma(z) = \frac{1}{1 + e^{-z}} < 1$$
+</Step>
+
+<Step justification="substitute $z = 0$ and use $e^{0} = 1$">
+$$\sigma(0) = \frac{1}{1 + 1} = \frac12$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Follow the exponential to each end">
+
+<Step justification="$e^{-z} \to 0$ as $z \to +\infty$, so the denominator tends to 1" sticky="exponential-function">
+$$\lim_{z \to +\infty} \sigma(z) = \frac{1}{1 + 0} = 1$$
+</Step>
+
+<Step justification="$e^{-z} \to +\infty$ as $z \to -\infty$, so the denominator grows without bound and its reciprocal tends to 0">
+$$\lim_{z \to -\infty} \sigma(z) = 0$$
+</Step>
+
+<Step justification="step 3 holds for every finite $z$, so neither limit is attained">
+$$\sigma(z) \ne 0 \text{ and } \sigma(z) \ne 1 \quad \text{for every } z \in \mathbb{R}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Reflect the argument">
+
+<Step justification="substitute $-z$ into equation 3.1.1">
+$$\sigma(-z) = \frac{1}{1 + e^{z}}$$
+</Step>
+
+<Step justification="multiply numerator and denominator by $e^{-z} > 0$, using $e^{z} e^{-z} = 1$" sticky="exponential-function" fadeable>
+$$\sigma(-z) = \frac{e^{-z}}{e^{-z} + 1}$$
+</Step>
+
+<Step justification="write the numerator as $(1 + e^{-z}) - 1$ and split the fraction" fadeable>
+$$\sigma(-z) = \frac{1 + e^{-z}}{1 + e^{-z}} - \frac{1}{1 + e^{-z}} = 1 - \frac{1}{1 + e^{-z}}$$
+</Step>
+
+<Step justification="the last fraction is $\sigma(z)$ by equation 3.1.1">
+$$\sigma(-z) = 1 - \sigma(z)$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The symmetry is what makes the model's two class probabilities mirror images: $P_\theta(y = 0 \mid x) = 1 - \sigma(\theta^\top x) = \sigma(-\theta^\top x)$. Swapping the class labels is the same as negating $\theta$. Steps 9 to 11 also give a form we use next: $1 - \sigma(z) = \dfrac{e^{-z}}{1 + e^{-z}}$.
+
+## The derivative of the sigmoid
+
+L5 p.34 states the derivative and draws the practical conclusion: the sigmoid is easy to differentiate, so gradient descent can optimize logistic regression <SlideRef lecture={5} pages="34" />. Here is the derivation.
+
+<Derivation
+  id="der-3-1-4"
+  title="The sigmoid's derivative is σ(z)(1 − σ(z)), positive everywhere and at most 1/4"
+  goalTex="\frac{d\sigma}{dz} \text{ written in terms of } \sigma(z) \text{ itself}"
+  resultTex="\sigma'(z) = \sigma(z)\big(1 - \sigma(z)\big), \qquad 0 < \sigma'(z) \le \tfrac14, \text{ with equality only at } z = 0"
+  source="L5 p.34 (stated: dσ/dz = σ(z)(1 − σ(z)))"
+>
+
+<Chunk title="Differentiate with the chain rule">
+
+<Step justification="write the reciprocal as a power">
+$$\sigma(z) = \big(1 + e^{-z}\big)^{-1}$$
+</Step>
+
+<Step justification="chain rule: the outer function $u^{-1}$ has derivative $-u^{-2}$, times the derivative of the inner function $u = 1 + e^{-z}$" sticky="chain-rule-calculus">
+$$\sigma'(z) = -\big(1 + e^{-z}\big)^{-2} \cdot \frac{d}{dz}\big(1 + e^{-z}\big)$$
+</Step>
+
+<Step justification="$\frac{d}{dz} e^{-z} = -e^{-z}$ (chain rule again), and the two minus signs cancel" sticky="exponential-function" fadeable>
+$$\sigma'(z) = \frac{e^{-z}}{\big(1 + e^{-z}\big)^{2}}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Recognize σ and 1 − σ in the two factors">
+
+<Step justification="split the square in the denominator into a product of two fractions">
+$$\sigma'(z) = \frac{1}{1 + e^{-z}} \cdot \frac{e^{-z}}{1 + e^{-z}}$$
+</Step>
+
+<Step justification="der-3-1-3 steps 9 to 11: the second fraction is $\sigma(-z) = 1 - \sigma(z)$" fadeable>
+$$\frac{e^{-z}}{1 + e^{-z}} = 1 - \sigma(z)$$
+</Step>
+
+<Step justification="the first fraction is $\sigma(z)$ by equation 3.1.1; substitute both into step 4">
+$$\sigma'(z) = \sigma(z)\big(1 - \sigma(z)\big)$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Read off the sign and the largest slope">
+
+<Step justification="both factors lie in $(0, 1)$ by der-3-1-3 step 3, so their product is positive and $\sigma$ is strictly increasing" sticky="derivative">
+$$\sigma'(z) > 0 \quad \text{for every } z \in \mathbb{R}$$
+</Step>
+
+<Step justification="complete the square in $s = \sigma(z)$: $s(1 - s) = s - s^2 = \tfrac14 - (s - \tfrac12)^2$" fadeable>
+$$\sigma'(z) = \tfrac14 - \big(\sigma(z) - \tfrac12\big)^2$$
+</Step>
+
+<Step justification="a square is nonnegative, so $\sigma'(z) \le \tfrac14$, with equality exactly when $\sigma(z) = \tfrac12$; $\sigma$ is strictly increasing (step 7) with $\sigma(0) = \tfrac12$ (der-3-1-3 step 4), so that happens only at $z = 0$">
+$$\sigma'(z) \le \tfrac14, \qquad \sigma'(z) = \tfrac14 \iff z = 0$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+\sigma'(z) = \sigma(z)\big(1 - \sigma(z)\big) \tag{3.1.2} \htmlId{eq-3-1-2}{}
+$$
+
+Two consequences carry the rest of the unit. First, once $\sigma(z)$ has been computed, its derivative costs one multiplication; the gradient of the logistic-regression loss in lesson 3.3 is built from <EqRef id="eq-3-1-2" /> and the chain rule. Second, the slope is largest, $\tfrac14$, at $z = 0$ and decays to 0 in both tails, where $\sigma(z)(1 - \sigma(z))$ is the product of a number near 1 and a number near 0. A sigmoid that is deep in a tail barely responds to its argument; L7 returns to this "saturation" when it compares loss functions.
+
+<Check ids={["q-u3-l1-005", "q-u3-l1-006", "q-u3-l1-013", "q-u3-l1-014"]} />
+
+## Inverting the sigmoid: the log-odds
+
+The slides never invert the sigmoid, but the inverse is what gives $\theta$ a meaning. If the model outputs a probability $p$, which score $z$ produced it?
+
+<Definition id="def-3-1-6" title="Odds and log-odds" source="beyond the slides">
+
+For a probability $p \in (0, 1)$, the odds are $\dfrac{p}{1 - p} \in (0, \infty)$ and the [[log-odds]], or logit, is
+
+$$\operatorname{logit}(p) = \log\frac{p}{1 - p} \in \mathbb{R}.$$
+
+Odds of 4 ("4 to 1") mean $p = 0.8$; $p = \tfrac12$ has odds 1 and log-odds 0.
+
+Also written as: $\sigma^{-1}(p)$; in a logistic model the score $z = \theta^\top x$ is called the logit (the L5 notation).
+
+</Definition>
+
+<Derivation
+  id="der-3-1-5"
+  title="The inverse of the sigmoid is the log-odds"
+  goalTex="z \text{ such that } \sigma(z) = p, \text{ for a given } p \in (0, 1)"
+  resultTex="\sigma(z) = p \iff z = \log\frac{p}{1 - p}"
+  source="beyond the slides (L5 pp.25-26 and 33 define σ and read σ(θᵀx) as a probability; the inverse is not stated)"
+>
+
+<Chunk title="Solve σ(z) = p for z">
+
+<Step justification="equation 3.1.1 with the unknown $z$">
+$$p = \frac{1}{1 + e^{-z}}$$
+</Step>
+
+<Step justification="take reciprocals of both sides; both are positive">
+$$\frac{1}{p} = 1 + e^{-z}$$
+</Step>
+
+<Step justification="subtract 1 and write over the common denominator $p$; the right side is positive because $0 < p < 1$" fadeable>
+$$e^{-z} = \frac{1 - p}{p}$$
+</Step>
+
+<Step justification="take the natural log of both sides; $\log e^{a} = a$" sticky="log-rules">
+$$-z = \log\frac{1 - p}{p}$$
+</Step>
+
+<Step justification="multiply by $-1$; $-\log\frac{a}{b} = \log\frac{b}{a}$" sticky="log-rules" fadeable>
+$$z = \log\frac{p}{1 - p}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+$$
+\sigma(z) = p \iff z = \log\frac{p}{1 - p} \tag{3.1.3} \htmlId{eq-3-1-3}{}
+$$
+
+Every step is reversible, so each $p \in (0, 1)$ comes from exactly one $z$: the sigmoid is a one-to-one map of $\mathbb{R}$ onto $(0, 1)$, and the log-odds is its inverse. Together with der-3-1-3, this means the sigmoid reaches every probability strictly between 0 and 1 and never 0 or 1 themselves.
+
+Applied to logistic regression, <EqRef id="eq-3-1-3" /> says the model is linear on the log-odds scale. That gives each coefficient a precise meaning.
+
+<Derivation
+  id="der-3-1-6"
+  title="Logistic regression's log-odds are linear, so raising x_j by one multiplies the odds by e^θ_j"
+  goalTex="\frac{\mathrm{odds}(x + e_j)}{\mathrm{odds}(x)} \text{ for } p(x) = \sigma(\theta^\top x), \ \mathrm{odds}(x) = \frac{p(x)}{1 - p(x)}, \ j \ge 1"
+  resultTex="\log\frac{p(x)}{1 - p(x)} = \theta^\top x, \qquad \frac{\mathrm{odds}(x + e_j)}{\mathrm{odds}(x)} = e^{\theta_j}"
+  source="beyond the slides (L5 p.33: P_θ(y = 1 | X) = σ(θᵀX), stated)"
+>
+
+<Chunk title="Move to the odds scale and change one feature">
+
+<Step justification="der-3-1-5 with $p = p(x)$ and $z = \theta^\top x$" sticky="log-odds">
+$$\log\frac{p(x)}{1 - p(x)} = \theta^\top x$$
+</Step>
+
+<Step justification="exponentiate both sides; $e^{\log a} = a$" sticky="exponential-function">
+$$\mathrm{odds}(x) = e^{\theta^\top x}$$
+</Step>
+
+<Step justification="raise feature $j$ by one unit, $x \to x + e_j$; linearity of the inner product and $\theta^\top e_j = \theta_j$, where $e_j$ is the $j$-th standard basis vector (not the exponential)" sticky="linear-function" fadeable>
+$$\theta^\top (x + e_j) = \theta^\top x + \theta_j$$
+</Step>
+
+<Step justification="apply step 2 at $x + e_j$ and substitute step 3">
+$$\mathrm{odds}(x + e_j) = e^{\theta^\top x + \theta_j}$$
+</Step>
+
+<Step justification="divide by $\mathrm{odds}(x) = e^{\theta^\top x}$ from step 2 and use $e^{a + b} = e^{a} e^{b}$" fadeable>
+$$\frac{\mathrm{odds}(x + e_j)}{\mathrm{odds}(x)} = \frac{e^{\theta^\top x + \theta_j}}{e^{\theta^\top x}} = e^{\theta_j}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The odds ratio $e^{\theta_j}$ is the same for every patient, which is the sense in which the effect of $x_j$ is constant. The change in probability is not: by the chain rule and <EqRef id="eq-3-1-2" />, $\frac{\partial}{\partial x_j}\sigma(\theta^\top x) = \sigma'(\theta^\top x)\,\theta_j$, which depends on where the patient sits on the curve and is at most $\lvert\theta_j\rvert / 4$.
+
+<Check ids={["q-u3-l1-007", "q-u3-l1-011", "q-u3-l1-012"]} />
+
+## The decision boundary is linear
+
+To turn the probability into a label we threshold it, as L5 p.23 did for linear regression. L5 p.38 asks whether the resulting boundary is linear <SlideRef lecture={5} pages="38" />; the monotonicity proven in der-3-1-4 answers it.
+
+<Derivation
+  id="der-3-1-7"
+  title="Thresholding σ(θᵀx) at any level gives a linear decision boundary"
+  goalTex="\{x : \sigma(\theta^\top x) \ge t\} \text{ for a threshold } t \in (0, 1), \text{ first with } t = \tfrac12"
+  resultTex="\sigma(\theta^\top x) \ge \tfrac12 \iff \theta^\top x \ge 0; \qquad \sigma(\theta^\top x) \ge t \iff \theta^\top x \ge \log\frac{t}{1 - t}"
+  source="L5 p.38 poll (stated: 'logistic regression learns a linear decision boundary'); L5 p.23 (thresholding at 0.5)"
+>
+
+<Chunk title="Threshold at one half">
+
+<Step justification="threshold the predicted probability at $\tfrac12$, as L5 p.23 thresholds the regression output (we send ties to class 1)">
+$$\hat y = 1 \iff \sigma(\theta^\top x) \ge \tfrac12$$
+</Step>
+
+<Step justification="$\tfrac12 = \sigma(0)$ (der-3-1-3 step 4), and a strictly increasing function preserves order in both directions (der-3-1-4 step 7)" sticky="sigmoid">
+$$\sigma(\theta^\top x) \ge \sigma(0) \iff \theta^\top x \ge 0$$
+</Step>
+
+<Step justification="expand the inner product with $x_0 = 1$: the boundary is the zero set of an affine function of the features, a hyperplane provided $(\theta_1, \dots, \theta_d) \ne 0$ (otherwise every $x$ gets the same class)" fadeable>
+$$\{x : \theta_0 + \theta_1 x_1 + \cdots + \theta_d x_d = 0\}$$
+</Step>
+
+</Chunk>
+
+<Chunk title="Any other threshold moves the hyperplane, not its shape">
+
+<Step justification="apply the strictly increasing inverse $\sigma^{-1}$ (der-3-1-5) to both sides of $\sigma(\theta^\top x) \ge t$">
+$$\sigma(\theta^\top x) \ge t \iff \theta^\top x \ge \sigma^{-1}(t)$$
+</Step>
+
+<Step justification="equation 3.1.3 gives $\sigma^{-1}(t)$" sticky="log-odds" fadeable>
+$$\sigma(\theta^\top x) \ge t \iff \theta^\top x \ge \log\frac{t}{1 - t}$$
+</Step>
+
+<Step justification="the boundary $\theta^\top x = \log\frac{t}{1 - t}$ has the same normal vector $(\theta_1, \dots, \theta_d)$ as step 3 (assumed nonzero), so it is a parallel hyperplane">
+$$\{x : \theta_1 x_1 + \cdots + \theta_d x_d = \log\tfrac{t}{1 - t} - \theta_0\}$$
+</Step>
+
+</Chunk>
+
+</Derivation>
+
+The sigmoid is nonlinear, but it is monotone, so it cannot bend the boundary: whatever the threshold, the boundary is a level set of the linear score. Two qualifications answer the rest of the L5 p.38 poll. The boundary is linear in whatever vector the model multiplies by $\theta$. If that vector is a [[feature-map]] $\phi(x)$ with engineered features such as $x_1^2$, $x_1 x_2$, or ADVERSE's $\max(0, 30 - \text{eGFR})$, the boundary $\theta^\top \phi(x) = 0$ is a hyperplane in feature space and a curve in the raw inputs. And the threshold need not be $\tfrac12$: Unit 4 chooses it from the costs of the two kinds of error, and steps 5 and 6 show that changing it only slides the hyperplane.
+
+<Widget
+  name="sigmoid-fit-1d"
+  theta0={0}
+  theta1={1}
+  showLogOdds={true}
+  showBoundary={true}
+  showNll={false}
+  seed={7}
+  challenge="Make the curve steeper without moving the boundary, then move the boundary to $x = 2$ without changing the steepness. Which slider controls which, and why does the log-odds line stay straight?"
+/>
+
+<Check ids={["q-u3-l1-001", "q-u3-l1-002", "q-u3-l1-015"]} />
+
+## Worked examples
+
+<Example case="adverse" title="One patient's risk, odds, and slope" homeworkReviewed>
+
+ADVERSE generates its labels from a logistic model, so its log-odds are known exactly. In the generator (`src/lib/datasets/adverse.ts`) the score of a patient is
+
+$$z = -4.5 + 0.03(\text{age} - 60) - 0.04(\text{eGFR} - 70) + 1.2\,\text{NSAID} + 0.6\,\mathbb{1}[K > 5.0] + 0.05\,D + 0.08\max(0, 30 - \text{eGFR}),$$
+
+and the patient's true risk is $p = \sigma(z)$, stored in each row as `p`.
+
+**The score.** Patient ADV-0023 is 74 years old, with eGFR 56.8, potassium 4.1 mmol/L, a concomitant NSAID, and the 40 mg dose. Term by term:
+
+$$z = -4.5 + 0.03(14) - 0.04(-13.2) + 1.2(1) + 0.6(0) + 0.05(40) + 0.08(0) = -4.5 + 0.42 + 0.528 + 1.2 + 2.0 = -0.352.$$
+
+**The probability** (equation 3.1.1 and der-3-1-3). The score is negative, so $p < \tfrac12$. By symmetry, $\sigma(-0.352) = 1 - \sigma(0.352)$, and
+
+$$\sigma(-0.352) = \frac{1}{1 + e^{0.352}} = \frac{1}{2.4219} = 0.4129,$$
+
+which is the `p` stored for ADV-0023. At threshold $\tfrac12$ (der-3-1-7) the prediction is $\hat y = 0$; this patient's recorded outcome is indeed $y = 0$, though a 41% risk is far from reassuring.
+
+**The odds** (der-3-1-6). $\mathrm{odds} = e^{z} = e^{-0.352} = 0.7033$, and indeed $0.4129 / 0.5871 = 0.7033$. Without the NSAID the score would be $-1.552$ and the odds $e^{-1.552} = 0.2118$. The ratio is $0.7033 / 0.2118 = e^{1.2} \approx 3.320$, the NSAID coefficient exponentiated, as der-3-1-6 predicts. The probability moves from $\sigma(-1.552) = 0.1748$ to $0.4129$, a change that would be different for a patient elsewhere on the curve.
+
+**The slope** (der-3-1-4). At this patient, $\sigma'(z) = 0.4129 \times 0.5871 = 0.2424$, close to the maximum $\tfrac14$ because $z$ is near 0. One more milligram of dose adds $0.05$ to $z$, so to first order the risk rises by $0.2424 \times 0.05 = 0.0121$; the exact change, $\sigma(-0.302) - \sigma(-0.352)$, is $0.0122$.
+
+**Your turn.** Patient ADV-0721 is 75, with eGFR 47.9, potassium 5.2, an NSAID, and 40 mg. Compute $z$ and decide the class at threshold $\tfrac12$ before reading on.
+
+The terms are $-4.5$, $0.03(15) = 0.45$, $-0.04(-22.1) = 0.884$, $1.2$, $0.6$ (potassium is above 5.0), $2.0$, and $0$ (eGFR is above 30), so $z = 0.634 > 0$ and $\hat y = 1$ by der-3-1-7. Then $\sigma(0.634) = 1/(1 + e^{-0.634}) = 1/1.5305 = 0.6534$, the stored `p`. This patient had an event.
+
+</Example>
+
+<Example case="adverse" title="Why the least-squares line never calls an event" homeworkReviewed>
+
+The hook's least-squares fit uses the same 5,000 patients and the same five raw features. Of its 5,000 fitted values, 1,048 are negative (the smallest is $-0.162$), and the largest is $0.356$, so thresholding at 0.5 predicts class 0 for everyone.
+
+Both failures follow from this lesson. der-3-1-1 says the line is estimating $P(Y = 1 \mid X)$, whose average here is 0.062. The true risk is low for most patients (its median is 0.027, and 68% of patients are below 0.05) and climbs steeply for a few. A line cannot follow that shape: to stay close to the many low-risk patients it must stay low, and the slope it needs to separate them from each other carries the least risky ones below 0, the finite-sample face of der-3-1-2. The 56 patients whose true risk exceeds one half are where a function of the features would need to bend sharply upward, and a linear one cannot.
+
+Calling no events at all scores an accuracy of $1 - 0.062 = 0.938$, which sounds good and is useless. Unit 4 explains why accuracy is the wrong yardstick at 6% prevalence.
+
+</Example>
+
+## Check your understanding
+
+<Check ids={["q-u3-l1-008", "q-u3-l1-009", "q-u3-l1-010", "q-u3-l1-016"]} />
+
+## Pitfalls
+
+<Pitfall title="Logistic regression is not a regression method" misconception="logreg-is-regression">
+
+The belief: the name says regression, so logistic regression predicts a real-valued target. The fix: it is a binary classifier (L5 p.25 highlights exactly this). Its output $\sigma(\theta^\top x)$ is a probability of class 1, and the label it predicts is 0 or 1. The word "regression" survives because it models the regression function $\mathbb{E}[Y \mid X] = P(Y = 1 \mid X)$ (der-3-1-1).
+
+</Pitfall>
+
+<Pitfall title="Unbounded outputs are not the only problem with thresholded least squares" misconception="threshold-linreg-only-bounds">
+
+The belief: clip the least-squares output to $[0, 1]$ and it becomes a good classifier. The fix: clipping fixes the outputs but not the fit. Squared error still charges correctly classified points for lying far from 0.5 on the right side, so a far point drags the threshold (the Intuition's fifth patient moved it from 2.5 to 3), and on ADVERSE the line cannot follow a risk that is low for most patients and steep for a few. The sigmoid flattens out, so points deep inside a class stop pulling.
+
+</Pitfall>
+
+<Pitfall title="A nonlinear sigmoid does not make the boundary curved" misconception="sigmoid-boundary-curved">
+
+The belief: $\sigma$ is nonlinear, so logistic regression draws curved boundaries. The fix: $\sigma$ is strictly increasing, so $\sigma(\theta^\top x) \ge t$ exactly when $\theta^\top x \ge \log\frac{t}{1 - t}$ (der-3-1-7). The boundary is a hyperplane in whatever features the model sees. Curved boundaries in the raw inputs come from engineered features $\phi(x)$, not from the sigmoid.
+
+</Pitfall>
+
+<Pitfall title="A coefficient is not a change in probability" misconception="coef-is-probability-change">
+
+The belief: $\theta_j = 1.2$ means one more unit of $x_j$ adds 1.2 (or 120 percentage points) to the probability. The fix: $\theta_j$ is the change in log-odds; the odds are multiplied by $e^{\theta_j}$ (der-3-1-6). The change in probability is $\sigma'(\theta^\top x)\,\theta_j$, which depends on the patient and is at most $\lvert\theta_j\rvert / 4$ (der-3-1-4). For ADV-0023 the NSAID moves the risk from 0.175 to 0.413, not by 1.2.
+
+</Pitfall>
+
+<Pitfall title="The sigmoid never outputs exactly 0 or 1" misconception="sigmoid-reaches-0-1">
+
+The belief: a confident model outputs $\sigma(\theta^\top x) = 1$. The fix: $0 < \sigma(z) < 1$ for every finite $z$ (der-3-1-3 steps 3 and 7); the extremes are limits, reached only as $z \to \pm\infty$. When the training classes can be separated by a hyperplane, pushing the fitted probabilities toward 0 and 1 drives $\lVert\theta\rVert$ toward infinity, a failure that lesson 3.3 and Unit 5's regularization address.
+
+</Pitfall>
+
+<Pitfall title="A sigmoid output is not automatically a calibrated probability" misconception="sigmoid-output-calibrated">
+
+The belief: because $\sigma(\theta^\top x)$ lies in $(0, 1)$, it is the true risk. The fix: lying in $(0, 1)$ makes it a valid probability, not a correct one. It equals $P(Y = 1 \mid X = x)$ only if the log-odds really are linear in the features and $\theta$ is well estimated. ADVERSE's log-odds are not linear in raw eGFR (the kink below 30), so a logistic model on raw eGFR will misstate the risk of the sickest kidneys. Unit 4 measures this with calibration plots.
+
+</Pitfall>
+
+<Pitfall title="A least-squares fit to 0/1 labels is not bounded by the labels" misconception="linreg-bounded-by-labels">
+
+The belief: the labels lie in $\{0, 1\}$, so the fitted line stays in $[0, 1]$. The fix: a line with a nonzero slope is unbounded in both directions (der-3-1-2), so some inputs get fitted values above 1 and some below 0. On ADVERSE, 1,048 patients get a negative fitted "probability".
+
+</Pitfall>
+
+<Pitfall title="The sigmoid's value at 0 is not its slope" misconception="sigmoid-slope-value-not-derivative">
+
+The belief: the sigmoid is steepest at $z = 0$ with slope $\tfrac12$ (its value there) or slope 1. The fix: $\sigma'(z) = \sigma(z)(1 - \sigma(z))$ (der-3-1-4), so at $z = 0$ the slope is $\tfrac12 \cdot \tfrac12 = \tfrac14$, and that is the largest slope anywhere.
+
+</Pitfall>
+
+<Pitfall title="An odds ratio is not a risk ratio" misconception="odds-ratio-is-risk-ratio">
+
+The belief: $e^{\theta_j} = 3.32$ means the probability of the event is multiplied by 3.32. The fix: it is the odds $p/(1 - p)$ that are multiplied (der-3-1-6). For a rare event the two ratios are close, but for a common one they are not: multiplying a probability of 0.4 by 3.32 would exceed 1, while multiplying its odds gives $0.667 \times 3.32 = 2.21$, a probability of 0.69.
+
+</Pitfall>
+
+<Pitfall title="A probability threshold is not a threshold on the score" misconception="threshold-on-score-scale">
+
+The belief: flagging patients with $\sigma(\theta^\top x) \ge 0.2$ puts the boundary at $\theta^\top x = 0.2$. The fix: the threshold lives on the probability scale. Invert the sigmoid: $\sigma(\theta^\top x) \ge t$ exactly when $\theta^\top x \ge \log\frac{t}{1 - t}$ (der-3-1-7), so $t = 0.2$ gives $\theta^\top x \ge -\log 4$.
+
+</Pitfall>
+
+<Connections>
+
+- Previous: 2.1 Data-generating distributions proved that $\mathbb{E}[Y \mid X]$ minimizes expected squared error (der-2-1-5), which der-3-1-1 specializes to 0/1 labels; 1.4 Least squares is the method that fails here.
+- Next: 3.2 Maximum likelihood takes up L5 pp.27–37: why the target is $P(Y = 1 \mid X)$ when labels overlap (the slides' 90/10 example), why the 0/1 error cannot be minimized by gradient descent, and the maximum-likelihood principle.
+- Then: 3.3 The logistic-regression objective derives the negative log-likelihood of $\sigma(\theta^\top x)$, its gradient $\sum_i (\sigma(\theta^\top x^{(i)}) - y^{(i)})\,x^{(i)}$ from <EqRef id="eq-3-1-2" />, and its convexity.
+- Later: 3.5 Softmax regression generalizes the sigmoid to $K$ classes and reduces to it at $K = 2$; 6.3 Naive Bayes and 7.3 Shared covariance and logistic regression both produce log-odds linear in $x$, so their posteriors are sigmoids of a linear score.
+- Notebook: <Notebook path="Code Companions/lecture4-code companion.ipynb" cells="24-37" /> Section 3 relabels Iris as setosa versus the rest, fits `LinearRegression` and thresholds at 0.5 (the L5 p.23 figure), then fits `LogisticRegression(C=1e5)` for comparison.
+- Graph neighbors: [[sigmoid]], [[log-odds]], [[bernoulli]], [[conditional-expectation]], [[exponential-function]], [[chain-rule-calculus]].
+
+</Connections>
+
+<HomeworkBridge hw="hw3" skills={["sigmoid-function", "log-odds-logit"]} />
+
+<Summary>
+
+- **Binary classification:** $y \in \{0, 1\}$; a probabilistic classifier outputs $f_\theta(x) \approx P(Y = 1 \mid X = x)$ and thresholds it into decision regions.
+- **0/1 regression function:** $\mathbb{E}[Y \mid X = x] = P(Y = 1 \mid X = x)$, so least squares on 0/1 labels aims at the class probability, but a linear score with a nonzero slope always leaves $[0, 1]$.
+- **Sigmoid:** $\sigma(z) = \dfrac{1}{1 + e^{-z}} \in (0, 1)$, $\sigma(0) = \tfrac12$, $\sigma(z) \to 1$ as $z \to \infty$ and $\to 0$ as $z \to -\infty$, $\sigma(-z) = 1 - \sigma(z)$.
+- **Logistic regression:** $P_\theta(y = 1 \mid x) = \sigma(\theta^\top x)$, $P_\theta(y = 0 \mid x) = 1 - \sigma(\theta^\top x)$; the label is Bernoulli with parameter $\sigma(\theta^\top x)$.
+- **Derivative:** $\sigma'(z) = \sigma(z)(1 - \sigma(z))$, positive, at most $\tfrac14$ (at $z = 0$).
+- **Log-odds:** $\sigma(z) = p \iff z = \log\dfrac{p}{1 - p}$; in logistic regression the log-odds are $\theta^\top x$, and raising $x_j$ by one multiplies the odds by $e^{\theta_j}$.
+- **Decision boundary:** $\sigma(\theta^\top x) \ge t \iff \theta^\top x \ge \log\frac{t}{1 - t}$; at $t = \tfrac12$ the boundary is the hyperplane $\theta^\top x = 0$.
+
+</Summary>

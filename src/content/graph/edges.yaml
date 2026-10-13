@@ -422,3 +422,117 @@
 - { from: feature-scaling-conditioning, to: feature-scaling-kmeans, type: contrasts }
 - { from: gda-linear-boundary, to: kmeans-voronoi-cells, type: contrasts }
 - { from: gda-mle-mean, to: kmeans-update-step, type: contrasts }
+
+# ---------- Unit 3: Logistic regression and maximum likelihood ----------
+
+# ---------- Lesson 3.1: classification-and-the-sigmoid ----------
+
+# Within lesson 3.1 (course map L5 seed edges between concepts taught in the same lesson;
+# frontmatter derivation cannot produce these because both ends are `concepts` of 3.1).
+- {
+    from: classification-vs-regression,
+    to: thresholded-linear-regression-fails,
+    type: requires,
+  }
+- {
+    from: thresholded-linear-regression-fails,
+    to: sigmoid-function,
+    type: requires,
+  }
+- { from: sigmoid-function, to: sigmoid-derivative, type: requires }
+- { from: sigmoid-function, to: log-odds-logit, type: requires }
+# Explicit course-map seed edges: these target a specific node rather than the lesson.
+- {
+    from: supervised-task-types,
+    to: classification-vs-regression,
+    type: requires,
+  }
+- {
+    from: conditional-mean-optimality,
+    to: classification-vs-regression,
+    type: requires,
+  }
+- {
+    from: linear-model,
+    to: thresholded-linear-regression-fails,
+    type: requires,
+  }
+- { from: chain-rule-calculus, to: sigmoid-derivative, type: requires }
+- { from: exponential-function, to: sigmoid-function, type: requires }
+- { from: log-rules, to: log-odds-logit, type: requires }
+- { from: iris-dataset, to: classification-vs-regression, type: uses }
+# Forward links to later units: log-odds linear in x
+- { from: log-odds-logit, to: nb-linear-classifier, type: uses }
+- { from: log-odds-logit, to: gda-sigmoid-posterior, type: uses }
+
+# ---------- Lesson 3.2: maximum-likelihood-principle ----------
+# Course map seed edges (02-lectures-L4-L5.md L5; 03-lectures-L6-L7.md L6) between concepts taught in this
+# lesson, plus links to Units 3, 6, and 7. For `generalizes`, `to` generalizes `from`.
+- { from: zero-one-loss-not-optimizable, to: mle-principle, type: uses }
+- { from: conditional-probability-window-estimate, to: mle-principle, type: uses }
+- { from: maximum-likelihood-estimation, to: mle-principle, type: requires }
+- { from: mle-principle, to: mle-coin-flip, type: requires }
+- { from: mle-principle, to: mle-dice, type: requires }
+- { from: mle-principle, to: mle-gaussian, type: requires }
+- { from: mle-coin-flip, to: mle-dice, type: generalizes }
+# Toward lesson 3.3 (MLE principle -> logistic NLL) and 3.4 (Gaussian MLE -> least squares)
+- { from: mle-principle, to: logistic-nll, type: requires }
+- { from: mle-gaussian, to: least-squares-gaussian-mle, type: uses }
+# Toward Units 6 and 7 (the same estimates reappear per word, per class, per Gaussian)
+- { from: mle-coin-flip, to: bernoulli-nb-mle, type: generalizes }
+- { from: mle-dice, to: categorical-prior-mle, type: generalizes }
+- { from: mle-gaussian, to: gda-mle-mean, type: generalizes }
+- { from: mle-gaussian, to: gda-mle-covariance, type: generalizes }
+
+# ---------- Lesson 3.3: deriving-the-logistic-regression-objective ----------
+
+# Within lesson 3.3 (course map L5 seed edges between concepts taught in the same lesson;
+# frontmatter derivation cannot produce these because both ends are `concepts` of 3.3).
+- { from: logistic-regression-model, to: logistic-nll, type: requires }
+- { from: logistic-nll, to: bernoulli-cross-entropy-equivalence, type: requires }
+- { from: logistic-nll, to: logistic-gradient, type: requires }
+- { from: logistic-gradient, to: logistic-convexity, type: requires }
+- { from: logistic-gradient, to: logistic-no-closed-form, type: requires }
+
+# Contrasts with least squares (Units 1-2)
+- { from: least-squares-closed-form, to: logistic-no-closed-form, type: contrasts }
+- { from: mse-gradient, to: logistic-gradient, type: contrasts }
+- { from: least-squares-convexity, to: logistic-convexity, type: contrasts }
+
+# Forward links (course map L5: NLL -> KL interpretation (L6), NLL -> softmax (L6); L10: GDA vs LR)
+- { from: bernoulli-cross-entropy-equivalence, to: conditional-kl-nll, type: uses }
+- { from: logistic-regression-model, to: softmax-regression, type: generalizes }
+- { from: logistic-gradient, to: softmax-nll-gradient, type: generalizes }
+- { from: logistic-regression-model, to: gda-vs-logistic-regression, type: uses }
+- { from: logistic-regression-model, to: discriminative-model, type: uses }
+
+# ---------- Lesson 3.4: gaussian-mle-and-kl-divergence ----------
+# Course map L6 seed edges ("Gaussian pdf -> OLS likelihood -> least squares = MLE";
+# "entropy / cross-entropy -> KL divergence"; "Jensen's inequality -> KL non-negativity";
+# "KL divergence -> MLE ≡ min KL"; "empirical distribution / LLN -> MLE ≡ min KL").
+# Edges from prerequisites to concepts are derived from frontmatter; these are the extras.
+# mle-gaussian -> least-squares-gaussian-mle (3.2 fragment) and
+# bernoulli-cross-entropy-equivalence -> conditional-kl-nll (3.3 fragment) are not repeated here.
+- { from: entropy, to: kl-divergence-def, type: requires }
+- { from: kl-divergence-def, to: gibbs-inequality, type: requires }
+- { from: gibbs-inequality, to: mle-minimizes-kl, type: uses }
+- { from: kl-divergence-def, to: mle-minimizes-kl, type: requires }
+- { from: mle-minimizes-kl, to: conditional-kl-nll, type: requires }
+- { from: least-squares-gaussian-mle, to: mle-minimizes-kl, type: uses }
+
+# ---------- Lesson 3.5: softmax-regression ----------
+# Course map L6 seeds: logistic regression -> softmax regression; softmax regression -> softmax
+# reduces to sigmoid (K=2); softmax regression -> class probabilities -> argmax prediction;
+# softmax regression -> generative models (L8-L10). Within-lesson edges are listed because both
+# ends are `concepts` of 3.5 and frontmatter cannot express them.
+- { from: softmax-regression, to: softmax-shift-invariance, type: requires }
+- { from: softmax-shift-invariance, to: softmax-reduces-to-sigmoid, type: requires }
+- { from: softmax-regression, to: softmax-nll-gradient, type: requires }
+- { from: softmax-nll-gradient, to: softmax-convexity, type: requires }
+- { from: softmax-shift-invariance, to: softmax-convexity, type: uses }
+- { from: logistic-convexity, to: softmax-convexity, type: generalizes }
+- { from: softmax-regression, to: discriminative-model, type: uses }
+- { from: softmax-regression, to: logistic-regression-text-baseline, type: uses }
+- { from: sigmoid-function, to: logistic-regression-model, type: requires }
+- { from: log-odds-logit, to: logistic-linear-decision-boundary, type: requires }
+- { from: logistic-linear-decision-boundary, to: gda-linear-boundary, type: contrasts }
