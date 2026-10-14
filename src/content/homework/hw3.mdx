@@ -8,55 +8,92 @@ units: [u6-generative-models-and-naive-bayes, u7-gaussian-discriminant-analysis]
 
 {/* live homework (VISION R17): readiness gate and lesson links only. Add the problem-by-problem walkthrough and set live: false after 2026-10-19. */}
 
-HW3 is due Monday, October 19, 2026. The L10 announcement says it focuses on Naive Bayes and Gaussian discriminant analysis. Like every homework in this course it has a Canvas quiz on lecture material, programming questions, and written questions.
+HW3 is due Monday, October 19, 2026, at 11:59 pm ET. It has three components: the "HW3: Quiz" on Canvas, a written report, and a zip of notebooks, both uploaded to Gradescope. The assignment has four problems:
+
+| Problem | What it asks | Main units |
+|---|---|---|
+| Programming 1 | Classify the HW2 clinical-trial text with all three phases combined and ICD codes added. Implement Bernoulli Naive Bayes with Laplace smoothing yourself, then compare it with unregularized, L1, and L2 logistic regression on the same features | 6, 4, 5 |
+| Programming 2 | Fit Gaussian discriminant analysis to the Iris data without sklearn's discriminant-analysis classes, then compare it with k-means | 7, 8 |
+| Written 1 | Naive Bayes with two binary features, and what changes when conditional independence fails for one class | 6 |
+| Written 2 | Maximum-likelihood estimates for categorical Naive Bayes, where each feature takes one of $L$ values | 6, 3 |
 
 This page is a readiness gate. Each row names a skill, the lesson section that teaches it, and an inline check that practices it. When you can answer every check without looking, you are ready to start. The page gives no answers to the homework itself.
 
-## Generative classification (Unit 6)
+Programming 1 also uses classifier metrics (F1, ROC-AUC, and PR-AUC) and L1 and L2 regularization. Units 4 and 5, which teach them, are still being written. Their rows name the topic and use the closest existing check.
+
+## Programming 1: Naive Bayes on clinical-trial text
+
+### Building the data and the features
 
 | Skill | Learn it in | Check |
 |---|---|---|
-| Predict with the Bayes classifier, and explain why $p(x)$ drops out but the prior does not | [6.1 Deriving the Bayes classifier](/units/u6-generative-models-and-naive-bayes/generative-vs-discriminative#deriving-the-bayes-classifier) | q-u6-l1-007 |
-| Explain why the Bayes classifier minimizes the 0/1 risk | [6.1 The Bayes classifier is the best possible classifier](/units/u6-generative-models-and-naive-bayes/generative-vs-discriminative#the-bayes-classifier-is-the-best-possible-classifier) | q-u6-l1-006 |
-| Split the log-likelihood of a generative model into a prior part and a class-conditional part | [6.1 Fitting a generative model by maximum likelihood](/units/u6-generative-models-and-naive-bayes/generative-vs-discriminative#fitting-a-generative-model-by-maximum-likelihood) | q-u6-l1-020 |
-| Turn documents into a binary bag-of-words matrix with `CountVectorizer`, fitting on training text only | [6.2 CountVectorizer and the 20 Newsgroups matrix](/units/u6-generative-models-and-naive-bayes/text-as-features#countvectorizer-and-the-20-newsgroups-matrix) | q-u6-l2-002 |
-| Choose preprocessing: stop words, stemming, rare words | [6.2 Cleaning the vocabulary](/units/u6-generative-models-and-naive-bayes/text-as-features#cleaning-the-vocabulary) | q-u6-l2-006 |
-| Fit and evaluate a logistic-regression baseline on bag-of-words features | [6.2 The logistic-regression baseline](/units/u6-generative-models-and-naive-bayes/text-as-features#the-logistic-regression-baseline) | q-u6-l2-004 |
+| Fit the vectorizer on training text only, then transform the validation text with the same instance | [6.2 Fit on training text, transform everything else](/units/u6-generative-models-and-naive-bayes/text-as-features#fit-on-training-text-transform-everything-else) | q-u6-l2-005, q-u6-l4-003 |
+| Keep training and validation disjoint, so that no example is counted in both, and never refit anything on validation data | [6.4 Task 3: split into train and test](/units/u6-generative-models-and-naive-bayes/spam-exercise#task-3-split-into-train-and-test) | q-u6-l2-007 |
+| Turn documents into a binary bag-of-words matrix with `CountVectorizer(binary=True, min_df=M)` and read off the vocabulary size | [6.2 CountVectorizer and the 20 Newsgroups matrix](/units/u6-generative-models-and-naive-bayes/text-as-features#countvectorizer-and-the-20-newsgroups-matrix) | q-u6-l2-001, q-u6-l2-019 |
+| Choose preprocessing (case, stop words, stemming, punctuation, numbers) and say what each choice does to tokens that are not English words | [6.2 Cleaning the vocabulary](/units/u6-generative-models-and-naive-bayes/text-as-features#cleaning-the-vocabulary) | q-u6-l2-006, q-u6-l2-017, q-u6-l2-012 |
+| Predict how a vocabulary change (such as stemming) affects the feature matrix | [6.4 Part 4: fitting Naive Bayes](/units/u6-generative-models-and-naive-bayes/spam-exercise#part-4-fitting-naive-bayes-tasks-1317) | q-u6-l4-018 |
 
-## Naive Bayes (Unit 6)
+### Bernoulli Naive Bayes from scratch (part a)
 
 | Skill | Learn it in | Check |
 |---|---|---|
-| Count the parameters of the full model and of Bernoulli Naive Bayes | [6.3 Why the full model is hopeless](/units/u6-generative-models-and-naive-bayes/naive-bayes#why-the-full-model-is-hopeless-counting-parameters) | q-u6-l3-011 |
 | State the Naive Bayes assumption and derive the factorization from the chain rule | [6.3 From the chain rule to the Naive Bayes product](/units/u6-generative-models-and-naive-bayes/naive-bayes#from-the-chain-rule-to-the-naive-bayes-product) | q-u6-l3-001 |
-| Show that the log-likelihood decomposes into one problem per word and class | [6.3 Fitting Bernoulli Naive Bayes by maximum likelihood](/units/u6-generative-models-and-naive-bayes/naive-bayes#fitting-bernoulli-naive-bayes-by-maximum-likelihood) | q-u6-l3-008 |
-| Derive the MLE of $\psi_{jk}$ and of $\phi_k$ (with a Lagrange multiplier) | [6.3 Fitting Bernoulli Naive Bayes by maximum likelihood](/units/u6-generative-models-and-naive-bayes/naive-bayes#fitting-bernoulli-naive-bayes-by-maximum-likelihood) | q-u6-l3-009, q-u6-l3-007 |
-| Explain why zero counts break prediction, and derive Laplace smoothing as a MAP estimate | [6.3 Zero counts and Laplace smoothing](/units/u6-generative-models-and-naive-bayes/naive-bayes#zero-counts-and-laplace-smoothing) | q-u6-l3-013 |
-| Predict in log space and recover posteriors with log-sum-exp | [6.3 Predicting in log space](/units/u6-generative-models-and-naive-bayes/naive-bayes#predicting-in-log-space) | q-u6-l3-014 |
-| Show that Bernoulli Naive Bayes is a linear classifier | [6.3 Naive Bayes is a linear classifier](/units/u6-generative-models-and-naive-bayes/naive-bayes#naive-bayes-is-a-linear-classifier) | q-u6-l3-015 |
-| Implement Bernoulli Naive Bayes from scratch with numpy, vectorized | [6.4 Part 4: fitting Naive Bayes](/units/u6-generative-models-and-naive-bayes/spam-exercise#part-4-fitting-naive-bayes-tasks-1317) and [Part 5: predicting](/units/u6-generative-models-and-naive-bayes/spam-exercise#part-5-predicting-tasks-1821) | q-u6-l4-008, q-u6-l4-015 |
-| Diagnose the zero-count problem in code | [6.4 Part 5: predicting](/units/u6-generative-models-and-naive-bayes/spam-exercise#part-5-predicting-tasks-1821) | q-u6-l4-012 |
+| Estimate $\psi_{jk}$ and $\phi_k$ by counting | [6.3 Fitting Bernoulli Naive Bayes by maximum likelihood](/units/u6-generative-models-and-naive-bayes/naive-bayes#fitting-bernoulli-naive-bayes-by-maximum-likelihood) | q-u6-l4-008, q-u6-l3-023 |
+| Explain why zero counts break prediction, and apply add-$\alpha$ smoothing | [6.3 Zero counts and Laplace smoothing](/units/u6-generative-models-and-naive-bayes/naive-bayes#zero-counts-and-laplace-smoothing) | q-u6-l3-013, q-u6-l3-021 |
+| Score both present and absent words: an absent word contributes $\log(1 - \psi_{jk})$ | [6.3 Predicting in log space](/units/u6-generative-models-and-naive-bayes/naive-bayes#predicting-in-log-space) | q-u6-l3-024 |
+| Score in log space, then normalize the class scores into posteriors with log-sum-exp | [6.3 Predicting in log space](/units/u6-generative-models-and-naive-bayes/naive-bayes#predicting-in-log-space) | q-u6-l3-014 |
+| Vectorize the scoring with numpy, storing parameters as `psis[k, j]` | [6.4 Part 5: predicting](/units/u6-generative-models-and-naive-bayes/spam-exercise#part-5-predicting-tasks-1821) | q-u6-l4-015, q-u6-l4-012 |
 
-## Gaussian discriminant analysis (Unit 7)
+### Evaluation and model comparison (parts a and b)
 
 | Skill | Learn it in | Check |
 |---|---|---|
-| Use the multivariate Gaussian density and read a covariance matrix | [7.1 The density for any covariance](/units/u7-gaussian-discriminant-analysis/multivariate-gaussian-and-covariance#the-density-for-any-covariance) | q-u7-l1-007 |
-| Explain why a covariance matrix is symmetric and positive semi-definite | [7.1 What every covariance matrix satisfies](/units/u7-gaussian-discriminant-analysis/multivariate-gaussian-and-covariance#what-every-covariance-matrix-satisfies) | q-u7-l1-006 |
-| Match a covariance matrix to the shape of its cloud | [7.1 Contours are ellipses along the eigenvectors](/units/u7-gaussian-discriminant-analysis/multivariate-gaussian-and-covariance#contours-are-ellipses-along-the-eigenvectors) | q-u7-l1-005 |
-| State the GDA model and split its log-likelihood | [7.2 Splitting the log-likelihood](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis#splitting-the-log-likelihood) | q-u7-l2-003 |
-| Derive the MLE of $\mu_k$ | [7.2 The mean: gradient of a quadratic form](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis#the-mean-gradient-of-a-quadratic-form) | q-u7-l2-005 |
-| Derive the MLE of $\Sigma_k$ with the trace trick | [7.2 The covariance: the trace trick](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis#the-covariance-the-trace-trick) | q-u7-l2-007 |
-| Predict with a fitted GDA model | [7.2 Predicting with GDA](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis#predicting-with-gda) | q-u7-l2-011 |
-| Recognize when $\hat\Sigma_k$ is singular | [7.2](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis) | q-u7-l2-015 |
-| Show that a shared covariance gives a linear boundary and a sigmoid posterior | [7.3 Shared covariance makes the log-odds affine](/units/u7-gaussian-discriminant-analysis/shared-covariance-and-logistic-regression#shared-covariance-makes-the-log-odds-affine) | q-u7-l3-004, q-u7-l3-016 |
-| Fit the pooled covariance | [7.3 Fitting the shared covariance](/units/u7-gaussian-discriminant-analysis/shared-covariance-and-logistic-regression#fitting-the-shared-covariance) | q-u7-l3-007 |
-| Explain why per-class covariances give a quadratic boundary | [7.3 Per-class covariances: QDA has a quadratic boundary](/units/u7-gaussian-discriminant-analysis/shared-covariance-and-logistic-regression#per-class-covariances-qda-has-a-quadratic-boundary) | q-u7-l3-008 |
-| Relate GDA to Gaussian Naive Bayes | [7.3 Diagonal covariance: Gaussian Naive Bayes](/units/u7-gaussian-discriminant-analysis/shared-covariance-and-logistic-regression#diagonal-covariance-gaussian-naive-bayes) | q-u7-l3-010 |
-| Compare GDA with logistic regression: same form, different fit, different assumptions | [7.3 GDA and logistic regression](/units/u7-gaussian-discriminant-analysis/shared-covariance-and-logistic-regression#gda-and-logistic-regression-same-form-different-fit) | q-u7-l3-013 |
+| Compute [[f1-score|F1]] from thresholded predictions and explain why it ignores true negatives | [6.4 Task 12: precision, recall, and F1](/units/u6-generative-models-and-naive-bayes/spam-exercise#task-12-precision-recall-and-f1); Unit 4 (being written) | q-u6-l4-006 |
+| Compute ROC-AUC and PR-AUC (average precision) from predicted probabilities for class 1, and explain why PR-AUC depends on the positive rate | Unit 4 (being written) | none yet |
+| Read how a decision threshold changes the predictions | [3.1 The decision boundary is linear](/units/u3-logistic-regression-and-mle/classification-and-the-sigmoid#the-decision-boundary-is-linear) | q-u3-l1-015 |
+| Fit logistic regression without a penalty and with L1 and L2 penalties, and translate sklearn's `C` into $\lambda$ | [6.2 The logistic-regression baseline](/units/u6-generative-models-and-naive-bayes/text-as-features#the-logistic-regression-baseline); Unit 5 (being written) | q-u6-l2-011 |
+| Compare a generative and a discriminative classifier: what each models and what each assumes | [6.1 Deriving the Bayes classifier](/units/u6-generative-models-and-naive-bayes/generative-vs-discriminative#deriving-the-bayes-classifier) and [7.3 GDA and logistic regression](/units/u7-gaussian-discriminant-analysis/shared-covariance-and-logistic-regression#gda-and-logistic-regression-same-form-different-fit) | q-u6-l1-005, q-u7-l3-013 |
+| Show that Bernoulli Naive Bayes is a linear classifier, so it and logistic regression share a model form but differ in the fit | [6.3 Naive Bayes is a linear classifier](/units/u6-generative-models-and-naive-bayes/naive-bayes#naive-bayes-is-a-linear-classifier) | q-u6-l3-015 |
+| Judge whether the Naive Bayes assumption holds for text, and why the classifier can work anyway | [6.3 From the chain rule to the Naive Bayes product](/units/u6-generative-models-and-naive-bayes/naive-bayes#from-the-chain-rule-to-the-naive-bayes-product) | q-u6-l3-002, q-u6-l3-003, q-u6-l3-004 |
+| Read a train-versus-test gap and decide which model the evidence favors | [6.4 Part 5: predicting](/units/u6-generative-models-and-naive-bayes/spam-exercise#part-5-predicting-tasks-1821) | q-u6-l4-016 |
+
+## Programming 2: Gaussian discriminant analysis on Iris
+
+| Skill | Learn it in | Check |
+|---|---|---|
+| Hold out a test set before computing anything from the data | [6.4 Task 3: split into train and test](/units/u6-generative-models-and-naive-bayes/spam-exercise#task-3-split-into-train-and-test) | q-u6-l4-002 |
+| Estimate the class priors $\phi_k = n_k / n$ | [7.2 The prior](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis#the-prior) | q-u7-l2-003 |
+| Compute each class's mean and its maximum-likelihood covariance, and know that the MLE divides by $n_k$, not $n_k - 1$ | [7.2 The covariance: the trace trick](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis#the-covariance-the-trace-trick) | q-u7-l2-008, q-u7-l2-017 |
+| Evaluate the multivariate Gaussian density, in log space | [7.1 The density for any covariance](/units/u7-gaussian-discriminant-analysis/multivariate-gaussian-and-covariance#the-density-for-any-covariance) | q-u7-l1-018 |
+| Predict with $\argmax_k\, p(x \mid y = k)\,p(y = k)$ over three classes, and know which terms of the score you can drop | [7.2 Predicting with GDA](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis#predicting-with-gda) | q-u7-l2-011, q-u7-l2-012 |
+| Know when a per-class covariance is singular and what that does to prediction | [7.2](/units/u7-gaussian-discriminant-analysis/gaussian-discriminant-analysis) | q-u7-l2-015 |
+| Choose and justify a metric for a multiclass problem from its class balance | [6.4 Task 11: accuracy](/units/u6-generative-models-and-naive-bayes/spam-exercise#task-11-accuracy); Unit 4 (being written) | q-u6-l4-006 |
+| Explain how k-means differs from GDA: no labels, hard assignments, spherical clusters, and a $K$ you choose | [8.1 k-means as a limit of a Gaussian mixture](/units/u8-unsupervised-learning-and-kmeans/kmeans#k-means-as-a-limit-of-a-gaussian-mixture) | q-u8-l1-008, q-u8-l1-005, q-u8-l1-017 |
+| Read a k-means result as a partition you asked for, not as the true classes, and know that different starts can give different partitions | [8.1 Local minima and initialization](/units/u8-unsupervised-learning-and-kmeans/kmeans#local-minima-and-initialization) | q-u8-l1-004, q-u8-l1-020 |
+| Explain why feature scale changes the k-means clusters | [8.1 Feature scaling](/units/u8-unsupervised-learning-and-kmeans/kmeans#feature-scaling) | q-u8-l1-001, q-u8-l1-010 |
+
+## Written 1: Naive Bayes with binary features
+
+| Skill | Learn it in | Check |
+|---|---|---|
+| State the Naive Bayes assumption for a specific pair of features | [6.3 From the chain rule to the Naive Bayes product](/units/u6-generative-models-and-naive-bayes/naive-bayes#from-the-chain-rule-to-the-naive-bayes-product) | q-u6-l3-001, q-u6-l3-025 |
+| Estimate $P(x_j = 0 \mid y = k)$ from counts as $1 - \psi_{jk}$ | [6.3 Fitting Bernoulli Naive Bayes by maximum likelihood](/units/u6-generative-models-and-naive-bayes/naive-bayes#fitting-bernoulli-naive-bayes-by-maximum-likelihood) | q-u6-l4-008 |
+| Turn class-conditionals and priors into a posterior with Bayes' rule | [6.1 Deriving the Bayes classifier](/units/u6-generative-models-and-naive-bayes/generative-vs-discriminative#deriving-the-bayes-classifier) | q-u6-l1-011, q-u6-l1-012 |
+| Recognize when conditional independence fails, and compute a class-conditional from the joint pattern instead of the product | [6.3 From the chain rule to the Naive Bayes product](/units/u6-generative-models-and-naive-bayes/naive-bayes#from-the-chain-rule-to-the-naive-bayes-product) | q-u6-l3-016 |
+
+## Written 2: Categorical Naive Bayes
+
+| Skill | Learn it in | Check |
+|---|---|---|
+| Write the log-likelihood of a generative model and split it into a prior part and a class-conditional part | [6.1 Fitting a generative model by maximum likelihood](/units/u6-generative-models-and-naive-bayes/generative-vs-discriminative#fitting-a-generative-model-by-maximum-likelihood) | q-u6-l1-020 |
+| Split the class-conditional part further, into one independent problem per feature and class | [6.3 Fitting Bernoulli Naive Bayes by maximum likelihood](/units/u6-generative-models-and-naive-bayes/naive-bayes#fitting-bernoulli-naive-bayes-by-maximum-likelihood) | q-u6-l3-008 |
+| Maximize a sum of count-weighted logs over the probability simplex with a Lagrange multiplier | [6.3 Fitting Bernoulli Naive Bayes by maximum likelihood](/units/u6-generative-models-and-naive-bayes/naive-bayes#fitting-bernoulli-naive-bayes-by-maximum-likelihood) | q-u6-l3-026, q-u6-l3-007 |
+| Find the maximum-likelihood estimate for a single categorical distribution (a die) | [3.2 The maximum likelihood principle](/units/u3-logistic-regression-and-mle/maximum-likelihood-principle) | q-u3-l2-010 |
+| Count free parameters when each feature takes $L$ values instead of 2 | [6.3 Why the full model is hopeless](/units/u6-generative-models-and-naive-bayes/naive-bayes#why-the-full-model-is-hopeless-counting-parameters) | q-u6-l3-011 |
 
 ## Before you start
 
-- Review the L8–L10 polls; every one is in the Unit 6 and Unit 7 quiz banks.
-- Re-read the spam exercise walkthrough (lesson 6.4) for the coding patterns: fit the vectorizer on training text only, store parameters as `psis[k, j]`, and score in log space.
-- Work the derivations in lessons 6.3 and 7.2 with the steps hidden. The faded versions of each derivation are the best practice for the written part.
+- Review the L8–L10 polls. Every one of them is in the Unit 6, Unit 7, and Unit 8 quiz banks.
+- Re-read the spam exercise walkthrough (lesson 6.4) for the coding patterns: fit the vectorizer on training text only, store parameters as `psis[k, j]`, and score in log space. Programming 1 uses the same patterns on the HW2 data.
+- Work the derivation of $\hat\phi_k$ in lesson 6.3 with the steps hidden. Written 2 uses the same move, one simplex per feature and class.
+- Work the derivations in lesson 7.2 with the steps hidden before writing your GDA code, so you know which covariance you are computing.

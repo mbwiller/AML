@@ -1,4 +1,4 @@
-# Homework map: HW1, HW2, skill inventory, readiness checklists, HW3 forecast
+# Homework map: HW1, HW2, HW3, skill inventory, readiness checklists
 
 <!--
   COURSE MAP — generated 2026-10-06 by subject-explorer agents that read every slide
@@ -7,7 +7,8 @@
   professor's slides state vs. derive, her notation, slide errors to correct, Poll
   Everywhere questions (quiz bank seeds), concept-graph edges, and widget ideas.
   Do NOT re-read the PDFs to write a lesson unless this file is ambiguous.
-  Source material: "AML Course Material/" in this repo (lectures L1–L10, code companions, HW1–HW2).
+  Source material: "AML Course Material/" in this repo (lectures L1–L10, code companions, HW1–HW3).
+  HW3 section added 2026-10-14 from the original assignment PDF.
 -->
 
 # Homework map
@@ -175,6 +176,15 @@ Lecture: L5/L6 (logistic regression, sigmoid, MLE), L6/L7 (confusion matrix, pre
 | comparing metrics across datasets with different base rates | HW2 2.h | L7 |
 | refit on train+valid; group-aware K-fold; threshold tuning | HW2 2.h, 2.i | L8 (K-fold), L5 companion (threshold) |
 | TF-IDF, kNN vote, pooling datasets with indicator features | HW2 2.i | beyond lectures (bonus) |
+| combine splits; drop training rows whose ID is in validation | HW3 P1 | L8 (dev/test hygiene) |
+| tokenize non-word codes (ICD) without breaking them | HW3 P1 | L9 (beyond the slides) |
+| Bernoulli NB from scratch: counts, add-α smoothing, absent-word terms, log space, log-sum-exp posteriors | HW3 P1a | L9, spam exercise |
+| generative vs discriminative comparison on identical features | HW3 P1b | L8, L9, L10 |
+| per-class means and covariances (MLE vs `np.cov`); GDA/QDA prediction with three classes | HW3 P2b-d | L10 pp.1–21 |
+| choose and justify a multiclass metric | HW3 P2d | L6/L7 |
+| k-means vs GDA on the same features | HW3 P2e | L10 pp.22–49 |
+| Naive Bayes by hand from counts; effect of violating conditional independence | HW3 W1 | L9 pp.20–31 |
+| categorical MLE via Lagrange multipliers, one simplex per feature and class | HW3 W2 | L8/L9 (prior MLE), L6 (MLE) |
 
 ### "Unit readiness" checklists
 
@@ -203,13 +213,63 @@ Lecture: L5/L6 (logistic regression, sigmoid, MLE), L6/L7 (confusion matrix, pre
 10. Experimental hygiene: sweep one knob at a time, tabulate train vs valid, pick by validation metric, refit on train+valid, predict test.
 11. (Bonus) pooling related datasets, TF-IDF, threshold selection, group-aware CV.
 
-### Upcoming: HW3 (due Oct 19, 2026)
+**HW3 (in order):**
+1. Generative vs discriminative models and the Bayes classifier (L8).
+2. Text to features, fit on training only; tokenization choices for codes (L9, HW2).
+3. The Naive Bayes assumption; Bernoulli NB MLE by counting; the categorical MLE with a Lagrange multiplier (L9).
+4. Zero counts and Laplace smoothing; log-space prediction; posteriors with log-sum-exp (L9, spam exercise).
+5. Classification metrics: F1 at a threshold, ROC-AUC, PR-AUC, and class balance (L6/L7).
+6. Logistic regression with no penalty, L1, and L2; `C = 1/λ` (L5–L8).
+7. The multivariate Gaussian; per-class means and covariances; GDA prediction (L10).
+8. k-means and how it differs from GDA (L10).
 
-The L10 announcements state it directly: "HW 3 will be released soon and Due 10/19. Focusing on Naive Bayes and GDA." L9/L10 content and the posted "NaiveBayes_Spam_exercise" notebook (with solution) make the likely shape:
-- Quiz on L8-L10 material: train/dev/test, K-fold, L1/L2, generative vs discriminative, Bernoulli Naive Bayes parameters psi_jk and phi_k, GDA parameters mu_k / Sigma, GMMs, K-means basics.
-- Written/math: derive the Naive Bayes MLE in closed form (psi_jk = fraction of class-k documents containing word j; phi_k = class proportion), show the loss decomposes per parameter; add Laplace smoothing (MAP) and explain why zero counts break the product; show that Bernoulli NB (and GDA with a shared covariance) yields a decision rule linear in x, i.e. a logistic-form posterior; derive the GDA MLE for mu_k and Sigma; possibly compare generative vs discriminative sample efficiency (L9 slide).
-- Programming: implement Bernoulli Naive Bayes from scratch on a bag-of-words matrix (very plausibly reusing the HW2 clinical-trial text or the spam dataset from the posted exercise) and compare to the HW2 logistic regression on F1/AUC; implement GDA (fit per-class means and a shared covariance, predict via log-likelihood + log prior) on a continuous dataset and compare with sklearn `LogisticRegression`; maybe a K-means / GMM warm-up if L11 lands before the deadline (L10 code companion already uses `cluster.KMeans` and an elbow-style sweep over k).
-- Given the midterm Kaggle competition is next on the calendar, HW3 is less likely to include a Kaggle leaderboard and more likely to emphasize derivations plus a from-scratch implementation.
+### HW3 (due Oct 19, 2026)
+
+Source: `AML Course Material/Homeworks/HW3/Homework_3___F26.pdf`, the original 7-page assignment (added 2026-10-14). Unlike HW1 and HW2, the problem statements below are paraphrased from the assignment itself. No solution, notebook, or data files are in the repo yet; the "HW3 Code Companion" notebook (a GDA tutorial on an Iris subset) is on Canvas only. **HW3 is live until 2026-10-19 (VISION R17): this section records what is asked and what it needs, never an answer.** The forecast written on 2026-10-06 got the topics right but the shape partly wrong: there is no Kaggle submission, the text data is the HW2 clinical-trial data rather than the spam set, the GDA problem uses Iris with per-class covariances (not a shared one), and the written part is a small worked Naive Bayes problem plus the categorical Naive Bayes MLE, not the GDA MLE.
+
+Submission: the "HW3: Quiz" on Canvas; a PDF report ("Homework 3 - Report") and a zipped `hw3` folder of notebooks ("Homework 3 - Code") on Gradescope; questions must be tagged on Gradescope.
+
+#### Programming 1: binary classification of clinical-trial text
+
+- **Data.** The HW2 phase files re-downloaded from the course Kaggle competition with an extra `icdcodes` column. Concatenate the three `phase*_train.csv` files into one training set and the three `phase*_valid.csv` files into one validation set; drop from the combined training set every row whose NCTID also occurs in the combined validation set (trials that span two phases); keep validation unchanged; no re-splitting, no Kaggle submission.
+- **Preprocessing.** Text = `criteria`, `diseases_cleaned`, `drugs`, `icdcodes` joined by spaces. The student must choose and justify: lowercase, lemmatize/stem, punctuation, stop words, numbers and structural words ("inclusion", "exclusion"), stripping list-formatting from the stringified (possibly nested) lists, and how to tokenize ICD codes such as `R11.0` (keep the dot with a custom tokenizer, or remove it; optional `icd_` prefix). Must explain missing/empty handling and apply identical preprocessing to both sets. Only those four fields are predictive inputs (not NCTID, not phase).
+- **Features.** Binary unigram bag of words, `CountVectorizer(binary=True, min_df=M, ngram_range=(1,1))`, fit once on training only; justify M and report the vocabulary size.
+- **Evaluation.** As in HW2: F1 (threshold 0.5, label 1 positive), ROC-AUC, and PR-AUC as `average_precision_score`, on train and validation, for every model; select by validation F1.
+- **(a) Bernoulli Naive Bayes, from scratch** (numpy only; no `sklearn.naive_bayes`). Laplace smoothing $\psi_{jk} = (n_{jk} + \alpha)/(n_k + 2\alpha)$ with $\alpha = 1$ (stated, with the zero-count motivation, in the assignment); priors from training labels; score both present and absent features; log space; normalize class scores to posteriors for the AUCs.
+- **(b) Model comparison.** Logistic regression on the same matrices: `penalty=None`, `'l1'`, `'l2'` (compatible solvers; `C=1.0`, no search). Reflect: best LR by validation F1 vs NB; do the AUCs agree; generative vs discriminative pros and cons; Naive Bayes vs logistic-regression assumptions; is Bernoulli NB valid and efficient for text.
+- Lectures: L9 (bag of words, Bernoulli NB, MLE, smoothing, log-space prediction), L8 (generative vs discriminative), L6/L7 (F1, ROC, PR), L7/L8 (L1/L2), L5/L6 (logistic regression). Companion: `NaiveBayes_Spam_exercise_sol.ipynb`.
+- Pitfalls to teach (general, not answers): sklearn's default `token_pattern` `(?u)\b\w\w+\b` splits `R11.0` at the dot and drops one-character tokens; stripping digits destroys codes; refitting the vectorizer on validation; forgetting the $\log(1 - \psi_{jk})$ terms for absent words; exponentiating raw log scores (underflow) instead of log-sum-exp; reading PR-AUC without the positive rate; the overlap filter must use the combined validation set, not per phase.
+
+#### Programming 2: Gaussian discriminant analysis on Iris
+
+- `sklearn.datasets.load_iris(as_frame=True)`; 150 flowers, 3 classes, 4 features. Student chooses a train/test split; (a)–(c) and (e) use training data only, (d) the test set. No `sklearn.discriminant_analysis`; numpy/scipy allowed.
+- **(a)** Scatter any two features colored and labeled by class; comment on clustering vs class. All four features thereafter.
+- **(b)** Print priors $n_k / n$.
+- **(c)** Per-class empirical mean $\mu_k$ and covariance $\Sigma_k$ (separate per class, i.e. QDA). Note for teaching: `np.cov` divides by $n_k - 1$ by default; the MLE (L10 p.20) divides by $n_k$.
+- **(d)** Predict with $\argmax_y P(x \mid y)P(y)$; report a metric of the student's choice and justify it.
+- **(e)** k-means with $K = 2$ on the two-feature subset from (a); will the clusters differ from GDA's, and why.
+- Lectures: L10 pp.1–21 (multivariate Gaussian, GDA MLE, prediction), L10 pp.22–49 (k-means), L6/L7 (metric choice). Lessons 7.1–7.3, 8.1.
+
+#### Written 1: Naive Bayes with binary features
+
+50 students: 20 Master's ($y = 0$), 30 PhD ($y = 1$); counts of bikers ($x_1$) and skiers ($x_2$) per program are given. (a) State the NB assumption in context. (b) Under NB, the posterior probability of Master's for a student who neither bikes nor skis (a numeric answer: never publish while live). (c) Given that every PhD who skis also bikes, is conditional independence still reasonable for PhDs, and how does (b) change if NB is kept only for Master's. Lectures: L9 pp.20–31. Lesson 6.3; checks q-u6-l3-016, q-u6-l3-025.
+
+#### Written 2: categorical Naive Bayes
+
+Features $x_j \in \{1, \dots, L\}$, classes $y \in \{1, \dots, K\}$; prior $\phi_k$; $P_\theta(x_j = \ell \mid y = k) = \psi_{jk\ell}$; NB factorization. Show by maximum likelihood that (a) $\phi_k^* = n_k/n$ and (b) $\psi_{jk\ell}^* = n_{jk\ell}/n_k$ (both results are stated in the assignment; the derivation is the graded work). Required technique: split the log-likelihood (L8/L9), then one Lagrange multiplier per simplex, exactly the $\hat\phi_k$ derivation of lesson 6.3 (der-6-3-5) applied to each $(j, k)$; der-6-3-9 (multinomial NB) uses the same move. Do not publish a categorical-NB derivation before 2026-10-19; after it, the walkthrough can generalize der-6-3-5.
+
+#### Gaps in the site that HW3 exposes (as of 2026-10-14)
+
+- ROC-AUC and PR-AUC (average precision): no lesson; Unit 4 is unwritten. Highest priority.
+- L1/L2 logistic regression and `C` vs $\lambda$: only the glossary and one 6.2 quiz item; Unit 5 is unwritten.
+- Removing cross-split duplicates by ID (group leakage): not taught anywhere; belongs in Unit 5's model-selection lesson (L8 pp.1–18).
+- Tokenizing non-word codes (ICD) with `CountVectorizer`: not covered; a natural Pitfalls item for lesson 6.2.
+- Matching k-means cluster ids to classes (label permutation): not covered in 8.1.
+- `np.cov` default normalization vs the MLE: in 7.2's bias section implicitly; worth one explicit pitfall.
+
+#### Walkthrough plan (after 2026-10-19)
+
+Flip `hw3.mdx` to `live: false`. Programming 1 and 2 walkthroughs need the student's notebooks (or a solution) in `Homeworks/HW3/` so code is shown with real output (STYLE_GUIDE §3). Written 1 can be worked from the counts in the PDF; Written 2 extends der-6-3-5 to $\psi_{jk\ell}$.
 
 ### Ideas for turning homework problems into platform exercises
 
