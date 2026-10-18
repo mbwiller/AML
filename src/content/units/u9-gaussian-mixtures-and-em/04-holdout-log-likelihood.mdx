@@ -1,0 +1,106 @@
+---
+title: "Choosing the number of components with held-out data"
+unit: u9-gaussian-mixtures-and-em
+order: 4
+slug: holdout-log-likelihood
+summary: "A probabilistic model scores data it has never seen. Training log-likelihood rises with every extra component; holdout log-likelihood rises, levels, then falls, and that turn picks K."
+lectures:
+  - { lecture: 12, pages: "31-38" }
+concepts:
+  - holdout-log-likelihood
+  - penalized-likelihood-model-selection
+prerequisites:
+  - em-algorithm
+  - gmm-clustering-model
+  - unsupervised-overfitting-detection
+  - training-risk-optimism
+  - elbow-method
+  - train-test-split
+  - log-likelihood
+  - likelihood-vs-probability
+homework: []
+companions:
+  - { notebook: "Code Companions/lecture11,13-GMM-and-EM code companion.ipynb", cells: "21-41" }
+estimatedMinutes: 30
+status: draft
+authors: [jide]
+---
+
+{/*
+  DRAFT STUB created 2026-10-18 by the lecture-ingester from docs/course-map/06-lectures-L11-L12.md
+  (L12 pp.31-38). Completes the forward pointer on L11 p.13 (lesson 8.2).
+
+  Numbers: slides and companion disagree because GaussianMixture is unseeded. Slide (L12 pp.35, 37):
+  K = 2 train -4.09 / holdout -4.22; K = 4 -3.89 / -4.09; K = 10 -3.65 / -4.52; K = 20 -2.92 / -5.26.
+  Companion (cells 32, 34, 36): K = 2 -4.08 / -4.07; K = 4 -3.89 / -4.09; K = 10 -3.49 / -4.42;
+  K = 20 -2.93 / -5.73; K = 50 +1.43 / -30.37. A worked example must use seeded runs captured by
+  script and say the values vary with the seed. score() is the average log-likelihood per point
+  (already 1/n) and is a log-density, so it can be positive.
+  Companion cells 35-36, 40-41 appear on no released slide; they may belong to L13. Re-check this
+  lesson's lecture range when L13 is released.
+
+  Derivation gaps (TODO, from the course map):
+  - [ ] L11 gap 5 / L12 gap 8: nested mixtures make maximum training log-likelihood non-decreasing
+        in K; why holdout log-likelihood eventually falls (components that fit single points).
+  - [ ] Why a log-density can be positive (density > 1), with the K = 50 training value as the example.
+  - [ ] Penalized likelihood: BIC = -2 log L + p log n with p = (K - 1) + Kd + K d(d+1)/2 free
+        parameters for full covariances (beyond the slides; mark as such; ties to poll L11 p.14(b)).
+  - [ ] Companion cell 40's warning (overfitting is harder to detect with more data): explain or cut.
+*/}
+
+<Frame
+  data="a training set and a holdout set of unlabeled points"
+  model="Gaussian mixtures with $K = 1, 2, \dots$ components"
+  objective="average log-likelihood $\frac1n \sum_i \log p_\theta(x^{(i)})$, compared on training and holdout data"
+  optimizer="EM for each $K$; choose the $K$ with the best holdout log-likelihood"
+/>
+
+## Header strip and frame
+
+{/* TODO: check the frame. */}
+
+## Objectives
+
+{/* TODO: <Objectives> from course map L12 objective 4 plus "contrast with the elbow" and "name BIC". */}
+
+## Hook
+
+{/* TODO: <Hook> four blobs, a model with 20 components scores better on its own data; is it better? */}
+
+## Definitions
+
+{/* TODO: <Definition> holdout log-likelihood; penalized likelihood (beyond the slides). */}
+
+## Intuition
+
+{/* TODO: <Intuition> underfitting (K = 2 means between blobs, p.36) vs overfitting (components on single points). */}
+
+## Derivations
+
+{/* TODO: <Derivation> or <Proof collapsed>: nested models give non-decreasing maximum training log-likelihood; BIC parameter count. */}
+
+## Explorable
+
+{/* TODO: <Widget> holdout-ll-vs-k (course map L12 widget list). Placeholder until built. */}
+
+## Worked example
+
+{/* TODO: <Example> seeded make_blobs(150, centers=4), first 100 train / last 50 holdout (L12 p.31); report captured train/holdout averages for a few K. */}
+
+## Check your understanding
+
+<Check ids={["q-u9-l4-001"]} />
+
+{/* TODO: add >= 9 more items (>= 3 types): read the p.38 curve, choose K, sign of a log-density, BIC arithmetic. */}
+
+## Pitfalls
+
+{/* TODO: <Pitfall> "higher training log-likelihood means a better model"; "log-likelihoods must be negative"; "score() is a total" (it is an average). */}
+
+## Connections
+
+{/* TODO: <Connections> back to 8.2 (L11 p.13 pointer, elbow), Unit 2 (training-risk optimism), Unit 5 (validation); forward to Unit 10 (density estimation). Notebook: lecture11,13 companion cells 21-41. */}
+
+## Summary
+
+{/* TODO: <Summary> three bullets. */}

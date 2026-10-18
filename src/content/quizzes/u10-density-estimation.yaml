@@ -1,0 +1,35 @@
+# Quiz bank: Unit 10, Density estimation, kernels, and nearest neighbors.
+# Format: docs/CONTENT_AUTHORING.md §7. DRAFT: ingested 2026-10-18 from the L12 p.48 poll
+# (docs/course-map/06-lectures-L11-L12.md), one true/false item per statement. Keys are the course
+# map's suggested keys; review them with lesson 10.1, which is a draft stub.
+
+# ---------- Lesson 10.1: density-estimation-and-histograms ----------
+
+- id: q-u10-l1-001
+  lesson: density-estimation-and-histograms
+  concepts: [parametric-vs-nonparametric-density]
+  type: mc
+  difficulty: 2
+  source: "L12 p.48 poll"
+  prompt: |
+    True or false: nonparametric density estimation can be combined with generative models to learn the distribution of the data. Compared with parametric models, e.g., Gaussian distributions, nonparametric methods are more robust and flexible.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True as intended (the course map's suggested key). A nonparametric estimate assumes no shape, so it can follow several modes or skew that a single Gaussian cannot, and it cannot be wrong about the family. It is not more robust in every sense: with few points or many dimensions it is noisier than a well-chosen parametric model.
+
+- id: q-u10-l1-002
+  lesson: density-estimation-and-histograms
+  concepts: [parametric-vs-nonparametric-density]
+  type: mc
+  difficulty: 1
+  source: "L12 p.48 poll"
+  prompt: |
+    True or false: nonparametric methods often require more data to estimate a target distribution well when compared with parametric methods.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True (the course map's suggested key). A parametric model only has to pin down a fixed set of numbers; a histogram or kernel estimate has to fill every region of the space with points, and the number of regions grows exponentially with the dimension (L12 p.52).
+  discriminates: [parametric-vs-nonparametric-density, histogram-limitations]

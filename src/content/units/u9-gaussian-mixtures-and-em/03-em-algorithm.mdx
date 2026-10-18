@@ -1,0 +1,128 @@
+---
+title: "The EM algorithm"
+unit: u9-gaussian-mixtures-and-em
+order: 3
+slug: em-algorithm
+summary: "Alternate soft assignments and weighted refits: the E-step computes each point's posterior over clusters, the M-step fits each Gaussian to weighted data, and the likelihood never goes down."
+lectures:
+  - { lecture: 11, pages: "51-55" }
+  - { lecture: 12, pages: "8-30" }
+concepts:
+  - em-e-step
+  - em-m-step-objective
+  - gmm-m-step-updates
+  - em-algorithm
+  - em-monotone-ascent
+  - em-local-optima
+  - old-faithful-dataset
+prerequisites:
+  - marginal-likelihood-objective
+  - marginal-likelihood-no-closed-form
+  - gmm-known-labels-is-gda
+  - gmm-responsibilities
+  - gda-mle-mean
+  - gda-mle-covariance
+  - categorical-prior-mle
+  - lloyds-algorithm
+  - kmeans-gmm-limit
+  - expectation
+  - lagrange-multipliers
+  - matrix-calculus-identities
+  - gibbs-inequality
+  - kl-divergence
+  - log-sum-exp
+homework: []
+companions:
+  - { notebook: "Code Companions/lecture11,13-GMM-and-EM code companion.ipynb", cells: "18-20" }
+estimatedMinutes: 60
+status: draft
+authors: [jide]
+---
+
+{/*
+  DRAFT STUB created 2026-10-18 by the lecture-ingester from docs/course-map/06-lectures-L11-L12.md
+  (L11 pp.51-55; L12 pp.8-30, where pp.8-12 re-show L11 pp.51-55 and p.12 is a partial render).
+
+  Notation: theta^(t) for the slides' theta_t; responsibilities r_k^(i); soft counts n_k (not L10's
+  integer n_k: say so). Mixture weights phi_k.
+  Slide looseness to correct: L11 p.52 / L12 p.9 say the M-step maximizes "the marginal
+  log-likelihood" and read like a hard assignment; the M-step maximizes the expected complete-data
+  log-likelihood with soft weights. L11 p.54 sum limit lowercase k means K. L11 p.55 "Trackable" =
+  tractable. L12 pp.21-22 hand-written responsibilities (0.2, 0.18, ...) are illustrative and
+  implausible for points above the yellow mean: recompute from a stated initialization.
+  The companion has no EM code (markdown cells 18-20 only). Any implementation shown must be ours,
+  with outputs captured by script.
+  Midterm Kaggle (semi-supervised): mention that labeled points enter EM with one-hot
+  responsibilities (general; not a competition answer).
+
+  Derivation gaps (TODO, from the course map):
+  - [ ] L11 gap 12: expectation over a discrete posterior is a weighted sum (p.55).
+  - [ ] L12 gap 1: split the M-step objective into a weighted Gaussian term per cluster plus a prior
+        term (p.13), one move per step.
+  - [ ] L12 gap 2: weighted mean (reuse der-7-2-4 with weights r_k^(i)).
+  - [ ] L12 gap 3: weighted covariance (reuse der-7-2-5 with weights; uses the new mu_k).
+  - [ ] L12 gap 4: phi_k = n_k / n by a Lagrange multiplier; sum_k n_k = n (reuse der-6-3-5).
+  - [ ] L12 gap 5: one-hot responsibilities recover the GDA MLE (also the semi-supervised case).
+  - [ ] L11 gap 13 / L12 gap 6: EM never decreases the marginal likelihood (ELBO + KL, or Jensen);
+        honest convergence statement (bounded only with a floor on Sigma_k; stationary point, not
+        necessarily a maximum). <= 15 steps or chunked.
+  - [ ] L11 gap 14: link the k-means limit proof in lesson 8.1 (kmeans-gmm-limit); add the hard-EM reading.
+  - [ ] L12 gap 7: one numerically consistent E-step and weighted-mean update on stated toy parameters.
+*/}
+
+<Frame
+  data="unlabeled points $x^{(i)} \in \mathbb{R}^d$"
+  model="a Gaussian mixture with parameters $\theta = \{\phi_k, \mu_k, \Sigma_k\}_{k=1}^K$"
+  objective="maximize $\frac1n \sum_i \log p_\theta(x^{(i)})$ through the expected complete-data log-likelihood"
+  optimizer="EM: alternate the E-step (responsibilities) and the M-step (weighted refits) until the likelihood stops changing"
+/>
+
+## Header strip and frame
+
+{/* TODO: check the frame. */}
+
+## Objectives
+
+{/* TODO: <Objectives> from course map L12 objectives 1-3 plus "prove the likelihood never decreases". */}
+
+## Hook
+
+{/* TODO: <Hook> the Old Faithful initialization (L11 p.53): two badly placed ellipses; what should move first? */}
+
+## Definitions
+
+{/* TODO: <Definition> responsibility, E-step, M-step objective, EM for a general latent-variable model (L12 p.18). */}
+
+## Intuition
+
+{/* TODO: <Intuition> "if we knew z we would do GDA; if we knew theta we would compute P(z | x)" (L11 p.51); each point splits one unit of mass across clusters. */}
+
+## Derivations
+
+{/* TODO: <Derivation> chunks for the M-step split, weighted mean, weighted covariance, soft prior; a separate <Derivation> (or Proof plus short stepped version) for monotone ascent. */}
+
+## Explorable
+
+{/* TODO: <Widget> em-stepper (course map L12 widget list): E-step / M-step buttons, responsibility shading, ellipses, log-likelihood trace, restart with a new seed, sigma -> 0 toggle that becomes Lloyd's algorithm. Placeholder until built. */}
+
+## Worked example
+
+{/* TODO: <Example> one full EM iteration on a seeded Old Faithful-like toy set (stated initial phi, mu, Sigma), mirroring L12 pp.19-27; numbers by script. */}
+
+## Check your understanding
+
+<Check ids={["q-u9-l3-001", "q-u9-l3-002", "q-u9-l3-003", "q-u9-l3-004", "q-u9-l3-005"]} />
+
+{/* TODO: add >= 5 more items (>= 3 types): numeric responsibility, numeric weighted mean, which-step on the M-step derivation, order the EM steps. */}
+
+## Pitfalls
+
+{/* TODO: <Pitfall> "EM finds the maximum likelihood" (local); "the E-step makes hard assignments"; "the M-step maximizes the marginal likelihood directly"; L12 pp.21-22 implausible numbers as spot-the-error; L11 p.54 lowercase k. */}
+
+## Connections
+
+{/* TODO: <Connections> back to 7.2 (GDA MLE), 6.3 (prior MLE), 8.1 (Lloyd, kmeans-gmm-limit), 3.4 (KL); forward to 9.4 and Unit 10 (GMM as a density estimator). Notebook: lecture11,13 companion cells 18-20. */}
+
+## Summary
+
+{/* TODO: <Summary> three bullets. */}

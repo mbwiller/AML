@@ -1,0 +1,110 @@
+---
+title: "Density estimation and histograms"
+unit: u10-density-estimation
+order: 1
+slug: density-estimation-and-histograms
+summary: "Estimate the distribution behind the data, use it to flag outliers, and build the simplest nonparametric estimator: a histogram normalized to area one, with its sensitivity to bins and dimension."
+lectures:
+  - { lecture: 12, pages: "39-53" }
+concepts:
+  - density-estimation
+  - density-outlier-detection
+  - parametric-vs-nonparametric-density
+  - histogram-density-estimator
+  - histogram-limitations
+  - kernel-density-estimation
+  - two-gaussian-histogram-sample
+prerequisites:
+  - unsupervised-probabilistic-model
+  - gmm-clustering-model
+  - gaussian-mixture
+  - maximum-likelihood-estimation
+  - data-generating-distribution
+  - mixture-distribution
+  - gaussian
+  - iid
+  - likelihood-vs-probability
+homework: []
+estimatedMinutes: 40
+status: draft
+authors: [jide]
+---
+
+{/*
+  DRAFT STUB created 2026-10-18 by the lecture-ingester from docs/course-map/06-lectures-L11-L12.md
+  (L12 pp.39-53). L12 ends mid-argument: p.53 shows a Gaussian KDE picture with no formula or
+  bandwidth. L13 (not yet released) continues KDE (and KNN, per the schedule). When L13 lands,
+  decide whether KDE gets its own lesson 10.2 and move kernel-density-estimation there.
+
+  Data: the 20 values on L12 p.45 (from 0.3 N(0,1) + 0.7 N(5,1); the slide writes sigma = 1, a
+  standard deviation, equal to the variance here). Verified bar heights on p.47 (9 bins of width 5/3
+  on [-5, 10]): 0.03, 0.09, 0.06, 0.03, 0.21, 0.15, 0.03 from counts 1, 3, 2, 1, 7, 5, 1. Shifted bins
+  (p.50, edges from -2.583): counts 2, 2, 2, 2, 9, 3. p.51 "bin width 1" is plotted with width 15/14.
+  Put the 20 values into a generated dataset file before using them in an <Example> (STYLE_GUIDE §3).
+
+  Derivation gaps (TODO, from the course map, L12 section):
+  - [ ] Gap 9: outlier rule p_theta(x') < tau with tau a low quantile of training densities (not on slides).
+  - [ ] Gap 10: the histogram c_b / (n h) integrates to 1; recompute the p.47 heights.
+  - [ ] Gap 11: bin-width bias-variance sketch (pp.49-51).
+  - [ ] Gap 12: m^d cells; expected count per cell n / m^d (p.52).
+  - [ ] Gap 13: KDE formula, normalization, Gaussian KDE = equal-weight GMM with variance h^2
+        (defer the full treatment to L13; state the picture only).
+  - [ ] Gap 14: parametric vs nonparametric data efficiency (poll p.48(b)); rates sketch, beyond the slides.
+*/}
+
+<Frame
+  data="unlabeled points $x^{(i)}$ drawn IID from an unknown $P_{\text{data}}$"
+  model="a density $p_\theta$ (parametric) or a histogram built from the points (nonparametric)"
+  objective="maximum likelihood for $p_\theta$; for the histogram, counts per bin divided by $n$ times the bin width"
+  optimizer="closed form in both cases (no iteration)"
+/>
+
+## Header strip and frame
+
+{/* TODO: check the frame. */}
+
+## Objectives
+
+{/* TODO: <Objectives> from course map L12 objectives 5-7. */}
+
+## Hook
+
+{/* TODO: <Hook> L12 p.40: "Is the red point an outlier or not?" on the holdout scatter. */}
+
+## Definitions
+
+{/* TODO: <Definition> density estimation (p.39), outlier detection (p.41), parametric vs nonparametric (pp.42-43), histogram estimator (pp.45-47). */}
+
+## Intuition
+
+{/* TODO: <Intuition> a histogram is a stack of equal blocks, one per point (p.46: each point adds 1/20 over width 5/3); KDE stacks bumps instead (p.53). */}
+
+## Derivations
+
+{/* TODO: <Derivation> histogram normalization (gap 10); <Proof collapsed> cells grow as m^d (gap 12). */}
+
+## Explorable
+
+{/* TODO: <Widget> histogram-kde-explorer (course map L12 widget list): bin width, bin offset, bandwidth sliders on the 20 points; area readout. Placeholder until built. */}
+
+## Worked example
+
+{/* TODO: <Example> recompute the p.47 bar heights from the 20 values (counts 1, 3, 2, 1, 7, 5, 1 times 0.03), then the p.50 shifted version. From a generated data file, not typed. */}
+
+## Check your understanding
+
+<Check ids={["q-u10-l1-001", "q-u10-l1-002"]} />
+
+{/* TODO: add >= 8 more items (>= 3 types): bar height arithmetic (numeric, seeded), effect of shifting bins, cells in d dimensions, outlier threshold reasoning. */}
+
+## Pitfalls
+
+{/* TODO: <Pitfall> "bar height = count" (needs / (n h)); "a density value is a probability"; spot-the-error: p.51 width is 15/14, not 1; p.50 "bin mean" means bin edges. */}
+
+## Connections
+
+{/* TODO: <Connections> back to 9.1 (unsupervised probabilistic model), 9.4 (GMM as a density, holdout); Unit 3 (MLE); forward to L13 (KDE, KNN) and L14 (curse of dimensionality). */}
+
+## Summary
+
+{/* TODO: <Summary> three bullets. */}

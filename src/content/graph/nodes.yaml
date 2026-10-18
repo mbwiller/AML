@@ -1435,6 +1435,25 @@
   lesson: kmeans
   summary: "150 flowers, 3 species of 50; L10 clusters sepal length and width with K = 3 and finds centroids near (5.0, 3.4), (5.8, 2.7), (6.8, 3.1) cm."
 
+# Lesson 8.2: choosing-k-and-generalization (draft stub; course map 06-lectures-L11-L12.md, L11 pp.1-14).
+# No `derivation` fields until the derivations exist (the validator warns on unknown der- ids).
+
+- id: unsupervised-generalization
+  label: "Generalization without labels (P = F + E)"
+  type: concept
+  field: ml
+  unit: u8-unsupervised-learning-and-kmeans
+  lesson: choosing-k-and-generalization
+  summary: "L11 pp.10-11 picture the data distribution as signal F (hidden clusters, low-dimensional structure) plus noise E: underfitting misses F, overfitting mistakes E for F. A heuristic, not an equation between distributions."
+
+- id: unsupervised-overfitting-detection
+  label: "Detecting over- and underfitting without labels"
+  type: concept
+  field: evaluation
+  unit: u8-unsupervised-learning-and-kmeans
+  lesson: choosing-k-and-generalization
+  summary: "L11 p.13: harder than in supervised learning; use clustering accuracy if true labels exist, human judgment otherwise, and for probabilistic models compare training and holdout log-likelihood."
+
 # ---------- Unit 3: Logistic regression and maximum likelihood ----------
 
 # ---------- Lesson 3.1: classification-and-the-sigmoid ----------
@@ -1700,3 +1719,233 @@
   lesson: softmax-regression
   summary: "The Hessian in the logits is diag(p) − pp^T, whose quadratic form is a variance, so the loss is convex in Θ; it is flat along the shift direction, so minimizers are not unique without a reference class or a penalty."
   derivation: der-3-5-6
+
+# ---------- Unit 9: Gaussian mixtures and the EM algorithm ----------
+# Seeded from docs/course-map/06-lectures-L11-L12.md, "Concept-graph edges" (L11 pp.15-55, L12 pp.1-38).
+# Draft stubs: no `derivation` fields yet. Existing nodes reused, not duplicated: gaussian-mixture,
+# mvn-density, gda-* (Unit 7), kmeans-* and kmeans-gmm-limit (Unit 8); glossary terms
+# multivariate-gaussian, mixture-distribution, bayes-rule, expectation, gibbs-inequality are nodes already.
+
+# Lesson 9.1: from-kmeans-to-gaussian-mixtures
+- id: kmeans-feature-duplication
+  label: "Duplicated features re-weight k-means"
+  type: concept
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: from-kmeans-to-gaussian-mixtures
+  summary: "Repeating y in M columns makes the squared distance (a_x - b_x)^2 + M (a_y - b_y)^2, the same as rescaling y by √M; at M = 30 the k-means split turns from vertical to horizontal (L11 pp.16-18)."
+
+- id: kmeans-shape-limitations
+  label: "k-means fails on elongated and unequal-variance clusters"
+  type: concept
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: from-kmeans-to-gaussian-mixtures
+  summary: "k-means does best on round clusters of equal variance; its perpendicular-bisector boundaries cut correlated bands and give a diffuse cluster's edge to a tight neighbor (L11 pp.19-24)."
+
+- id: unsupervised-probabilistic-model
+  label: "Unsupervised probabilistic model"
+  type: concept
+  field: probability
+  unit: u9-gaussian-mixtures-and-em
+  lesson: from-kmeans-to-gaussian-mixtures
+  summary: "A distribution p_θ(x) over inputs alone, e.g. Bernoulli for binary data or Gaussian for continuous data, fit so that it approximates the data-generating distribution (L11 p.30)."
+
+- id: latent-variable-model
+  label: "Latent-variable model"
+  type: concept
+  field: probability
+  unit: u9-gaussian-mixtures-and-em
+  lesson: from-kmeans-to-gaussian-mixtures
+  summary: "A joint model p_θ(x, z) in which z is never observed; we see only x, whose probability is the marginal sum over z (L11 p.35; L12 p.18)."
+
+- id: gmm-clustering-model
+  label: "Gaussian mixture model for clustering"
+  type: concept
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: from-kmeans-to-gaussian-mixtures
+  summary: "Latent cluster z with P(z = k) = φ_k and x | z = k ~ N(μ_k, Σ_k); θ = {μ_k, Σ_k, φ_k}. GDA with the label hidden; it fits ellipses of different shapes and sizes (L11 pp.25-38)."
+
+- id: gmm-responsibilities
+  label: "Cluster posterior (responsibility)"
+  type: method
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: from-kmeans-to-gaussian-mixtures
+  summary: "r_k(x) = φ_k N(x; μ_k, Σ_k) / sum_l φ_l N(x; μ_l, Σ_l) by Bayes' rule: a soft, probabilistic cluster assignment; the hard assignment is its argmax (L11 pp.39, 49; L12 p.6)."
+
+# Lesson 9.2: marginal-likelihood
+- id: gmm-known-labels-is-gda
+  label: "With known cluster ids, fitting a GMM is GDA"
+  type: concept
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: marginal-likelihood
+  summary: "If every z^(i) is observed, maximize (1/n) sum_i log p(x^(i), z^(i)): φ_k is the class share and μ_k, Σ_k the class mean and covariance, exactly the GDA MLE (L11 pp.40-42)."
+
+- id: marginal-likelihood-objective
+  label: "Maximum marginal likelihood"
+  type: concept
+  field: statistics
+  unit: u9-gaussian-mixtures-and-em
+  lesson: marginal-likelihood
+  summary: "Without labels, maximize (1/n) sum_i log sum_k p_θ(x^(i), z = k): the joint marginalized over the unobserved cluster id (L11 pp.44-48)."
+
+- id: marginal-likelihood-no-closed-form
+  label: "The mixture likelihood has no closed form"
+  type: concept
+  field: calculus
+  unit: u9-gaussian-mixtures-and-em
+  lesson: marginal-likelihood
+  summary: "The log of a sum does not split; setting the gradient in μ_k to zero gives μ_k as a responsibility-weighted mean whose weights depend on μ_k, a fixed-point equation rather than a formula (L11 p.47)."
+
+- id: gmm-label-switching
+  label: "Label switching and many local maxima"
+  type: concept
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: marginal-likelihood
+  summary: "Permuting component labels leaves the likelihood unchanged, so maxima come in K! copies and the objective is not concave; the slide's 'local minima' should read local maxima (L11 p.47, poll p.50)."
+
+- id: gmm-likelihood-degeneracy
+  label: "The mixture likelihood is unbounded"
+  type: concept
+  field: statistics
+  unit: u9-gaussian-mixtures-and-em
+  lesson: marginal-likelihood
+  summary: "Center a component on one data point and shrink its covariance: the likelihood goes to infinity, so a floor on Σ_k (sklearn reg_covar) is needed. Beyond the slides."
+
+# Lesson 9.3: em-algorithm
+- id: em-e-step
+  label: "E-step: soft assignments"
+  type: method
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: em-algorithm
+  summary: "With θ fixed, compute each point's posterior over clusters, r_k^(i) = P_θt(z = k | x^(i)), a vector of class probabilities (L11 p.54; L12 p.11)."
+
+- id: em-m-step-objective
+  label: "M-step: expected complete-data log-likelihood"
+  type: concept
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: em-algorithm
+  summary: "θ^(t+1) = argmax sum_i sum_k r_k^(i) log p_θ(x^(i), z = k); it splits into a weighted Gaussian term per cluster and a prior term (L11 p.55; L12 p.13)."
+
+- id: gmm-m-step-updates
+  label: "GMM M-step: weighted means, covariances, and priors"
+  type: method
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: em-algorithm
+  summary: "μ_k and Σ_k are the responsibility-weighted mean and covariance, φ_k = n_k / n with soft count n_k = sum_i r_k^(i); one-hot responsibilities give the GDA MLE (L12 pp.14-16, 24-27)."
+
+- id: em-algorithm
+  label: "Expectation-maximization (EM)"
+  type: method
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: em-algorithm
+  summary: "For a latent-variable model: initialize θ, then alternate the E-step (posterior over z) and the M-step (maximize the expected complete-data log-likelihood) until convergence (L11 p.52; L12 p.18)."
+
+- id: em-monotone-ascent
+  label: "EM never decreases the likelihood"
+  type: concept
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: em-algorithm
+  summary: "log p(x) = ELBO(q, θ) + KL(q || p_θ(z | x)); the E-step makes the bound tight and the M-step raises it, so the marginal likelihood is non-decreasing. Not on the slides (L12 p.30 only says 'guaranteed to converge')."
+
+- id: em-local-optima
+  label: "EM converges to local optima"
+  type: concept
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: em-algorithm
+  summary: "EM stops at a stationary point that depends on the initialization; restarts or k-means initialization help; the posterior may be intractable in other models (L12 p.30, poll p.17)."
+
+- id: old-faithful-dataset
+  label: "Old Faithful eruptions"
+  type: dataset
+  field: ml
+  unit: u9-gaussian-mixtures-and-em
+  lesson: em-algorithm
+  summary: "Eruption duration vs waiting time ('Duration', 'Delay'); the Wikipedia EM animation the slides annotate by hand (L11 p.53; L12 pp.10, 19-28). The slides do not name the dataset."
+
+# Lesson 9.4: holdout-log-likelihood
+- id: holdout-log-likelihood
+  label: "Holdout log-likelihood for choosing K"
+  type: method
+  field: evaluation
+  unit: u9-gaussian-mixtures-and-em
+  lesson: holdout-log-likelihood
+  summary: "Average log-likelihood on held-out points falls once extra components fit noise, while training log-likelihood keeps rising with K (L12 pp.31-38: K = 2, 4, 10, 20 on make_blobs)."
+
+- id: penalized-likelihood-model-selection
+  label: "Penalized likelihood (BIC, AIC)"
+  type: method
+  field: evaluation
+  unit: u9-gaussian-mixtures-and-em
+  lesson: holdout-log-likelihood
+  summary: "Subtract a penalty that grows with the number of parameters from the training log-likelihood to choose K without a holdout set; the L11 p.14 poll alludes to it. Beyond the slides."
+
+# ---------- Unit 10: Density estimation, kernels, and nearest neighbors ----------
+# Seeded from docs/course-map/06-lectures-L11-L12.md, L12 pp.39-53. L13 (not yet released) continues KDE.
+
+# Lesson 10.1: density-estimation-and-histograms
+- id: density-estimation
+  label: "Density estimation"
+  type: concept
+  field: statistics
+  unit: u10-density-estimation
+  lesson: density-estimation-and-histograms
+  summary: "Given unlabeled data, estimate the distribution that generated it, e.g. fit a Gaussian's mean and covariance; a GMM does density estimation and clustering at once (L12 p.39)."
+
+- id: density-outlier-detection
+  label: "Outlier detection with a density"
+  type: method
+  field: ml
+  unit: u10-density-estimation
+  lesson: density-estimation-and-histograms
+  summary: "Flag a new point x' when the fitted density p_θ(x') is low; the slides leave the threshold unstated (L12 pp.40-41)."
+
+- id: parametric-vs-nonparametric-density
+  label: "Parametric vs nonparametric density estimation"
+  type: concept
+  field: statistics
+  unit: u10-density-estimation
+  lesson: density-estimation-and-histograms
+  summary: "Parametric: a fixed-size θ fit by maximum likelihood. Nonparametric: the estimate is built from the data points themselves; more flexible, needs more data (L12 pp.42-43, poll p.48)."
+
+- id: histogram-density-estimator
+  label: "Histogram density estimator"
+  type: method
+  field: statistics
+  unit: u10-density-estimation
+  lesson: density-estimation-and-histograms
+  summary: "Split the axis into bins of width h; a bin holding c of n points has height c / (n h), so the total area is 1 (L12 pp.44-47: 9 bins of width 5/3, 0.03 per point)."
+
+- id: histogram-limitations
+  label: "Histogram limitations"
+  type: concept
+  field: statistics
+  unit: u10-density-estimation
+  lesson: density-estimation-and-histograms
+  summary: "Not smooth; the shape changes with bin offset and width (L12 pp.50-51); with m bins per axis there are m^d cells, so most are empty in high dimension (L12 p.52)."
+
+- id: kernel-density-estimation
+  label: "Kernel density estimation"
+  type: method
+  field: statistics
+  unit: u10-density-estimation
+  lesson: density-estimation-and-histograms
+  summary: "Stack a small distribution (e.g. a Gaussian kernel) on every data point instead of bins; L12 p.53 shows the picture only, and the formula and bandwidth come in L13."
+
+- id: two-gaussian-histogram-sample
+  label: "Twenty points from a two-Gaussian mixture"
+  type: dataset
+  field: statistics
+  unit: u10-density-estimation
+  lesson: density-estimation-and-histograms
+  summary: "The L12 p.45 sample from 0.3 N(0, 1) + 0.7 N(5, 1), used for every histogram and the KDE picture on pp.44-53."

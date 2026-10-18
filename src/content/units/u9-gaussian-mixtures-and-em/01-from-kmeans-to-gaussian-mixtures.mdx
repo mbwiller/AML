@@ -1,0 +1,115 @@
+---
+title: "From k-means to Gaussian mixtures"
+unit: u9-gaussian-mixtures-and-em
+order: 1
+slug: from-kmeans-to-gaussian-mixtures
+summary: "Where k-means fails (duplicated features, elongated clusters, unequal variances) and the model that fixes it: a latent cluster index, a Gaussian per cluster, and a posterior over clusters."
+lectures:
+  - { lecture: 11, pages: "15-39" }
+  - { lecture: 12, pages: "3-6" }
+concepts:
+  - kmeans-feature-duplication
+  - kmeans-shape-limitations
+  - unsupervised-probabilistic-model
+  - latent-variable-model
+  - gmm-clustering-model
+  - gmm-responsibilities
+prerequisites:
+  - kmeans-voronoi-cells
+  - feature-scaling-kmeans
+  - kmeans-local-minima
+  - euclidean-distance
+  - multivariate-gaussian
+  - covariance-matrix
+  - mvn-density
+  - gaussian-mixture
+  - mixture-distribution
+  - bayes-rule
+  - gda-prediction
+  - data-generating-distribution
+homework: []
+estimatedMinutes: 45
+status: draft
+authors: [jide]
+---
+
+{/*
+  DRAFT STUB created 2026-10-18 by the lecture-ingester from docs/course-map/06-lectures-L11-L12.md
+  (L11 pp.15-39; L12 pp.3-6 re-show L11 pp.29, 36-37, 39). Read that section, not the PDF.
+
+  Notation (course map "Cross-lecture notation"): mixture weights are phi_k on the slides; lessons
+  7.1 and 8.1 wrote pi_k. Use phi_k here and say once that it is the same number. Means mu_k
+  (slides write bold u_k on pp.32-38). Latent index z^(i). Responsibility r_k^(i) (slides never name it).
+  Covariance quartet: L11 p.33 prints the matrices [[5,4],[4,6]], [[5,-4],[-4,6]], [[5,0],[0,1]],
+  [[1,0],[0,5]]; lesson 7.1 used invented ones. Prefer the slide's matrices; coordinate with 7.1.
+  HW3 safety (live until 2026-10-19): HW3 P2(e) asks whether k-means and GDA clusters differ on a
+  two-feature Iris subset. Teach the general reason (pp.16-29); do not apply it to Iris features or
+  show Iris k-means vs GDA results before 2026-10-19.
+
+  Derivation gaps (TODO, from the course map, L11 section):
+  - [ ] Gap 1: duplicated columns re-weight the distance: sum over M+1 columns equals
+        (a_x - b_x)^2 + M (a_y - b_y)^2, i.e. k-means on (x, sqrt(M) y). Tie to der-8-1-6.
+  - [ ] Gap 2: k-means boundaries are perpendicular bisectors (der-8-1-5), blind to cluster spread;
+        the GMM posterior boundary phi_1 N(x; mu_1, Sigma_1) = phi_2 N(x; mu_2, Sigma_2) is a quadric
+        (reuse der-7-3-4). Explains pp.20, 22 vs pp.28-29.
+  - [ ] Gap 6: the Gaussian density with (2 pi)^(-d/2), not the slide's (2 pi)^(-n/2) (L11 p.44 is in
+        lesson 9.2, but state the density correctly here first; reuse der-7-1-3).
+  - [ ] Gap 7: the mixture is the marginal of the joint (law of total probability; reuse der-7-1-6).
+  - [ ] Gap 8: responsibilities by Bayes' rule, computed in log space with log-sum-exp.
+  - [ ] Note on L11 p.30: P_theta(x) maps to [0,1] only for a pmf; densities can exceed 1.
+*/}
+
+<Frame
+  data="unlabeled points $x^{(i)} \in \mathbb{R}^d$; the cluster $z^{(i)}$ is never observed"
+  model="$P_\theta(z = k) = \phi_k$ and $x \mid z = k \sim \mathcal{N}(\mu_k, \Sigma_k)$, so $p_\theta(x) = \sum_k \phi_k \mathcal{N}(x; \mu_k, \Sigma_k)$"
+  objective="make the observed data most likely (lesson 9.2)"
+  optimizer="EM (lesson 9.3)"
+/>
+
+## Header strip and frame
+
+{/* TODO: check the frame once 9.2 and 9.3 exist. */}
+
+## Objectives
+
+{/* TODO: <Objectives> from course map L11 objectives 3-4 and 7: explain k-means's failure modes; define the GMM as a latent-variable model; compute P(z = k | x). */}
+
+## Hook
+
+{/* TODO: <Hook> the p.19 question slide (three elongated bands: how many clusters, what shape, what correlation?) or a SEPSIS-4 phenotype with a much wider spread than its neighbors. */}
+
+## Definitions
+
+{/* TODO: <Definition> unsupervised probabilistic model (L11 p.30), latent-variable model (L12 p.18 wording), Gaussian mixture model for clustering (L11 pp.34-37), responsibility (L11 p.49). */}
+
+## Intuition
+
+{/* TODO: <Intuition> the sampling story (pick a cluster with probability phi_k, then draw from its Gaussian); why ellipses of different sizes fix pp.20 and 22. */}
+
+## Derivations
+
+{/* TODO: <Derivation> duplicated-feature weighting (gap 1, 3-4 steps); marginal p(x) (gap 7, link der-7-1-6); responsibility via Bayes plus log-sum-exp (gap 8); optional Proof collapsed for the quadric boundary (gap 2, link der-7-3-4). */}
+
+## Explorable
+
+{/* TODO: <Widget> kmeans-vs-gmm (three presets: round, bands, unequal variances) and duplicate-and-cluster (M slider). Both proposed in the course map; placeholders until built. gaussian-2d-covariance exists and can show the p.33 quartet. */}
+
+## Worked example
+
+{/* TODO: <Example> a two-component 1-D or 2-D mixture with stated toy parameters: compute r_k for one point by hand, in log space. Numbers must be computed by script, not typed. */}
+
+## Check your understanding
+
+{/* TODO: no poll falls in L11 pp.15-39. Write >= 10 items (>= 3 types): effect of duplicating a feature, which dataset k-means fails on, phi_k vs P(z | x), posterior arithmetic. */}
+
+## Pitfalls
+
+{/* TODO: <Pitfall> items: "k-means centroids are probability peaks" (p.7 legend); "phi_k is the probability a given point is in cluster k" (that is r_k(x)); "duplicating a feature is harmless"; spot-the-error: L11 p.38 omits the "=" or "~" in P(x | z = k) N(u_k, Sigma_k). */}
+
+## Connections
+
+{/* TODO: <Connections> back to 7.1 (Gaussian mixture, covariance), 7.2 (GDA prediction = posterior), 8.1 (Voronoi cells, kmeans-gmm-limit); forward to 9.2. */}
+
+## Summary
+
+{/* TODO: <Summary> three bullets. */}

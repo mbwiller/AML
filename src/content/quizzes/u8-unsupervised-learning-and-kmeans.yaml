@@ -304,3 +304,35 @@
     - { text: "The update step moves each centroid to the median of its cluster", misconception: kmeans-unsquared-objective }
   explanation: |
     The assignment step is the exact minimizer over $z$ for fixed centroids (der-8-1-1) and the update step the exact minimizer over $c$ for fixed assignments, the cluster mean (der-8-1-2). That is coordinate descent: $J$ never increases (der-8-1-4), but a point that neither block can improve need not be the global minimum, as the rectangle example shows.
+
+# ---------- Lesson 8.2: choosing-k-and-generalization (DRAFT) ----------
+# Ingested 2026-10-18 from the L11 p.14 poll (docs/course-map/06-lectures-L11-L12.md). Keys are the
+# course map's suggested keys; the lesson is a draft stub, so review these with the lesson.
+
+- id: q-u8-l2-001
+  lesson: choosing-k-and-generalization
+  concepts: [unsupervised-generalization]
+  type: mc
+  difficulty: 1
+  source: "L11 p.14 poll"
+  prompt: |
+    True or false: overfitting in unsupervised learning can be reduced by reducing the model complexity (e.g., reduce $K$ in $K$-means).
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True (the course map's suggested key). With fewer centroids the model has less room to fit noise: L11 p.11 calls overfitting "mistaking $E$ for $F$", and each extra centroid can be spent on a small noise cluster. Too few centroids underfit instead, which is why $K$ is chosen, not minimized.
+
+- id: q-u8-l2-002
+  lesson: choosing-k-and-generalization
+  concepts: [unsupervised-overfitting-detection]
+  type: mc
+  difficulty: 2
+  source: "L11 p.14 poll"
+  prompt: |
+    True or false: overfitting in unsupervised learning can be reduced by using a probabilistic model and penalizing the number of clusters in the objective function.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True (the course map's suggested key). A probabilistic model has a likelihood, and subtracting a penalty that grows with the number of parameters (BIC or AIC, lesson 9.4) stops the training likelihood from always favoring more clusters. The slides do not name these criteria.

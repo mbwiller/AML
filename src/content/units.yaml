@@ -54,4 +54,16 @@
   title: "Unsupervised learning and k-means"
   order: 8
   summary: "Learning without labels, the k-means objective, Lloyd's alternating updates, and choosing k."
-  lectures: "L10 pp. 22–49"
+  lectures: "L10 pp. 22–49; L11 pp. 1–14"
+
+- id: u9-gaussian-mixtures-and-em
+  title: "Gaussian mixtures and the EM algorithm"
+  order: 9
+  summary: "Where k-means fails, Gaussian mixtures with a latent cluster index, the marginal likelihood, and EM's soft assignments and weighted updates."
+  lectures: "L11 pp. 15–55; L12 pp. 1–38"
+
+- id: u10-density-estimation
+  title: "Density estimation, kernels, and nearest neighbors"
+  order: 10
+  summary: "Estimating a data distribution, using it to flag outliers, and nonparametric estimators: histograms, then kernel density estimation."
+  lectures: "L12 pp. 39–53; L13 (not yet released)"

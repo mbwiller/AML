@@ -1,0 +1,118 @@
+---
+title: "The marginal likelihood of a mixture"
+unit: u9-gaussian-mixtures-and-em
+order: 2
+slug: marginal-likelihood
+summary: "With cluster labels, fitting a mixture is GDA. Without them we maximize a log of a sum: no closed form, many symmetric local maxima, and an unbounded likelihood unless covariances are floored."
+lectures:
+  - { lecture: 11, pages: "40-50" }
+  - { lecture: 12, pages: "7" }
+concepts:
+  - gmm-known-labels-is-gda
+  - marginal-likelihood-objective
+  - marginal-likelihood-no-closed-form
+  - gmm-label-switching
+  - gmm-likelihood-degeneracy
+prerequisites:
+  - gmm-clustering-model
+  - gmm-responsibilities
+  - latent-variable-model
+  - gda-log-likelihood-decomposition
+  - gda-mle-mean
+  - gda-mle-covariance
+  - categorical-prior-mle
+  - gda-covariance-singularity
+  - maximum-likelihood-estimation
+  - log-likelihood
+  - mixture-distribution
+  - local-minimum
+  - convex-function
+homework: []
+companions:
+  - { notebook: "Code Companions/lecture11,13-GMM-and-EM code companion.ipynb", cells: "0-17" }
+estimatedMinutes: 40
+status: draft
+authors: [jide]
+---
+
+{/*
+  DRAFT STUB created 2026-10-18 by the lecture-ingester from docs/course-map/06-lectures-L11-L12.md
+  (L11 pp.40-50; L12 p.7 re-shows L11 p.48). Read that section, not the PDF.
+
+  Slide errors to correct silently and list as Pitfalls ("spot the error"):
+  - L11 p.40 (and companion cell 4): x^(i) in R should be R^d.
+  - L11 p.44: Gaussian normalizer (2 pi)^(n/2) should be (2 pi)^(d/2); cluster index written j.
+  - L11 p.47: "local minima" of a maximized objective are local maxima; "slip" means split;
+    "easier if P_theta(z) is known" means if each z^(i) is known.
+  Companion: cells 9-11 fit GDA on Iris sepal features with np.cov (n_k - 1, not the MLE's n_k), and
+  cell 11's gda_predictions is wrong (multiplies by the normalizer, puts -1/2 outside exp). Use it as
+  a "spot the bug" item at most; never as reference code. HW3 safety: HW3 P2 is GDA on Iris; do not
+  publish Iris GDA parameters or plots as worked results before 2026-10-19.
+
+  Derivation gaps (TODO, from the course map, L11 section):
+  - [ ] Known labels = GDA (pp.40-42): one-line reduction to der-7-2-2..der-7-2-5 and der-6-3-5.
+  - [ ] Gap 7: marginalize the joint over z (pp.45-46), one move per step.
+  - [ ] Gap 9: why no closed form. Gradient in mu_k of sum_i log sum_k phi_k N(x^(i); mu_k, Sigma_k)
+        is sum_i r_k^(i) Sigma_k^{-1} (x^(i) - mu_k); zero gives a responsibility-weighted mean whose
+        weights depend on mu_k: a fixed-point equation. Freezing r is the M-step (bridge to 9.3).
+  - [ ] Gap 10: label switching gives K! equal maxima, so the log-likelihood is not concave.
+  - [ ] Gap 11: the likelihood is unbounded (one component on one point, Sigma_k -> 0); reg_covar.
+        Link gda-covariance-singularity (Unit 7).
+*/}
+
+<Frame
+  data="unlabeled points $x^{(i)} \in \mathbb{R}^d$"
+  model="a Gaussian mixture $p_\theta(x) = \sum_k \phi_k \mathcal{N}(x; \mu_k, \Sigma_k)$"
+  objective="maximize the marginal log-likelihood $\frac1n \sum_i \log \sum_{k} p_\theta(x^{(i)}, z = k)$"
+  optimizer="no closed form; EM (lesson 9.3)"
+/>
+
+## Header strip and frame
+
+{/* TODO: check the frame. */}
+
+## Objectives
+
+{/* TODO: <Objectives> from course map L11 objectives 5-6: GDA as the labeled case; write the marginal log-likelihood; explain why there is no closed form and why there are many maxima. */}
+
+## Hook
+
+{/* TODO: <Hook> "If someone told us every point's cluster, we would be done in one line (Unit 7). Nobody does." */}
+
+## Definitions
+
+{/* TODO: <Definition> marginal likelihood (L11 p.46), complete-data vs incomplete-data log-likelihood (name both; slides do not). */}
+
+## Intuition
+
+{/* TODO: <Intuition> "high for at least one z" (p.46); why the sum inside the log couples every component to every point. */}
+
+## Derivations
+
+{/* TODO: <Derivation> chunks: (1) labeled case = GDA; (2) marginalize to the objective; (3) gradient in mu_k and the fixed point (gap 9); <Proof collapsed> for label switching (gap 10) and unboundedness (gap 11). */}
+
+## Explorable
+
+{/* TODO: <Widget> 1-D two-component likelihood surface over (mu_1, mu_2) showing the two symmetric maxima (course map widget list). Placeholder until built. */}
+
+## Worked example
+
+{/* TODO: <Example> three 1-D points and a two-component mixture with fixed variances: evaluate the marginal log-likelihood at two parameter settings that differ only by swapping labels. Compute by script. */}
+
+## Check your understanding
+
+<Check ids={["q-u9-l2-001", "q-u9-l2-002", "q-u9-l2-003", "q-u9-l2-004"]} />
+
+{/* TODO: add >= 6 more items (>= 3 types), including which-step items once the derivations exist. */}
+
+## Pitfalls
+
+{/* TODO: <Pitfall> the slide errors listed above; "the M-step uses only the points most likely in the cluster" (poll p.50(b) is false). */}
+
+## Connections
+
+{/* TODO: <Connections> back to 7.2 (GDA MLE), 6.3 (phi_k MLE), 7.2 singular covariance; forward to 9.3. Notebook: lecture11,13 companion cells 0-17 (with the bug warning). */}
+
+## Summary
+
+{/* TODO: <Summary> three bullets. */}

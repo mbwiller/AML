@@ -536,3 +536,56 @@
 - { from: sigmoid-function, to: logistic-regression-model, type: requires }
 - { from: log-odds-logit, to: logistic-linear-decision-boundary, type: requires }
 - { from: logistic-linear-decision-boundary, to: gda-linear-boundary, type: contrasts }
+
+# ---------- Units 8 (lesson 8.2), 9, and 10: L11-L12 ----------
+# Seeded from docs/course-map/06-lectures-L11-L12.md "Concept-graph edges". Cross-lesson
+# `requires` edges come from the stubs' frontmatter; these are within-lesson and typed extras.
+
+# Within lesson 8.2
+- { from: unsupervised-generalization, to: unsupervised-overfitting-detection, type: requires }
+
+# Within lesson 9.1
+- { from: kmeans-shape-limitations, to: gmm-clustering-model, type: requires }
+- { from: unsupervised-probabilistic-model, to: latent-variable-model, type: requires }
+- { from: latent-variable-model, to: gmm-clustering-model, type: requires }
+- { from: gmm-clustering-model, to: gmm-responsibilities, type: requires }
+- { from: kmeans-feature-duplication, to: kmeans-shape-limitations, type: uses }
+
+# Within lesson 9.2
+- { from: gmm-known-labels-is-gda, to: marginal-likelihood-objective, type: requires }
+- { from: marginal-likelihood-objective, to: marginal-likelihood-no-closed-form, type: requires }
+- { from: marginal-likelihood-objective, to: gmm-label-switching, type: requires }
+- { from: marginal-likelihood-objective, to: gmm-likelihood-degeneracy, type: requires }
+
+# Within lesson 9.3
+- { from: em-e-step, to: em-m-step-objective, type: requires }
+- { from: em-m-step-objective, to: gmm-m-step-updates, type: requires }
+- { from: em-e-step, to: em-algorithm, type: requires }
+- { from: gmm-m-step-updates, to: em-algorithm, type: requires }
+- { from: em-algorithm, to: em-monotone-ascent, type: requires }
+- { from: em-monotone-ascent, to: em-local-optima, type: requires }
+- { from: old-faithful-dataset, to: em-algorithm, type: uses }
+
+# Within lesson 9.4
+- { from: holdout-log-likelihood, to: penalized-likelihood-model-selection, type: contrasts }
+
+# Within lesson 10.1
+- { from: density-estimation, to: density-outlier-detection, type: requires }
+- { from: density-estimation, to: parametric-vs-nonparametric-density, type: requires }
+- { from: parametric-vs-nonparametric-density, to: histogram-density-estimator, type: requires }
+- { from: histogram-density-estimator, to: histogram-limitations, type: requires }
+- { from: histogram-limitations, to: kernel-density-estimation, type: requires }
+- { from: two-gaussian-histogram-sample, to: histogram-density-estimator, type: uses }
+
+# Across units (for `generalizes`, `to` generalizes `from`)
+- { from: kmeans-model, to: gmm-clustering-model, type: generalizes }
+- { from: lloyds-algorithm, to: em-algorithm, type: generalizes }
+- { from: gda-mle-mean, to: gmm-m-step-updates, type: generalizes }
+- { from: gda-mle-covariance, to: gmm-m-step-updates, type: generalizes }
+- { from: categorical-prior-mle, to: gmm-m-step-updates, type: generalizes }
+- { from: gda-prediction, to: gmm-responsibilities, type: uses }
+- { from: kmeans-assignment-step, to: em-e-step, type: contrasts }
+- { from: kmeans-update-step, to: gmm-m-step-updates, type: contrasts }
+- { from: elbow-method, to: holdout-log-likelihood, type: contrasts }
+- { from: gaussian-mixture, to: kernel-density-estimation, type: uses }
+- { from: gmm-clustering-model, to: density-estimation, type: uses }

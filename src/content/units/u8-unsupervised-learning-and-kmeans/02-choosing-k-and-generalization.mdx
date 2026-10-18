@@ -1,0 +1,111 @@
+---
+title: "Choosing K and generalization without labels"
+unit: u8-unsupervised-learning-and-kmeans
+order: 2
+slug: choosing-k-and-generalization
+summary: "How many clusters? The k-means objective falls with every K, so we read the elbow, picture data as signal plus noise, and detect over- and underfitting without labels."
+lectures:
+  - { lecture: 11, pages: "1-14" }
+concepts:
+  - unsupervised-generalization
+  - unsupervised-overfitting-detection
+prerequisites:
+  - kmeans-objective
+  - lloyds-algorithm
+  - elbow-method
+  - iris-dataset
+  - signal-plus-noise
+  - training-risk-optimism
+  - train-test-split
+  - log-likelihood
+homework: []
+companions:
+  - { notebook: "Lectures/lecture10-unsupervised-learning code companion.ipynb", cells: "11-35" }
+estimatedMinutes: 30
+status: draft
+authors: [jide]
+---
+
+{/*
+  DRAFT STUB created 2026-10-18 by the lecture-ingester from docs/course-map/06-lectures-L11-L12.md
+  (L11 pp.1-14). The lesson-writer fills it. Read that course-map section, not the PDF.
+
+  Scope: L11 pp.2-5 recap lesson 8.1 (link, do not repeat). New material is pp.6-14: Iris k-means
+  for K = 4, 10, 20 (inertia 28.01, 9.74, 4.22, which is nJ, not J), the Iris elbow at K = 3
+  (p.12), P = F + E (pp.10-11), detecting over/underfitting without labels (p.13), poll p.14.
+  Overlap: lesson 8.1 already has "Choosing K with the elbow method" on the companion's blobs
+  (elbow at K = 4). Decide with the 8.1 author whether 8.1 keeps a pointer and the full treatment
+  moves here; do not teach the elbow twice.
+  The holdout log-likelihood bullet (p.13) is executed in lesson 9.4 (L12 pp.31-38): forward-link.
+  HW3 safety (live until 2026-10-19): HW3 P2(e) runs k-means with K = 2 on Iris. Do not show an Iris
+  K = 2 fit as a worked answer before 2026-10-19 (the p.7 K = 2 figure is the slide's, but keep it
+  out of a worked example until then).
+
+  Derivation gaps (TODO, from the course map):
+  - [ ] L11 gap 3: the optimal J*(K) is non-increasing in K and 0 at K = n; Lloyd's local optima can
+        break monotonicity in practice. Link lesson 8.1's statement rather than re-derive.
+  - [ ] Inertia vs J: sklearn's "K-Means Objective" on p.9 is sum of squared distances = nJ with n = 150.
+  - [ ] L11 gap 4: present P = F + E as a picture (x = f + noise, or structure plus diffuse part),
+        not as an equation between distributions.
+  - [ ] L11 gap 5: training log-likelihood of nested probabilistic models is non-decreasing in K;
+        holdout log-likelihood is not (mirror of training-risk optimism, Unit 2).
+  - [ ] Poll p.14(b) mentions penalizing the number of clusters: one sentence pointing to BIC/AIC
+        in lesson 9.4 (penalized-likelihood-model-selection).
+*/}
+
+<Frame
+  data="unlabeled points $x^{(i)} \in \mathbb{R}^d$, $i = 1, \dots, n$"
+  model="k-means with $K$ centroids, for several values of $K$"
+  objective="$J(c, z) = \frac1n \sum_i \lVert x^{(i)} - c_{z^{(i)}} \rVert_2^2$, which cannot choose $K$ by itself"
+  optimizer="Lloyd's algorithm for each $K$; choose $K$ by the elbow or by a holdout criterion"
+/>
+
+## Header strip and frame
+
+{/* TODO: the header strip renders from the frontmatter and <Frame> above; check the four-component frame wording once the lesson is written. */}
+
+## Objectives
+
+{/* TODO: <Objectives> from the course map's L11 objectives 1-2 (elbow; over/underfitting in F/E terms, with and without labels). */}
+
+## Hook
+
+{/* TODO: <Hook>. Candidate: the SEPSIS-4 phenotype question from 8.1 ("how many phenotypes?") or the Iris species count. No live-HW numbers. */}
+
+## Definitions
+
+{/* TODO: <Definition> for generalization in unsupervised learning (L11 p.10), underfit/overfit (p.11), elbow (p.12). Cite with SlideRef. */}
+
+## Intuition
+
+{/* TODO: <Intuition> signal F vs noise E; why more centroids always lower J (each new centroid can only shorten some distances). */}
+
+## Derivations
+
+{/* TODO: <Derivation> "the optimal k-means objective never increases with K" (short; or a Proof collapsed linking 8.1), and the nested-model argument for training log-likelihood (gap 5). */}
+
+## Explorable
+
+{/* TODO: <Widget> elbow-on-iris (course map L11 widget list): K slider, centroids, inertia curve. Placeholder until built. */}
+
+## Worked example
+
+{/* TODO: <Example> read the p.12 elbow values (approx. 130, 58, 37, 28, 21, ...) and the p.9 inertias; compute the drop ratios to locate the elbow. Use slide numbers only (no notebook reproduces them). */}
+
+## Check your understanding
+
+<Check ids={["q-u8-l2-001", "q-u8-l2-002"]} />
+
+{/* TODO: add >= 8 more items (>= 3 types): inertia vs J, elbow reading, F vs E classification, which detection method applies. */}
+
+## Pitfalls
+
+{/* TODO: <Pitfall> items: "lower objective means a better K" (it always falls); "the elbow is a theorem" (it is a heuristic); "Probability peaks" legend on p.7 is a k-means centroid, not a density peak. */}
+
+## Connections
+
+{/* TODO: <Connections>: back to 8.1 (elbow, local minima) and Unit 5 (model selection, L8); forward to 9.4 (holdout log-likelihood) and 9.1 (where k-means fails). Notebook: lecture10 companion cells 11-35 (blobs version). */}
+
+## Summary
+
+{/* TODO: <Summary> three bullets. */}

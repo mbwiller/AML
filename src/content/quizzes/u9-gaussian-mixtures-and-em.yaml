@@ -1,0 +1,154 @@
+# Quiz bank: Unit 9, Gaussian mixtures and the EM algorithm.
+# Format: docs/CONTENT_AUTHORING.md §7. DRAFT: ingested 2026-10-18 from the L11 p.50 and L12 p.17
+# polls (docs/course-map/06-lectures-L11-L12.md). The "are the following correct?" polls are split
+# into one true/false item per statement. Keys are the course map's suggested keys; review them with
+# the lessons, which are draft stubs. No item uses HW3 data.
+
+# ---------- Lesson 9.2: marginal-likelihood (L11 p.50 poll) ----------
+
+- id: q-u9-l2-001
+  lesson: marginal-likelihood
+  concepts: [gmm-responsibilities]
+  type: mc
+  difficulty: 2
+  source: "L11 p.50 poll"
+  prompt: |
+    True or false: in GMM clustering, we start by randomly initializing the centers and covariances of the clusters; we then compute the likelihood of each data point belonging to each cluster $P(x^{(i)} \mid z)$.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True as intended (the course map's suggested key). EM starts from a random $\theta$ and evaluates each component density $P(x^{(i)} \mid z = k)$. Two refinements: the mixing weights $\phi_k$ are initialized too, and the E-step goes on to turn $\phi_k P(x^{(i)} \mid z = k)$ into the posterior $P(z = k \mid x^{(i)})$ by normalizing over $k$ (L11 p.54).
+
+- id: q-u9-l2-002
+  lesson: marginal-likelihood
+  concepts: [gmm-responsibilities]
+  type: mc
+  difficulty: 2
+  source: "L11 p.50 poll"
+  prompt: |
+    True or false: we then update the centers and covariances of each cluster by only looking at the points that are more likely to belong to this cluster.
+  options:
+    - { text: "True" }
+    - { text: "False", correct: true }
+  explanation: |
+    False (the course map's suggested key). The M-step uses every point, weighted by its responsibility $P(z = k \mid x^{(i)})$: $\mu_k = \sum_i P(z = k \mid x^{(i)})\,x^{(i)} / n_k$ (L12 p.15). Keeping only the points most likely to be in cluster $k$ is a hard assignment, which is what k-means does.
+  discriminates: [gmm-responsibilities, kmeans-assignment-step]
+
+- id: q-u9-l2-003
+  lesson: marginal-likelihood
+  concepts: [gmm-responsibilities]
+  type: mc
+  difficulty: 1
+  source: "L11 p.50 poll"
+  prompt: |
+    True or false: given the parameters of the learned Gaussian mixtures, we can update the clustering assignment based on Bayes rule $P(z \mid x) = P(x \mid z)P(z)/P(x)$.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True (the course map's suggested key). With $\theta$ fixed, $P_\theta(z = k \mid x) = \phi_k \mathcal{N}(x; \mu_k, \Sigma_k) / \sum_l \phi_l \mathcal{N}(x; \mu_l, \Sigma_l)$ (L11 p.49). It is the same computation as GDA prediction.
+
+- id: q-u9-l2-004
+  lesson: marginal-likelihood
+  concepts: [gmm-label-switching]
+  type: mc
+  difficulty: 2
+  source: "L11 p.50 poll"
+  prompt: |
+    True or false: the loss function of the mixture model is non-convex and it has many local maxima, making optimization hard.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True (the course map's suggested key). Strictly, the log-likelihood we maximize is not concave (equivalently, the negative log-likelihood is not convex). Swapping the labels of two components leaves it unchanged, so its maxima come in symmetric copies, and an iterative method can stop at different ones depending on where it starts. L11 p.47 says "local minima"; for a maximized objective they are local maxima.
+
+# ---------- Lesson 9.3: em-algorithm (L12 p.17 poll, statements a-e) ----------
+
+- id: q-u9-l3-001
+  lesson: em-algorithm
+  concepts: [gmm-label-switching]
+  type: mc
+  difficulty: 1
+  source: "L12 p.17 poll"
+  prompt: |
+    True or false: in unsupervised GMM, it is easy to optimize the clustering assignment and the parameters of the models at the same time because the objective function of GMM is convex.
+  options:
+    - { text: "True" }
+    - { text: "False", correct: true }
+  explanation: |
+    False (the course map's suggested key). The marginal log-likelihood is a log of a sum (L11 p.47): it has no closed-form maximizer and many local maxima. That is why EM alternates instead of solving for everything at once.
+
+- id: q-u9-l3-002
+  lesson: em-algorithm
+  concepts: [em-local-optima]
+  type: mc
+  difficulty: 2
+  source: "L12 p.17 poll"
+  prompt: |
+    True or false: the EM algorithm is an iterative procedure that guarantees to solve the log-likelihood objective to optimality.
+  options:
+    - { text: "True" }
+    - { text: "False", correct: true }
+  explanation: |
+    False (the course map's suggested key). EM guarantees only that the likelihood never decreases from one iteration to the next. It can stop at a local maximum (L12 p.30: "can get stuck in local optima").
+  discriminates: [em-local-optima, em-monotone-ascent]
+
+- id: q-u9-l3-003
+  lesson: em-algorithm
+  concepts: [em-local-optima]
+  type: mc
+  difficulty: 1
+  source: "L12 p.17 poll"
+  prompt: |
+    True or false: the EM algorithm guarantees the same solution regardless of the cluster initialization.
+  options:
+    - { text: "True" }
+    - { text: "False", correct: true }
+  explanation: |
+    False (the course map's suggested key). Different starting parameters can lead EM to different local maxima, exactly as different starting centroids can for k-means (L12 p.30 lists "how to choose initial cluster centers" as a consideration).
+
+- id: q-u9-l3-004
+  lesson: em-algorithm
+  concepts: [em-e-step]
+  type: mc
+  difficulty: 2
+  source: "L12 p.17 poll"
+  prompt: |
+    True or false: we compute $P(Z \mid X^{(i)})$ at the E-step so we can connect our current belief on cluster assignment with the model parameters.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True (the course map's suggested key). The E-step posterior is computed from the current $\theta^{(t)}$, and the M-step then uses it as the weights of each point in each cluster's fit (L11 p.55).
+
+- id: q-u9-l3-005
+  lesson: em-algorithm
+  concepts: [em-algorithm]
+  type: mc
+  difficulty: 1
+  source: "L12 p.17 poll"
+  prompt: |
+    True or false: like in K-means, EM in GMM assigns the cluster assignment in one step and updates the model parameter in another.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True (the course map's suggested key). Both algorithms alternate an assignment step and a parameter step. The difference is that EM's assignment is soft (a probability for every cluster), while k-means assigns each point to one cluster.
+  discriminates: [em-algorithm, lloyds-algorithm]
+
+# ---------- Lesson 9.4: holdout-log-likelihood (L12 p.17 poll, statement f) ----------
+
+- id: q-u9-l4-001
+  lesson: holdout-log-likelihood
+  concepts: [holdout-log-likelihood]
+  type: mc
+  difficulty: 1
+  source: "L12 p.17 poll"
+  prompt: |
+    True or false: underfitting and overfitting in GMM can be detected through holding out datapoints.
+  options:
+    - { text: "True", correct: true }
+    - { text: "False" }
+  explanation: |
+    True (the course map's suggested key). The GMM assigns a log-likelihood to any point, so we can compare its average on the training set and on held-out points (L12 pp.35-38). An underfit model scores both poorly; an overfit model scores the training set much better than the holdout set.
